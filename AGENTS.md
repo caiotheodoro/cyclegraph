@@ -7,9 +7,10 @@ primitive, and measures the corpus that way. The corpus is `builddotai/Egocentri
 10,000 hours, 2,153 workers published and 2,144 shipped (`../vernier/docs/UPSTREAM-FINDINGS.md`
 F12), 85 factories, 192,903 clips.
 
-**Current state (2026-09-05):** W1 cleared, pre-registration v1.2.0, contracts v1.2, W2
+**Current state (2026-09-05):** W1 cleared, pre-registration v1.3.0, contracts v1.2, W2
 landed (models, the two HAL equations, the bootstrap), fresh-context review recorded as
-D020. `docs/SURVEY.md`'s two unopened reviews stay `[S]` and load-bearing on nothing.
+D020. W3's code is landed and its corpus gates pass (D026-D028); its two external
+dependencies, the detector and the labeller, have not run. `docs/SURVEY.md`'s two unopened reviews stay `[S]` and load-bearing on nothing.
 
 ## The claim
 
@@ -61,7 +62,7 @@ recorded a claim that dissolved on contact with the paper; the tag is what caugh
 ## Order of work
 
 `docs/SURVEY.md` gated everything and cleared on 2026-09-05. `docs/PRE-REGISTRATION.md` is
-at v1.1.0. Next: W2 (`CONTRACTS.md` in code, three isolated commits) → `make manifest` →
+at v1.3.0. W2 landed. Next: W3 (`corpus` + `signal`) → `make manifest` →
 `make signal` → `make cycles` → `make hal` → `make estimate` → `make card`.
 
 `docs/WAVES.md` carries the ordering constraints that are not negotiable.

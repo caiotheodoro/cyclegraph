@@ -57,17 +57,24 @@ lock:  ## Regenerate constraints from pyproject.
 
 # --- stages, in the order docs/WAVES.md fixes ---------------------------------
 
-survey:  ## docs/SURVEY.md -- the novelty gate. Nothing downstream runs until this passes.
-	$(NOT_YET)
+survey:  ## docs/SURVEY.md -- the novelty gate. Ran 2026-09-05 and cleared, narrowly.
+	@grep -q '^## Verdict:' docs/SURVEY.md \
+		&& echo "survey: verdict recorded in docs/SURVEY.md (W1 cleared 2026-09-05)" \
+		|| { echo "REFUSING: docs/SURVEY.md carries no verdict line." >&2; exit 1; }
 
 manifest:  ## Clip manifest for one factory. Usage: make manifest FACTORY=factory_001
 ifndef FACTORY
 	$(error FACTORY is required, e.g. make manifest FACTORY=factory_001)
 endif
-	$(NOT_YET)
+	python3 scripts/build_clip_manifest.py --factory $(FACTORY)
 
-signal:  ## Per-frame manipulation series for each clip in the manifest.
-	$(NOT_YET)
+signal:  ## Per-frame manipulation series and hand speed for each clip in the manifest.
+	@# Refuses without the detector and labeller outputs; see docs/HANDOFF.md "the next three
+	@# things". A stage that substituted a region prior for a detector would satisfy every
+	@# schema and mean nothing.
+	python3 scripts/build_signal.py \
+		--detections results/pilot/detections.jsonl \
+		--labels results/pilot/labels.jsonl
 
 cycles:  ## Frequency axis: hand speed primary, spectral bout frequency and transition-counting as cross-checks.
 	$(NOT_YET)

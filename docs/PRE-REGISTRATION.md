@@ -1,8 +1,8 @@
 # Pre-registration
 
-**Version:** 1.2.0
+**Version:** 1.3.0
 **Frozen:** 2026-09-05, before `src/` exists and before a single clip is decoded.
-**Amended:** 2026-09-05, v1.1.0 and v1.2.0, still before a single clip is decoded. The
+**Amended:** 2026-09-05, v1.1.0, v1.2.0 and v1.3.0, still before a single clip is decoded. The
 amendment blocks at the end quote every prior sentence they replaced, and
 `scripts/validate.py` refuses any change to the frozen body that a block does not quote.
 
@@ -50,9 +50,10 @@ frequency. The only switch to spectral-primary is a pre-registered speed-path fa
 detector coverage below 60% of scored frames on the pilot, or the frequency control (below)
 failing on the speed path. A switch is reported as a failure of the speed path, and because
 the spectral path has no thresholded frequency control of its own, a switch makes the
-frequency control `FAILED` and H3 `UNTESTED` for v1. The speed path's translation floor —
-the residual a translation-only synthetic with a static hand produces (`docs/RED-TEAM.md`
-A14) — must be at most **20%** of the corpus median RMS speed; above that the path is
+frequency control `FAILED` and H3 `UNTESTED` for v1. The speed path's residual floor —
+the residual a rotation-only and a translation-only synthetic with a static hand produce
+under the corpus's own fisheye intrinsics (`docs/RED-TEAM.md` A14) — must be at most
+**0.25 HAL** at the corpus median RMS speed; above that the path is
 reported with the floor subtracted and the subtraction disclosed. `docs/DECISIONS.md` D014,
 D020.
 
@@ -253,3 +254,22 @@ quotes the v1.1.0 sentence it replaced.
 - **Negative control** (D020). Prior: "**Frequency control, EPIC-KITCHENS-100:** factory −
   EPIC HAL gap **≥ 0.5** on the speed path; the spectral-path gap is reported beside it,
   unthresholded." Now: the same gap, with the consequence of a switch stated.
+
+### v1.3.0 — D021 · prior hash c4ce86ef15313c24658f6a1a048fd6e650b91d55c53a33024440665e076055aa
+
+Applied 2026-09-05, before the A14 synthetic was written and before any residual was
+measured. The threshold is changed while its value is still unknown, which is the only
+point at which changing it is not post-hoc.
+
+- **Header** (D021). Prior: "**Amended:** 2026-09-05, v1.1.0 and v1.2.0, still before a
+  single clip is decoded." Now: names the third version.
+- **Frequency axis** (D021). Prior: "The speed path's translation floor — the residual a
+  translation-only synthetic with a static hand produces (`docs/RED-TEAM.md` A14) — must be
+  at most **20%** of the corpus median RMS speed; above that the path is reported with the
+  floor subtracted and the subtraction disclosed." Now: the bound is stated in HAL rather
+  than as a fraction of speed — at most **0.25 HAL** at the corpus median — and the floor
+  comprises the rotation residual under the corpus's own fisheye intrinsics as well as the
+  translation residual. A 20% floor is worth 0.85–1.22 HAL on the Akkas fit across
+  400–1000 mm/s, which exceeds the 0.74 HAL cross-domain residual `docs/EVALS_CARD.md`
+  names as the honest prior for this port; a bound looser than the instrument's own prior
+  bounds nothing. 0.25 HAL is 4.4–5.8% of speed over the same band.

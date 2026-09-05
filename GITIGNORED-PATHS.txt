@@ -14,3 +14,12 @@ hf/dataset/CONTRACTS.md
 
 # Real credentials. .env.example is tracked; .env is not.
 .env
+
+# Pilot per-clip records and their inputs. The pilot factory is nameable, so every one of
+# these carries a per-factory identifier in its clip_id and none may ever be tracked
+# (docs/DECISIONS.md D018, docs/ETHICS.md). The gate on results/ would catch it; this
+# declares them so the cited-path gate does not fail on a promise the docs make.
+results/pilot/detections.jsonl
+results/pilot/labels.jsonl
+results/pilot/frame_signal.jsonl
+results/pilot/hand_speed.jsonl

@@ -387,3 +387,357 @@ merges; no aggregate can be built with an identifier field, a sub-floor stratum,
 `worker_id` cluster unit.
 
 **Reverses if:** nothing; this is a record.
+
+## D021 — The A14 floor is bounded in HAL, not as a fraction of speed
+
+**Decision.** `docs/PRE-REGISTRATION.md` v1.3.0 replaces "at most **20%** of the corpus
+median RMS speed" with "at most **0.25 HAL** at the corpus median RMS speed", and widens what
+the floor comprises: the residual left by a **rotation-only** synthetic under the corpus's own
+fisheye intrinsics counts toward it alongside the translation-only residual. Supersedes the
+A14 pre-commitment D020 added.
+
+**Rationale.** The 20% bound was set without checking what it costs on the mapping it feeds.
+It costs a lot. On `akkas-2015-speed-dc` at a 68% duty cycle, a floor at exactly 20% of speed
+moves HAL by **0.85 at 400 mm/s, 1.22 at 612 mm/s and 1.22 at 800 mm/s** — recomputed from
+`src/cyclegraph/exposure/hal.py`, not transcribed. `docs/EVALS_CARD.md` names 0.74 HAL, the
+best published third-person system's cross-domain RMSE against observers, as "the honest
+prior for how far this port could be off". A pre-committed systematic floor larger than the
+instrument's own honest prior bounds nothing: the path could pass A14 and still be wrong by
+more than the whole port's expected error. 0.25 HAL corresponds to 4.4–5.8% of speed across
+the same band, and is stated in the unit the hypothesis is actually about.
+
+The rotation term is added because the rubric subtracts a **scalar** — the median flow over
+the mask complement. Under pure camera rotation optical flow is depth-independent, so a
+correct model cancels it exactly; a scalar does not, on a wide lens, because rotational flow
+varies radially. That variation is exactly the residual A14 alleges, and a floor defined from
+translation alone would omit it. `docs/WAVES.md`'s checklist row ("a rotation-only synthetic
+with a static hand yields zero residual within tolerance") remains true only in narrow-field
+geometry, where it is a test of the estimator's arithmetic rather than of the attack.
+
+**Timing, which is the point.** This lands before `src/cyclegraph/signal/synthetic.py` exists
+and before any residual has been computed. Changing a threshold after measuring the quantity
+it bounds is post-hoc; changing it while the quantity is unknown is not. A project whose
+argument is that measurements get published without protocols does not get to loosen its own
+after seeing the number.
+
+**Evidence.** The HAL costs above are recomputed by `hal_akkas_2015`; the 0.74 prior is
+`docs/EVALS_CARD.md`, abstract-sourced and `[S]`, and is not load-bearing for the decision —
+any prior in that region gives the same conclusion.
+
+**Alternatives rejected.** Keeping 20% and disclosing the cost: the disclosure would say the
+bound admits an error larger than the instrument's stated accuracy, which is a reason to
+change the bound, not to annotate it. Bounding in percent-of-speed at a tighter value: the
+harm of a speed offset depends on where on the logistic the corpus median sits, so a fixed
+percentage is not a fixed amount of harm; HAL is.
+
+**Reverses if:** the corpus median RMS speed lands far enough onto a tail of the Akkas
+logistic that 0.25 HAL corresponds to a speed fraction the flow estimator cannot resolve, in
+which case the bound is restated with the resolution floor named and the amendment quotes
+this one.
+
+## D022 — `hands_visible` is label-sourced; `hand_box_width_px` is detector-sourced
+
+**Decision.** On `FrameSignal`, `hands_visible[i]` comes from the label source and
+`hand_box_width_px[i]` from the hand detector. They are never crossed. A detector box on a
+frame whose labeller reported `hands_visible: 0` is **dropped and counted**; the count is
+published in `docs/BENCHMARK.md`, split by cause.
+
+**Rationale.** `models.py`'s `FrameSignal` validator rejects `manipulation: true` with
+`hands_visible: 0`, and rejects a box width where no hand is visible. H2c pre-registers
+detector coverage as low as **60%**. If `hands_visible` were derived from the detector, up to
+40% of pilot frames would carry `hands_visible: 0`, and every one of those the labeller called
+manipulating would be an unconstructible record. The validator permits the reverse — a visible
+hand with `hand_box_width_px: null` — which is exactly the shape of a labeller that sees hands
+and a detector that misses them. The failure only appears at pilot scale, after the detector
+run, which is the most expensive place in W3 to discover it.
+
+**The cost, stated rather than discovered.** Dropping boxes on labeller-says-no-hands frames
+makes H2c's coverage depend on label quality. If the probe misses hands, the speed path loses
+samples it actually had, and H2c can fail for the labeller's error rather than the detector's
+— which would trigger D014's switch to spectral-primary on a false signal. That is why the
+drop count is a reported quantity and not a run-log detail: a reader must be able to separate
+the two before reading H2c as a statement about the detector. `Detection` carries no
+`hands_visible` field, so crossing the two is a type error rather than a runtime surprise.
+
+**Reverses if:** a label source is adopted that does not report a hand count, in which case
+`hands_visible` has no source and the field's meaning is re-decided rather than back-filled
+from the detector.
+
+## D023 — What absence looks like numerically: zero residual, status precedence, decode denominator
+
+**Decision.** Three operational rules that `docs/RUBRIC.md` states in prose and leaves
+unquantified.
+
+1. **An exactly-zero residual inside the hand box is a flow null**, with a reason, not a
+   speed of zero. It raises `n_flow_null`.
+2. **Status precedence** on `HandSpeedEstimate`, when more than one condition holds:
+   `no_detector` > `too_short` > `low_coverage` > `flow_failed` > `ok`.
+3. **The decode-failure gate is per pair**, with the per-clip rate reported beside it. A clip
+   that fails entirely is `status: "decode_failed"`, counted, never dropped.
+
+**Rationale.** (1) closes a hole in the contract: the validator bars `rms_speed_mm_s <= 0`
+under `ok` and bars `flow_failed` unless the null rate exceeds its ceiling, so a clip with
+boxes everywhere and a dead flow field had **no legal representation** at all. Reading the
+zero as the failure it is gives it one, and is what `docs/RUBRIC.md`'s "flow failure → null
+with reason, never zero" already required. The test is `== 0.0` exactly, not a threshold:
+nulling small residuals would discard real slow motion and bias the corpus upward.
+
+(2) matters because both `low_coverage` and `flow_failed` can be true at once and the schema
+accepts either. Without a fixed order, two runs over the same data disagree about why a clip
+was dropped, and the reason is a published quantity.
+
+(3) `docs/METHOD.md` E2 states "below 1%" without a denominator, and per-pair and per-clip
+rates differ by the number of pairs in a clip. Choosing after seeing the rate is exactly the
+flexibility the pre-registration exists to remove.
+
+**What (1) does not catch, stated because the null rate will be read as a failure rate.**
+An exact zero arises from identical or degenerate frames. Motion blur and low light — the
+causes `docs/RED-TEAM.md` A15 actually names — make dense flow decay toward small *non-zero*
+values, which this rule passes through as real speed. The reported `flow_null_rate` is
+therefore a **lower bound on flow failure**, and H2c's 10% ceiling is correspondingly
+permissive. A15 stays MITIGATED rather than closed.
+
+**Reverses if:** a flow estimator is adopted that reports its own confidence, at which point
+the null test is that confidence rather than an exact zero, and the lower-bound caveat is
+replaced by the estimator's own false-negative rate.
+
+## D024 — How the flow estimator will be chosen, fixed before the rates are measured
+
+**Decision.** Farneback on CPU against RAFT-small on GPU, on the **same** 1,000 pilot pairs,
+drawn deterministically by seed and spanning at least 20 clips so one dark clip cannot decide
+it. The rule, in order:
+
+1. Flow-null rate is primary. An estimator whose null rate exceeds `FLOW_NULL_CEILING` on the
+   sample **fails**, whatever its throughput.
+2. If both clear it, the lower total pilot cost wins — wall-clock times the instance rate, so
+   spot pricing and CPU hours sit on one axis.
+3. If neither clears it, that is H2c failing on the flow arm. The spectral path becomes
+   primary under D014 and **the switch is reported as a failure of the speed path**.
+4. **A tiebreaker that is not a rate.** RAFT-small needs torch, which the `signal` extra does
+   not declare; choosing it costs either a declared `pyproject.toml` change with its own
+   decision entry or a file-backed flow store and a runner script. Farneback costs nothing
+   extra because `opencv-python-headless` is already declared. That asymmetry is written down
+   now so it cannot be discovered later as a convenient reason.
+
+The measured table lands in `results/flow_benchmark.json` and in the entry that records the
+choice, and carries the median residual each estimator leaves on the A14 rotation synthetic
+beside its throughput: an estimator that is fast and rarely nulls but leaves a large
+rotational residual is worse for this project, because A14 is the open attack.
+
+**Rationale.** `docs/HANDOFF.md` says to decide this "by measurement, not preference". A
+measurement whose decision rule is written afterwards is a preference with a table attached.
+
+**Reverses if:** the chosen estimator's null rate on the full pilot exceeds 10%, which is H2c
+and is a re-run against this same rule, not a re-argument of it.
+
+## D025 — The corpus ships one camera calibration, not 2,144; the A14 synthetic uses it
+
+**Decision.** The A14 synthetics are built on the corpus's own lens model rather than an
+invented one. The model is recorded here as a corpus constant, and the fact that it *is* a
+constant is recorded as a limitation.
+
+**What was found.** `builddotai/Egocentric-10K` at revision
+`3e5f87c88c54ce8343865d8e2a8c171f18385a05` ships 2,144 `intrinsics.json` files, one per
+worker directory — the same count as the shipped workers (`../vernier/docs/UPSTREAM-FINDINGS.md`
+F12). Sixteen of them were drawn at an even stride across the sorted list, landing in sixteen
+different factories, and **all sixteen are byte-identical**: 302 bytes, one sha256. The
+per-worker calibration is a single calibration replicated.
+
+| Field | Value |
+|---|---|
+| `model` | `fisheye` |
+| `image_width` × `image_height` | 1920 × 1080 |
+| `fx`, `fy` | 1030.587009, 1032.815725 |
+| `cx`, `cy` | 966.691189, 539.687801 |
+| `k1` … `k4` | −0.116554, −0.023589, +0.069364, −0.046334 |
+
+Four radial coefficients, no tangential terms, and the field names and `model` string are
+OpenCV's fisheye convention, which is Kannala–Brandt on an equidistant base. That is now `[V]`
+from the shipped files rather than inferred from the coefficient count.
+
+**Why it matters twice.** First, it settles the privacy question the synthetic would otherwise
+raise: a lens model that is identical for every worker is a property of the corpus, not of a
+person, so embedding it in a committed test emits no per-worker value. Second, and less
+comfortably, **the corpus has no real per-camera calibration**. Whatever lens-to-lens variation
+exists across 2,144 physical cameras is unmodelled and unmeasurable from the release, so the
+A14 floor computed from this model is a floor for *the nominal lens*, not for the fleet.
+`../vernier/docs/COVERAGE.md` describes the release as shipping "per-worker fisheye
+intrinsics"; that is what the files are named and not what they contain, and cyclegraph records
+the correction rather than inheriting the phrasing.
+
+**Consequence for A14.** The lens is wide enough for the attack to be real: at `fx` ≈ 1030 on a
+1920-pixel width, the horizontal half-angle is on the order of a radian, so rotational flow
+varies substantially between image centre and edge and a scalar ego-motion subtraction cannot
+cancel it. The rotation residual is therefore measured under this model and counted toward the
+floor (D021), and the narrow-field rotation case is retained only as a test of the estimator's
+arithmetic.
+
+**Reverses if:** a later release ships genuinely per-worker calibrations, at which point the
+floor is recomputed per calibration and its spread reported, or a wider sample of the current
+release finds a worker whose `intrinsics.json` differs from these sixteen.
+
+## D026 — The A14 floor, measured: it is a motion budget, not a number, and the budget is tight
+
+**Result.** `scripts/measure_a14_floor.py` computes the apparent RMS hand speed a *static*
+hand produces under camera motion alone, after `docs/RUBRIC.md`'s ego-motion subtraction, on
+exact geometry under the corpus lens (D025). No optical-flow estimator is in the loop, so this
+is a property of the rubric's rule and the lens rather than of any estimator. It is
+deterministic: no random number is drawn. The table is `results/a14_translation_floor.json`.
+
+The floor is **linear in camera motion**, so it is not a single number. What is publishable
+is the floor per unit of motion, and the motion at which it consumes the whole 0.25 HAL bound
+the pre-registration now sets (D021):
+
+| Assumed corpus median speed | Floor budget | Rotation budget | Translation budget |
+|---|---|---|---|
+| 400 mm/s | 23.0 mm/s | 22.8 °/s | 0.026 m/s |
+| 612 mm/s | 26.7 mm/s | 26.5 °/s | 0.031 m/s |
+| 800 mm/s | 36.8 mm/s | 36.4 °/s | 0.042 m/s |
+
+**This is uncomfortably tight and is reported as such.** A translation budget of 2.6–4.2 cm/s
+is less than ordinary head sway at a workstation, and a rotation budget of 23–36 °/s is less
+than an ordinary glance between a bin and a fixture. If the corpus's real ego-motion is
+anywhere near those magnitudes for a material share of samples, the floor alone consumes the
+pre-registered bound and A14 **lands**: the speed path would then be reported with the floor
+subtracted and the subtraction disclosed, exactly as the red-team entry says.
+
+**Both terms are real, and a translation-only test would have found only one.** At 30 °/s the
+rotation floor is 29.9 mm/s — the same order as the translation floor at 3 cm/s — because the
+scalar ego-motion estimate cannot cancel a rotational field that varies by a factor of two
+across this lens. Under the long-lens control the same rotation leaves under 1% of raw flow.
+D021 widened the floor to include this term before it was measured; the measurement is why
+that mattered.
+
+**What is not settled, and cannot be at W3.** The corpus's own ego-motion distribution. This
+table gives the floor for an assumed motion, not the floor, and the pre-registered bound is
+evaluated at W7 against the measured corpus median speed. The honest W3 claim is that the
+floor is characterised and its budget published, not that A14 is retired.
+
+**Reverses if:** measured corpus ego-motion turns out to sit well inside the budget, in which
+case the floor is a disclosed limitation rather than a correction; or the ego-motion rule is
+replaced by a fitted rotational model, which would cancel the rotation term and is a change to
+`docs/RUBRIC.md` requiring its own amendment.
+
+## D027 — E1 gate: the manifest reconciles, and the vendor's worker count is wrong by nine
+
+**Result.** `scripts/build_clip_manifest.py --all` indexed all 19,495 shards at revision
+`3e5f87c88c54ce8343865d8e2a8c171f18385a05` by ranged header reads, downloading no shard, and
+found **192,903 clips, 2,144 distinct `factory_id/worker_id` pairs, 85 factories and 10,000.13
+recorded hours**.
+
+| Source | Factories | Clips | Workers | Verdict |
+|---|---|---|---|---|
+| Vendor dataset card | 85 | 192,900 | 2,153 | clips +3, **workers −9** |
+| `../vernier` F12 scan | 85 | 192,903 | 2,144 | **reconciles exactly** |
+| cyclegraph, this scan | 85 | 192,903 | 2,144 | — |
+
+**Why three sources and not one.** A gate against the vendor's card alone would have failed on
+a discrepancy the card itself is wrong about. A gate against the sibling alone would have
+inherited whatever the sibling got wrong. Two independently written scans, in different
+repositories, agreeing to the clip is the actual evidence; the vendor gap is then a finding
+rather than a scan defect. `../vernier/docs/UPSTREAM-FINDINGS.md` F12 reported the −9 gap from
+its own scan and this confirms it rather than repeating it.
+
+The duration reconciles to 0.001% of the published "10,000 hours", which is what makes the
+worker gap legible: a scan that had missed workers would have missed their hours too.
+
+**Consequence.** 2,144 is the cluster count every interval in this project is computed over,
+and 2,153 is the number the vendor's card and much of the surrounding literature would use.
+`README.md` already carries 2,144 with F12 cited; this entry is the independent confirmation.
+
+**A note on the scan itself.** Eleven shards failed on the first pass with connection resets
+and read timeouts, and the run reported itself `NOT AUTHORITATIVE` rather than publishing a
+short count. Re-running picked up exactly those eleven and the totals closed. A scan that had
+silently dropped them would have reported 192,794 clips and disagreed with both sources for a
+reason having nothing to do with the corpus.
+
+**Reverses if:** the corpus is re-pinned, at which point every count is recomputed and every
+stored record's `corpus_rev` makes the old ones unpoolable rather than merely stale.
+
+## D028 — The flow benchmark: Farneback measured, and the decision stays OPEN
+
+**Result.** `scripts/bench_flow.py` ran Farneback over 192 real pilot pairs drawn from 12
+clips at seed 777, decoded at 480×270: **116.9 pairs/s on CPU, flow-null rate 0.000**, which
+clears `FLOW_NULL_CEILING` with the whole margin. `results/flow_benchmark.json` carries the
+table. The measured throughput is more than twice `docs/METHOD.md` E3's ~50 pairs/s estimate,
+at this frame size.
+
+**The decision is not taken, and that is the rule working rather than failing.** D024 fixed a
+comparison between two arms before either was measured, and RAFT-small has not been measured:
+torch is importable on this machine but is declared in no extra, no RAFT weights are present,
+and the throughput arm is meaningless without the GPU `docs/REPRODUCTION.md` specifies. So
+`decision_taken` is `false` in the artifact and `flow_method` on every record produced so far
+names Farneback as *what ran*, not as *what was chosen*.
+
+Recording one arm's rates and calling the decision made is precisely the
+preference-with-a-table-attached D024 exists to prevent. The temptation is real: Farneback's
+null rate is zero, its dependency is already declared, and the tiebreaker in D024(5) favours
+it. That is an argument for expecting it to win, not for recording that it did.
+
+**What would close it.** RAFT-small on a `g5.xlarge` over the same 192 seeded pairs, giving
+the null rate and the pairs/s that D024(2) and D024(3) compare. Until then the speed path runs
+on Farneback and says so.
+
+**One thing the benchmark did settle.** A zero null rate over 192 real pairs is evidence that
+the `== 0.0` detector almost never fires on real footage, which is the limitation D023 already
+stated in the abstract: real frames are textured enough that even a bad estimate returns
+something. The null rate is a lower bound on flow failure, and on this evidence a loose one.
+
+**Reverses if:** RAFT-small is measured and either fails the null-rate bound or wins on cost,
+at which point this entry is superseded by the one that records the comparison.
+
+## D029 — W3's fresh-context review: what it covered, and what it did not
+
+**Status: partial, and recorded as partial.** `docs/WAVES.md` requires a fresh-context review
+at the end of every wave and says "a re-read in the same context is not a review". A fresh
+context was given the branch diff, `CONTRACTS.md`, `docs/ARCHITECTURE.md`'s seams,
+`docs/RUBRIC.md` and the checklist, and deliberately not the author's account. It returned two
+findings and then stalled before writing a full report; a second, tighter pass stalled the
+same way. The remainder was checked by the author, which is **weaker by construction** and is
+labelled so rather than presented as an independent result.
+
+**Found independently, and both real.**
+
+1. **`make typecheck` was failing, and had been for several commits.** Three `mypy --strict`
+   errors in the test suite: two `type: ignore` comments made unused when
+   `opencv-python-headless` brought cv2's own stubs with it, and a `func-returns-value` on a
+   `DeadFlow` stub annotated `-> None`. Fixed. **Worth recording is how it stayed hidden:**
+   the author verified each commit with `make validate 2>&1 | grep -E "…|Success"`, and
+   mypy's failure prints no line matching that filter, so the signal was the *absence* of a
+   line rather than the presence of one. A filter that can only show success is not a check.
+2. **The A14 generator survives mutation.** The reviewer built its own mutation harness and
+   confirmed that a generator which loses the fisheye, or loses the two-plane depth split, is
+   caught by the existing tests. That was the question the A14 design most needed answered
+   from outside, since a degenerate generator would have made the speed path look clean.
+
+**Checked by the author afterwards, and therefore weaker evidence.**
+
+- *Numbers against artifacts.* Every figure quoted in D026, D027 and D028 was re-read from
+  `results/a14_translation_floor.json`, `results/decode_probe.json` and
+  `results/flow_benchmark.json`. They match.
+- *Fabrication paths.* Six adversarial probes: a region prior in a detections file is refused
+  on load; an unwritten instant returns `manipulation: None`, never `False`; a failed flow and
+  an exactly-zero residual both return `None` with a reason; a null `mask_source` yields
+  `no_detector` with no speed; a label row without `label_source` is refused. All closed.
+- *Sampling arithmetic.* Brute-forced against a loop over 8,572 `(duration, fps)` pairs: zero
+  mismatches, and the naive `floor(duration·fps)` is confirmed off by one at every exact
+  integer boundary.
+- *Pilot leakage.* Every `print` in `scripts/` was audited. Counts are printed only inside the
+  corpus-level branch; the pilot branch prints gate verdicts. Failed **shard paths** are
+  printed as operational diagnostics so a scan can be retried — those name a worker directory,
+  and the judgement recorded here is that a path needed to resume a read is not a measurement
+  and not a published number. A reviewer who disagrees should say so.
+
+**A finding the author raises against the author's own work.** Two test thresholds --
+`CORPUS_NONUNIFORMITY_CV = 0.10` against a measured 0.19, and `CORPUS_ROTATION_FRACTION = 0.05`
+against a measured 0.127 -- are stated as "the floor a near-uniform field could not clear"
+rather than derived from an independent bound the way their narrow-lens counterparts are. They
+discriminate correctly, because a degenerate generator gives approximately zero, but the
+specific value is a choice and not a derivation. They should be re-derived from the lens
+geometry.
+
+**What is still owed before W3 closes.** A completed fresh-context review covering contract
+fidelity and test quality across the whole branch. The two items above are not that.
+
+**Reverses if:** a completed independent review finds anything the author's own pass missed,
+which is the outcome this entry exists to leave room for.

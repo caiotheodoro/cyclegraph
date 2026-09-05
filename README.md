@@ -68,7 +68,12 @@ be neutral either.
 
 ## Status
 
-**Pre-registration v1.2.0; contracts v1.2; W2 landed and reviewed (D020).** `docs/PRE-REGISTRATION.md` and
+**Pre-registration v1.3.0; contracts v1.2; W2 landed and reviewed (D020); W3's code landed
+and its corpus gates passed.** The clip manifest reconciles against two independent scans and
+confirms the vendor's published worker count is nine too high (`docs/DECISIONS.md` D027); the
+A14 residual floor is measured and published as a motion budget that is tighter than ordinary
+head movement (D026). No exposure number exists yet: the hand detector and the manipulation
+labeller have not run, and nothing substitutes for them. `docs/PRE-REGISTRATION.md` and
 `docs/RUBRIC.md` were committed before `src/` existed, and git history is the evidence of that
 ordering — checked by ancestry in `scripts/validate.py`, not by timestamp. Every amendment
 since quotes the sentence it replaced and cites a decision with a reversal clause; the gate

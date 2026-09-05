@@ -3,9 +3,11 @@
 The resume point. A fresh session should be able to continue from this file without
 re-deriving anything.
 
-**Last updated: 2026-09-05 — W1 cleared; pre-registration v1.2.0; contracts v1.2; W2
-landed as three isolated commits and reviewed in a fresh context (D020, 32 findings, all
-addressed). The next thing is W3.**
+**Last updated: 2026-09-05 — pre-registration v1.3.0; contracts v1.2; W2 landed and
+reviewed (D020). W3's code is landed and its corpus gates pass: the manifest reconciles
+three ways (D027), the decode gate passes (D023, `results/decode_probe.json`), and the A14
+floor is measured and published (D026). W3 is not closed: it has two external dependencies,
+the hand detector and the manipulation labeller, and neither has run.**
 
 ## Do not do
 
@@ -34,9 +36,9 @@ addressed). The next thing is W3.**
 | | |
 |---|---|
 | Docs | 19 files under `docs/`, spine complete, tightened after W1 |
-| `PRE-REGISTRATION.md` | v1.2.0, D013–D020, hashed; the version gate walks the chain of prior versions |
+| `PRE-REGISTRATION.md` | v1.3.0, D013–D021, hashed; the version gate walks the chain of prior versions |
 | `CONTRACTS.md` | v1.2: provenance on every record, `HALScore` recomputed from its mapping, `pilot_gate`, split dominance shares |
-| Code | W2 landed: `models.py`, `exposure/hal.py`, `estimation/bootstrap.py`; 190+ tests; `mypy --strict` clean |
+| Code | W2 and W3 landed: `models.py`, `exposure/hal.py`, `estimation/bootstrap.py`, `corpus/` (ports, manifest, sampling, shards, decode), `signal/` (ports, frames, speed, synthetic, flow_farneback, stores); 282 tests; `mypy --strict` clean |
 | Novelty gate | **Cleared 2026-09-05, narrowly.** `docs/SURVEY.md` S1–S6 answered |
 | Corpus access | HF token in `.env` on the author's machine (gitignored, `chmod 600`); rotate after use |
 | Compute | GPU stages on AWS via the CLI, `g5.xlarge` spot; `docs/REPRODUCTION.md` "Compute". The author is not the builder; the stages are specified for whoever runs them |
@@ -46,19 +48,26 @@ addressed). The next thing is W3.**
 
 ## The next three things
 
-1. **W3.** `make manifest FACTORY=<first in sorted manifest>`; decode pairs at 4 Hz; run
-   100DOH; write `FrameSignal` and `HandSpeedEstimate` for the pilot; A14 synthetics.
-2. **Decide the flow estimator by measurement, not preference.** Farneback CPU vs RAFT-small
-   GPU on 1,000 pairs; the one that meets H2c's null-rate bound at lower cost wins, recorded
-   as a DECISIONS entry with the measured rates.
+1. **Run the hand detector.** 100DOH on a `g5.xlarge` spot instance over the pilot manifest,
+   writing `results/pilot/detections.jsonl` in the shape `signal/stores.py` reads. This is
+   W3's one blocking dependency: `scripts/build_signal.py` exits 2 without it and will not
+   substitute anything, because a `HandSpeedEstimate` from a region prior is a contract
+   violation. Roughly 24 GPU-hours for the pilot; checkpoint per clip so a preemption resumes.
+2. **Run a manipulation labeller** on the same instants, writing `results/pilot/labels.jsonl`.
+   The judge is ~$9 for a calibration subset and needs an OpenAI-compatible endpoint; the
+   probe does not exist in this repository yet. Until one runs, H1 is `UNTESTED` — which is
+   W4's gate, not W3's.
+3. **Close the flow-estimator decision.** Farneback is measured at 116.9 pairs/s with a 0.000
+   null rate (D028); RAFT-small is unmeasured, so D024's comparison is incomplete and
+   `decision_taken` is `false`. One `g5.xlarge` run over the same 192 seeded pairs closes it.
 
 ## Open questions, each with its resolving trigger
 
 | Question | Resolves when |
 |---|---|
 | Whether EPIC-KITCHENS-100 is reachable for the frequency control | Its institutional-email requirement is met, or the control is reported `UNTESTED` |
-| Whether the pilot factory is degenerate | The manifest is built and its task and worker spread inspected (D012) |
+| Whether the pilot factory is degenerate | **Closed.** The manifest is built and D012's gates pass; the verdict is pass/fail only and the values stay in `results/` |
 | Whether the vendor's manipulation label and the TLV's duty cycle are the same construct | Largely answered by the TLV's own definition of exertion (`docs/SURVEY.md` S3); closed when the pilot's judge labels are read against that sentence. `docs/RED-TEAM.md` A3 |
-| The A14 translation floor | The synthetic runs at W3 and the residual is measured; the 20% pre-commitment is in the pre-registration (v1.2.0) |
+| Whether the A14 floor is within budget | **Half closed.** The floor is measured and published as a motion budget (D026): 23–37 °/s of rotation or 2.6–4.2 cm/s of translation consumes the whole 0.25 HAL bound. Whether the corpus's real ego-motion sits inside that is not knowable until frames are decoded with a real detector, and the bound is evaluated at W7 |
 | Who resolves S2's abstract-only rows | Anyone who opens the six Radwin-lab papers in full and re-tags them; nothing downstream needs it |
 | Whether 100DOH's box width is a usable hand-breadth proxy on fisheye | H2c coverage and the hand-breadth sensitivity row at W7 |

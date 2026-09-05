@@ -23,5 +23,5 @@ jobs:
         with:
           python-version: "3.11"
       - run: python -m pip install --upgrade pip
-      - run: pip install -e ".[dev,exposure,estimation]"
+      - run: pip install -e ".[dev,corpus,signal,cycles,exposure,estimation]"
       - run: make validate
