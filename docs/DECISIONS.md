@@ -617,3 +617,39 @@ floor is characterised and its budget published, not that A14 is retired.
 case the floor is a disclosed limitation rather than a correction; or the ego-motion rule is
 replaced by a fitted rotational model, which would cancel the rotation term and is a change to
 `docs/RUBRIC.md` requiring its own amendment.
+
+## D027 — E1 gate: the manifest reconciles, and the vendor's worker count is wrong by nine
+
+**Result.** `scripts/build_clip_manifest.py --all` indexed all 19,495 shards at revision
+`3e5f87c88c54ce8343865d8e2a8c171f18385a05` by ranged header reads, downloading no shard, and
+found **192,903 clips, 2,144 distinct `factory_id/worker_id` pairs, 85 factories and 10,000.13
+recorded hours**.
+
+| Source | Factories | Clips | Workers | Verdict |
+|---|---|---|---|---|
+| Vendor dataset card | 85 | 192,900 | 2,153 | clips +3, **workers −9** |
+| `../vernier` F12 scan | 85 | 192,903 | 2,144 | **reconciles exactly** |
+| cyclegraph, this scan | 85 | 192,903 | 2,144 | — |
+
+**Why three sources and not one.** A gate against the vendor's card alone would have failed on
+a discrepancy the card itself is wrong about. A gate against the sibling alone would have
+inherited whatever the sibling got wrong. Two independently written scans, in different
+repositories, agreeing to the clip is the actual evidence; the vendor gap is then a finding
+rather than a scan defect. `../vernier/docs/UPSTREAM-FINDINGS.md` F12 reported the −9 gap from
+its own scan and this confirms it rather than repeating it.
+
+The duration reconciles to 0.001% of the published "10,000 hours", which is what makes the
+worker gap legible: a scan that had missed workers would have missed their hours too.
+
+**Consequence.** 2,144 is the cluster count every interval in this project is computed over,
+and 2,153 is the number the vendor's card and much of the surrounding literature would use.
+`README.md` already carries 2,144 with F12 cited; this entry is the independent confirmation.
+
+**A note on the scan itself.** Eleven shards failed on the first pass with connection resets
+and read timeouts, and the run reported itself `NOT AUTHORITATIVE` rather than publishing a
+short count. Re-running picked up exactly those eleven and the totals closed. A scan that had
+silently dropped them would have reported 192,794 clips and disagreed with both sources for a
+reason having nothing to do with the corpus.
+
+**Reverses if:** the corpus is re-pinned, at which point every count is recomputed and every
+stored record's `corpus_rev` makes the old ones unpoolable rather than merely stale.
