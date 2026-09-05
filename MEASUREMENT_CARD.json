@@ -1,0 +1,110 @@
+{
+  "verdict": "NOT_VERIFIED",
+  "generated": "2026-09-05T19:09:54.424404Z",
+  "corpus_rev": "3e5f87c88c54ce8343865d8e2a8c171f18385a05",
+  "arm": null,
+  "claims": [
+    {
+      "id": "H1",
+      "statement": "duty cycle is a property of the clip, not of the labeller",
+      "status": "UNTESTED",
+      "source": "results/pilot/h1.json",
+      "interval": null,
+      "pilot_gate": true
+    },
+    {
+      "id": "H1a",
+      "statement": "duty cycle agrees across label sources",
+      "status": "UNTESTED",
+      "source": "results/pilot/h1a.json",
+      "interval": null,
+      "pilot_gate": true
+    },
+    {
+      "id": "H1b",
+      "statement": "duty cycle agrees across sampling rates",
+      "status": "UNTESTED",
+      "source": "results/pilot/h1b.json",
+      "interval": null,
+      "pilot_gate": true
+    },
+    {
+      "id": "H2",
+      "statement": "exertion frequency is recoverable without segmenting exertions",
+      "status": "UNTESTED",
+      "source": "results/pilot/h2.json",
+      "interval": null,
+      "pilot_gate": true
+    },
+    {
+      "id": "H2a",
+      "statement": "spectral and transition-counting frequency agree",
+      "status": "UNTESTED",
+      "source": "results/pilot/h2a.json",
+      "interval": null,
+      "pilot_gate": true
+    },
+    {
+      "id": "H2b",
+      "statement": "enough clips carry a resolvable dominant cycle",
+      "status": "UNTESTED",
+      "source": "results/pilot/h2b.json",
+      "interval": null,
+      "pilot_gate": true
+    },
+    {
+      "id": "H2c",
+      "statement": "detector coverage and flow-null rate clear their bounds",
+      "status": "UNTESTED",
+      "source": "results/pilot/h2c.json",
+      "interval": null,
+      "pilot_gate": true
+    },
+    {
+      "id": "H3",
+      "statement": "the corpus median HAL is plausible against the pooled cohort",
+      "status": "UNTESTED",
+      "source": "results/h3_plausibility.json",
+      "interval": null,
+      "pilot_gate": false
+    },
+    {
+      "id": "H4",
+      "statement": "exposure structure is between sites, not between people",
+      "status": "UNTESTED",
+      "source": "results/h4_variance.json",
+      "interval": null,
+      "pilot_gate": false
+    },
+    {
+      "id": "H5",
+      "statement": "clip observations are not independent",
+      "status": "UNTESTED",
+      "source": "results/h5_design_effect.json",
+      "interval": null,
+      "pilot_gate": false
+    },
+    {
+      "id": "NC-dc",
+      "statement": "the pipeline separates factory work from non-factory work on duty cycle",
+      "status": "UNTESTED",
+      "source": "results/nc_duty_cycle.json",
+      "interval": null,
+      "pilot_gate": false
+    },
+    {
+      "id": "NC-f",
+      "statement": "the pipeline separates factory work from kitchen work on the speed path",
+      "status": "UNTESTED",
+      "source": "results/nc_frequency.json",
+      "interval": null,
+      "pilot_gate": false
+    }
+  ],
+  "known_gaps": [
+    "Normalized Peak Force (0–10)",
+    "Intensity of exertion",
+    "Duration of exertion per cycle",
+    "Duration of task per day"
+  ]
+}
