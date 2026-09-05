@@ -13,7 +13,10 @@ fan-out → re-verify. A re-read in the same context is not a review.
   fails loudly rather than approximating.
 - **H1 before the main draw.** If duty cycle is not stable across label sources, the cheap
   labeller cannot carry 30 million frames and scaling it anyway would be knowingly building
-  on a biased estimate.
+  on a biased estimate. H1 failing selects Arm B of the pre-registered two-arm draw
+  (`docs/DECISIONS.md` D018); it is not a stop, and it is not an improvised re-plan.
+- **The pilot factory is nameable.** Its gates publish pass or fail only; no pilot value
+  leaves `results/`.
 - **The negative control before H3.** A pipeline that cannot separate factory work from
   kitchen work has not measured repetition, and its distribution is not worth comparing to
   published values.
@@ -28,7 +31,7 @@ fan-out → re-verify. A re-read in the same context is not a review.
 | **W1** | Novelty gate | `docs/SURVEY.md` S1–S6 answered, every `[S]` opened and re-tagged, verdict recorded |
 | **W2** | `CONTRACTS.md` in code | `src/cyclegraph/models.py` implements every record as a frozen pydantic model with `extra="forbid"`; fixtures generated; `mypy --strict` clean |
 | **W3** | `corpus` + `signal` | Pilot factory manifest reconciles against published counts; decode failure rate <1%; `FrameSignal` written for the pilot |
-| **W4** | H1 | Duty cycle stable across label sources and sampling rates, or the project stops and says so |
+| **W4** | H1 | Duty cycle stable across label sources and sampling rates → Arm A; or H1 reported FAILED and Arm B (judge-only, 200 clips) runs, with H4/H5 `UNTESTED` |
 | **W5** | `cycles` + H2 | Spectral and counting agree within 20%; ≥70% resolvable |
 | **W6** | Negative control | Median HAL separates factory from non-repetitive corpus by ≥1.0 |
 | **W7** | `exposure` + `estimation` | H3, H4, H5 measured with clustered intervals and the design effect published beside them |

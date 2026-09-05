@@ -171,3 +171,149 @@ stratified draw follows only if the pilot's gates pass.
 **Reverses if:** the pilot factory turns out to be degenerate — a single task, or too few
 workers to estimate a design effect. That would be a documented re-draw with the reason, not
 a silent one.
+
+## D013 — HAL mapping from the published equations; `scale_rev` names the fit
+
+**Decision.** `HALScore` is computed by one of two peer-reviewed regression fits to the ACGIH
+2001 look-up table, and `scale_rev` records which: `radwin-2015-freq-dc` (Radwin et al.
+2015, `HAL = 6.56 ln D [F^1.31 / (1 + 3.18 F^1.31)]`, residual SD 1.18) or
+`akkas-2015-speed-dc` (Akkas et al. 2015, `HAL = 10 σ(−15.87 + 0.02 D + 2.25 ln S)`, S in
+mm/s, validation R² 0.99, MSE 0.16). Supersedes `docs/RUBRIC.md`'s "the ACGIH TLV
+documentation must be obtained" and `docs/METHOD.md` E6's "the standard's purchase price".
+
+**Rationale.** `docs/SURVEY.md` S3 opened both papers on 2026-09-05. The prior text asserted
+a blocker that did not exist; a project whose argument is that measurements get published
+without protocols does not get to keep a false blocker in its own protocol once it is known
+to be false. The ACGIH document remains the authority, and every record says the number is a
+fit to its table, not the table.
+
+**Evidence.** Golden tests hold each equation to the paper's Table 3 cells within the paper's
+residual (`tests/test_hal_mapping.py`, W2).
+
+**Alternatives rejected.** Purchasing the ACGIH document anyway — it adds the table the
+papers already reproduce and does not add a validation. Using the 2001 linear model the
+committee used — Radwin 2015 shows it under-predicts both tails and is not a continuous
+function.
+
+**Reverses if:** ACGIH publishes a revised HAL table whose cells differ from the 2001 table
+by more than the fitted residual, in which case a new `scale_rev` is added and the old one is
+kept for records already written.
+
+## D014 — Two frequency-axis paths; hand speed is primary, spectral is the cross-check
+
+**Decision.** The manipulation-series spectral peak measures manipulation-*bout* frequency,
+which is a lower bound on exertion frequency: a hand stays "manipulating" through ten
+consecutive screw turns that the TLV counts as ten exertions. It is retained as the
+cross-check and reported as a lower bound. **Primary HAL comes from the speed–duty-cycle
+path:** RMS hand speed from optical flow inside detector hand boxes (100DOH, MIT; EgoHOS as
+fallback segmenter), with camera ego-motion estimated from the **complement** of the hand
+mask and subtracted, sampled at the pre-registered 4 Hz using a frame pair (t, t + 1/fps) at
+each sample. Pixel speed is scaled to mm/s by the clip's median hand-box width against a
+population hand breadth of 85 mm (the mean of Akkas 2015's 90.4 male / 79.5 female, sex
+unknown per clip, disclosed). If no detector box is available the speed sample is `null`
+with a reason; if fewer than 60% of a clip's scored frames have a box, the clip's speed
+estimate is `status: "low_coverage"` and its speed-path HAL is `null`. **Never mapped from a
+region prior.**
+
+**The only pre-registered switch to spectral-primary** fires on a speed-path failure that
+does not reference H3: (a) detector coverage below 60% of scored frames on the pilot in
+aggregate, or (b) the EPIC-KITCHENS frequency control (D016) fails on the speed path. A switch
+is reported as a failure of the speed path, in those words.
+
+**Rationale.** Speed–duty-cycle is the validated automated-HAL lineage (`docs/SURVEY.md` S2);
+it needs no exertion boundary and no spectral peak, and it is the input the ACGIH table's
+own authors chose when they automated the measurement. Bout frequency would have made every
+HAL a systematic under-statement in the direction that flatters the corpus.
+
+**Evidence.** `docs/RED-TEAM.md` A10 (the construct gap), A11, A14, A15 (what the speed path
+can get wrong). The rotation-only synthetic in `docs/WAVES.md`'s checklist is the golden test.
+
+**Alternatives rejected.** Letting the pilot choose the path by which HAL median lands
+nearer the literature — selects the estimator on H3's own outcome and makes H3 unfalsifiable.
+Spectral on the hand-count series — same saturation problem. A learned exertion segmenter —
+no labels.
+
+**Reverses if:** an exertion-level label source becomes available, at which point counted
+exertion frequency is the direct input and both proxies are demoted.
+
+## D015 — The cluster unit is the composite `factory_id/worker_id`
+
+`worker_id` is numbered *within* factory: `worker_001` exists in all 85 factories
+(`../vernier/docs/DECISIONS.md` D072 found this the hard way — a partial manifest held 37
+bare ids across 216 real pairs). Clustering over the bare id would pool up to 85 different
+people as one cluster and shrink every interval. `cluster_unit` is the literal string
+`factory_id/worker_id` and nothing else is accepted.
+
+**Reverses if:** the corpus re-issues globally unique worker identifiers.
+
+## D016 — The negative control is split by corpus and by axis
+
+`vernier` measured manipulation prevalence at Ego4D 0.50–0.53 and EPIC-KITCHENS-100
+0.86–0.89 against the factory's 0.92. A single "HAL gap ≥ 1.0" is therefore decided by duty
+cycle alone on Ego4D and cannot pass on EPIC at all; it tests the corpus mix, not the
+pipeline, and does not test `docs/RED-TEAM.md` A4.
+
+**Decision.** Ego4D is the **duty-cycle control**: factory − Ego4D duty-cycle gap ≥ 0.25 and
+HAL gap ≥ 1.0. EPIC-KITCHENS-100 is the **frequency control**: factory − EPIC speed-path HAL
+gap ≥ 0.5; the spectral-path gap is reported beside it. The control fails if any
+pre-committed gap fails. If EPIC access stays unmet, the frequency control is `UNTESTED` in
+those words and A4 stays OPEN.
+
+**Reverses if:** nothing at this corpus set. A third control corpus would be an addition.
+
+## D017 — H5's threshold is a design effect of at least 1.2
+
+`> 1` is near-tautological; `vernier` measured 1.25–1.66 on the same corpus at the same
+cluster unit. The prior from the sibling is used, and the threshold is placed where the
+sibling's lowest measurement would still clear it by a margin small enough to be a real
+test.
+
+**Reverses if:** nothing; a failure is a finding.
+
+## D018 — The main draw is a two-arm conditional design, fixed before the pilot
+
+**Decision.** **Arm A** (H1a passes on the pilot): probe labels, N = 40,000 clips as before.
+**Arm B** (H1a fails): H1 is reported FAILED; the main draw is judge-only on **N_B = 200
+clips ≈ 150,000 frames** (~750 frames per clip at 4 Hz over ~187 s), stratified over
+factories then workers. Arm B supports H2, the negative control and H3. **H4 and H5 are
+`UNTESTED` under Arm B**, in those words: 200 clips cannot estimate a between-factory
+variance component. The stopping rule names both arms so neither N is chosen after an
+interval is seen.
+
+**Cost, from measured sibling rates** (`../vernier/docs/DECISIONS.md` D072 region: $8.56
+per 10,000 frames for both prompt variants, ~0.47 frames/s on one container): Arm B ≈ $65
+and ~4 days single-container, less with concurrency. An earlier draft of this entry put Arm B
+at 8,000 clips; that is ~6 million frames, ~$2,600 and months, and it was not affordable.
+The number was corrected before it was pre-registered.
+
+**Pilot gates publish pass/fail only.** The pilot factory is nameable (first in sorted
+manifest), so any pilot *value* — an H1 mean absolute difference, an H2 agreement figure —
+is a per-factory number and stays in `results/` unpublished. The card carries the verdict.
+
+**Reverses if:** the probe is replaced by a labeller whose fidelity is measured ≥ 0.90, at
+which point Arm B is unnecessary and is removed by amendment.
+
+## D019 — Reporting strata with a k-anonymity floor; size terciles only in this version
+
+**Decision.** In addition to the corpus-level aggregate, an `ExposureAggregate` may be
+published for a **stratum** iff: ≥ 5 factories, ≥ 50 workers, no single factory contributes
+more than 40% of the stratum's workers **or** of its clips, and stratum estimates are
+worker-weighted. The only strata defined in v1.1.0 are **factory-size terciles by worker
+count**. Sector strata are **not** defined: the per-clip metadata carries no sector field
+(`docs/SURVEY.md` found none; `README.md`'s earlier "published client sectors" was
+unsupported and is corrected), and a sector with exactly five public clients would name
+five companies. A future sector amendment needs a published taxonomy and k ≥ 10.
+
+**Differencing.** One `corpus_rev` per release. Strata are re-derived on any re-pin and
+every prior stratum aggregate is withdrawn from the release, never published alongside, so
+no two published aggregates differ by fewer than the floor.
+
+**Enforcement.** Schema, not policy: `ExposureAggregate.stratum` is a closed enum, the
+definition field may hold only a path under `docs/`, `k_factories`/`k_workers`/
+`max_factory_share` are required, and the validator rejects any string anywhere in the
+record matching `factory_\d+|worker_\d+`. `docs/ETHICS.md`'s "no per-factory result" becomes
+"no result below the floor", which is stricter in the case that matters and permits one
+stratum level that a site cannot be identified from.
+
+**Reverses if:** any published stratum is shown to identify a site, at which point strata
+are withdrawn and the corpus-level aggregate is the only reporting unit again.

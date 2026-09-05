@@ -2,27 +2,36 @@
 # The cited-path gate checks every other path resolves; this file makes the promises
 # explicit so a typo still fails the build. Convention inherited from titer.
 
-# W1 -- corpus access and the signal
+# W2 -- models (see below); W3 -- corpus access and the signal
 src/cyclegraph/models.py
 src/cyclegraph/corpus/
 src/cyclegraph/signal/
-scripts/validate.py
+src/cyclegraph/signal/speed.py
 scripts/build_clip_manifest.py
 tests/fixtures.py
 
-# W2 -- cycles
+# W2 -- contracts in code
+src/cyclegraph/__init__.py
+src/cyclegraph/exposure/hal.py
+src/cyclegraph/estimation/bootstrap.py
+tests/test_models.py
+tests/test_hal_mapping.py
+tests/test_bootstrap.py
+
+# W5 -- cycles
 src/cyclegraph/cycles/
 scripts/estimate_frequency.py
 
-# W3 -- exposure
+# W7 -- exposure
 src/cyclegraph/exposure/
 scripts/score_hal.py
 
-# W4 -- estimation and the card
+# W7/W8 -- estimation and the card
 src/cyclegraph/estimation/
 src/cyclegraph/card/
 scripts/refresh_card.py
 MEASUREMENT_CARD.json
+results/bootstrap_replicates.json
 
-# W5 -- release
+# W9 -- release
 scripts/export_hf_dataset.py

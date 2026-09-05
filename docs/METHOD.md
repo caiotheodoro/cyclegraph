@@ -51,8 +51,10 @@ comparison is powered, not on the full corpus.
 calibration subset of ~20,000 frames, on the order of tens of dollars at the rates
 `../vernier/docs/METHOD.md` records.
 **Gate:** H1. If duty cycle is not stable across the two sources within 0.05 mean absolute
-difference, the probe cannot carry the corpus and the method stops here rather than scaling
-a known-biased labeller to 30M frames.
+difference, the probe cannot carry the corpus. The method does not scale a known-biased
+labeller to 30M frames; it takes **Arm B** of the pre-registered two-arm draw — judge-only,
+200 clips (≈150,000 frames, ≈$65 at `vernier`'s measured rate), with H4 and H5 reported
+`UNTESTED` (`docs/DECISIONS.md` D018).
 
 ## E4 — Duty cycle
 
