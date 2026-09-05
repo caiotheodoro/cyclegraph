@@ -8,8 +8,6 @@ scripts/run_detector.py
 # W2 -- contracts in code
 
 # W5 -- cycles
-src/cyclegraph/cycles/
-scripts/estimate_frequency.py
 
 # W7 -- exposure
 scripts/score_hal.py

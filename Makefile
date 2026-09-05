@@ -77,7 +77,7 @@ signal:  ## Per-frame manipulation series and hand speed for each clip in the ma
 		--labels results/pilot/labels.jsonl
 
 cycles:  ## Frequency axis: hand speed primary, spectral bout frequency and transition-counting as cross-checks.
-	$(NOT_YET)
+	python3 scripts/estimate_frequency.py --labels results/pilot/labels.jsonl
 
 hal:  ## Duty cycle and the Hand Activity Level axis, by the published equations (docs/DECISIONS.md D013).
 	$(NOT_YET)
