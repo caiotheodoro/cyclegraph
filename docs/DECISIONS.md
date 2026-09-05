@@ -799,3 +799,47 @@ that do not produce them.
 **Reverses if:** a later review finds the speed path's golden case still admits a mutation the
 three above do not cover, in which case the fixture is extended rather than the finding
 re-argued.
+
+## D031 — `FrameSignal` cannot say "this stage did not run", and that is why W3 writes no pilot records
+
+**Found by trying to satisfy the requirement honestly rather than by argument.** W3's exit
+condition asks for `FrameSignal` and `HandSpeedEstimate` written for the pilot factory. The
+hand detector and the manipulation labeller have not run (`docs/HANDOFF.md`), so the question
+is whether a truthful record can be written anyway. The two records differ, and the difference
+is a contract defect.
+
+**`HandSpeedEstimate` can.** `status: "no_detector"` with `mask_source: null`,
+`rms_speed_mm_s: null` and a reason is exactly the shape for "no detector ran on this clip",
+and it constructs. The contract anticipated this case.
+
+**`FrameSignal` cannot.** Its status is `Literal["ok", "too_short", "no_labels",
+"decode_failed"]` and none of them is true of a clip whose signal stage was never attempted:
+
+| Status | What writing it would assert | True here |
+|---|---|---|
+| `no_labels` | labelling ran and more than 10% of frames were unreadable | No — nothing ran |
+| `decode_failed` | the decoder was run and failed | No — it was not run |
+| `too_short` | the clip is under the 60 s floor | No |
+| `ok` | the series is usable | Rejected by the validator |
+
+Three of the four construct without complaint, which is the dangerous part: a pipeline that
+wanted to report progress could write `no_labels` across the pilot and every record would
+validate, while asserting that a labeller ran and found nothing. That is the same class of
+error as reading an unwritten instant as a negative (D022) — an absence dressed as a
+measurement — one level up, at the record rather than the field.
+
+**Consequence, and it is the reason the wave ends where it does.** W3 writes no pilot records.
+Writing only the half that can be honest would be worse than writing none, because a directory
+holding `hand_speed.jsonl` and no `frame_signal.jsonl` reads as a pipeline that partly
+succeeded rather than one that has not been run. `scripts/build_signal.py` exits 2 and names
+the missing stages instead.
+
+**What would fix the contract.** A fifth status — `not_attempted`, or a nullable `status` with
+a required reason — so that "this stage has not run" is a value like every other absence in
+this schema. That is a `CONTRACTS.md` change with a version bump and it is deliberately **not**
+made here: it should land with the labeller work that makes it exercisable, not be added
+speculatively at the end of a wave to make an unmet condition look met.
+
+**Reverses if:** the labeller and detector run, at which point the pilot's records carry real
+statuses and this entry describes a gap that no longer blocks anything — though the missing
+status remains a real defect for any future stage that has not yet run.
