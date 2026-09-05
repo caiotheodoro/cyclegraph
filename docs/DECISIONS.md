@@ -575,3 +575,45 @@ arithmetic.
 **Reverses if:** a later release ships genuinely per-worker calibrations, at which point the
 floor is recomputed per calibration and its spread reported, or a wider sample of the current
 release finds a worker whose `intrinsics.json` differs from these sixteen.
+
+## D026 — The A14 floor, measured: it is a motion budget, not a number, and the budget is tight
+
+**Result.** `scripts/measure_a14_floor.py` computes the apparent RMS hand speed a *static*
+hand produces under camera motion alone, after `docs/RUBRIC.md`'s ego-motion subtraction, on
+exact geometry under the corpus lens (D025). No optical-flow estimator is in the loop, so this
+is a property of the rubric's rule and the lens rather than of any estimator. It is
+deterministic: no random number is drawn. The table is `results/a14_translation_floor.json`.
+
+The floor is **linear in camera motion**, so it is not a single number. What is publishable
+is the floor per unit of motion, and the motion at which it consumes the whole 0.25 HAL bound
+the pre-registration now sets (D021):
+
+| Assumed corpus median speed | Floor budget | Rotation budget | Translation budget |
+|---|---|---|---|
+| 400 mm/s | 23.0 mm/s | 22.8 °/s | 0.026 m/s |
+| 612 mm/s | 26.7 mm/s | 26.5 °/s | 0.031 m/s |
+| 800 mm/s | 36.8 mm/s | 36.4 °/s | 0.042 m/s |
+
+**This is uncomfortably tight and is reported as such.** A translation budget of 2.6–4.2 cm/s
+is less than ordinary head sway at a workstation, and a rotation budget of 23–36 °/s is less
+than an ordinary glance between a bin and a fixture. If the corpus's real ego-motion is
+anywhere near those magnitudes for a material share of samples, the floor alone consumes the
+pre-registered bound and A14 **lands**: the speed path would then be reported with the floor
+subtracted and the subtraction disclosed, exactly as the red-team entry says.
+
+**Both terms are real, and a translation-only test would have found only one.** At 30 °/s the
+rotation floor is 29.9 mm/s — the same order as the translation floor at 3 cm/s — because the
+scalar ego-motion estimate cannot cancel a rotational field that varies by a factor of two
+across this lens. Under the long-lens control the same rotation leaves under 1% of raw flow.
+D021 widened the floor to include this term before it was measured; the measurement is why
+that mattered.
+
+**What is not settled, and cannot be at W3.** The corpus's own ego-motion distribution. This
+table gives the floor for an assumed motion, not the floor, and the pre-registered bound is
+evaluated at W7 against the measured corpus median speed. The honest W3 claim is that the
+floor is characterised and its budget published, not that A14 is retired.
+
+**Reverses if:** measured corpus ego-motion turns out to sit well inside the budget, in which
+case the floor is a disclosed limitation rather than a correction; or the ego-motion rule is
+replaced by a fitted rotational model, which would cancel the rotation term and is a change to
+`docs/RUBRIC.md` requiring its own amendment.
