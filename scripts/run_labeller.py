@@ -58,7 +58,12 @@ from labellers.probe import (  # noqa: E402
     ManipulationProbe,
 )
 
-DECODE_WIDTH, DECODE_HEIGHT = 480, 270
+DECODE_WIDTH, DECODE_HEIGHT = 960, 540
+"""Chosen to match what the heads were fitted to, not to save bytes. Preprocessing resizes the
+shortest edge to 256, so a frame decoded at 270 arrives having barely been downscaled while the
+training frames came from 1080 and were downscaled fourfold. Decoding at 540 halves that gap,
+and costs almost nothing: the source is 1080p h265 either way and only the scale filter's
+output changes."""
 CONFLICT_REASON = (
     "the manipulation head says exerting and the hand-count head says no hand visible; "
     "two heads of one labeller disagreeing is a value with a reason, not a frame to repair"
@@ -209,7 +214,15 @@ def main(argv: list[str] | None = None) -> int:
             argv_ff = ffmpeg_clip_argv(url, clip, fps_sampled=ANALYSIS_HZ,
                                        width=DECODE_WIDTH, height=DECODE_HEIGHT)
             frames = list(decode_gray_frames(argv_ff, DECODE_WIDTH, DECODE_HEIGHT))
-            times = sample_times(clip.duration_s)[: len(frames)]
+            # ffmpeg's `fps` filter emits a frame or two past the sample plan's last instant,
+            # because the plan requires the *second* frame of each pair to fall strictly
+            # inside the clip and the filter has no such rule. The plan decides which instants
+            # are analysed, so the surplus is dropped rather than labelled at a timestamp that
+            # does not exist.
+            times = sample_times(clip.duration_s)
+            if len(frames) > len(times):
+                frames = frames[: len(times)]
+            times = times[: len(frames)]
             predictions: list[bool] = []
             counts: list[int] = []
             for start in range(0, len(frames), args.batch):
