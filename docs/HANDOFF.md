@@ -38,7 +38,8 @@ addressed). The next thing is W3.**
 | `CONTRACTS.md` | v1.2: provenance on every record, `HALScore` recomputed from its mapping, `pilot_gate`, split dominance shares |
 | Code | W2 landed: `models.py`, `exposure/hal.py`, `estimation/bootstrap.py`; 190+ tests; `mypy --strict` clean |
 | Novelty gate | **Cleared 2026-09-05, narrowly.** `docs/SURVEY.md` S1–S6 answered |
-| Corpus access | Inherited from `../vernier`; a gated HF token with accepted terms is required |
+| Corpus access | HF token in `.env` on the author's machine (gitignored, `chmod 600`); rotate after use |
+| Compute | GPU stages on AWS via the CLI, `g5.xlarge` spot; `docs/REPRODUCTION.md` "Compute". The author is not the builder; the stages are specified for whoever runs them |
 | HAL scale | **Resolved.** Radwin 2015 and Akkas 2015, open access, residuals published |
 | Expert anchor | **None, and none expected.** `docs/DECISIONS.md` D009 |
 | Reviews | Every wave ends with a fresh-context review; findings land as a DECISIONS entry |

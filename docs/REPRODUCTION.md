@@ -13,7 +13,10 @@ the path as it is being built, and the free portion of it is already real.
 - `ffmpeg` on `PATH`, built with `https` and `tls` protocol support. Check with
   `ffmpeg -protocols | grep -E 'https|subfile'`; the corpus path needs both.
 - For anything touching the corpus: a Hugging Face token with `builddotai/Egocentric-10K`'s
-  terms accepted. The dataset is gated. Put it in `.env`; see `.env.example`.
+  terms accepted. The dataset is gated. Put it in `.env`; see `.env.example`. The token is
+  read-only, is never committed (`make privacy-gate` and `.gitignore`), and should be
+  rotated at `huggingface.co/settings/tokens` after the corpus reads are done or if it was
+  ever pasted anywhere other than `.env`.
 - For E6 onward: nothing to buy. The HAL mappings are the two open, peer-reviewed equations
   in `docs/SURVEY.md` S3, transcribed into `src/cyclegraph/exposure/hal.py` with golden
   tests against the papers' table cells.
@@ -32,6 +35,23 @@ That runs the privacy gate, the placeholder gate, the cited-path gate, the test 
 `mypy --strict`. It is the whole of W0's deliverable and it passes with `src/` empty — which
 is the point: the gates work on documentation alone, so the ordering claim is checkable
 before any code exists.
+
+## Compute
+
+- **Corpus reads** (E1, E2): any machine with `ffmpeg` and network. No GPU.
+- **Probe, detector, flow** (E3): GPU, on **AWS through the CLI** — a single `g5.xlarge`
+  (A10G, 24 GB) is enough for 100DOH at ~20 frames/s and RAFT-small flow; the pilot's ~1.7M
+  frames is ~24 GPU-hours, so a spot instance with checkpointed progress, not a long-lived
+  box. Launch, run the stage, pull `results/` down, terminate. `AWS_PROFILE`/`AWS_REGION` in
+  `.env` name the account; nothing in this repository provisions infrastructure, and the
+  instance does not need the HF token beyond the corpus reads it performs.
+- **Judge** (E3 calibration subset): the sibling's self-hosted Qwen3-VL route
+  (`../vernier/docs/METHOD.md`), or any OpenAI-compatible endpoint via `OPENAI_BASE_URL`.
+- **Everything after E3**: CPU, minutes.
+
+**Who builds.** The author does not run W3+ themself; the stages are specified in
+`docs/METHOD.md`, the exit conditions in `docs/WAVES.md`, and the resume point in
+`docs/HANDOFF.md`. Whoever runs a stage records its measured cost beside the estimate.
 
 ## The paid path
 
