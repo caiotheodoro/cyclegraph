@@ -17,6 +17,9 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+PREREG = "docs/PRE-REGISTRATION.md"
+PREREG_SHA = "docs/PRE-REGISTRATION.sha256"
+DECISIONS = "docs/DECISIONS.md"
 
 # The spine. A missing entry is a failure, not a warning: these files are gates, and a gate
 # that is absent is a gate that passes for the wrong reason.
@@ -28,9 +31,9 @@ SPINE: tuple[str, ...] = (
     "LICENSE",
     "Makefile",
     "pyproject.toml",
-    "docs/PRE-REGISTRATION.md",
-    "docs/PRE-REGISTRATION.sha256",
-    "docs/DECISIONS.md",
+    PREREG,
+    PREREG_SHA,
+    DECISIONS,
     "docs/RED-TEAM.md",
     "docs/COVERAGE.md",
     "docs/REPRODUCTION.md",
@@ -61,6 +64,30 @@ PLACEHOLDERS = re.compile(r"\b(TBD|TODO|FIXME|XXX)\b")
 PATH_SPAN = re.compile(r"`([^`\s]+)`")
 REPO_ROOTS = ("docs/", "src/", "tests/", "scripts/", "results/", "hf/", ".github/")
 
+# An identifier that must never reach a published number. Matches the corpus's own naming,
+# including shard file names (`factory001_worker001_part00.tar`) and any capitalisation.
+IDENTIFIER = re.compile(r"(factory|worker)[_-]?\d{2,}", re.I)
+
+VERSION_LINE = re.compile(r"^\*\*Version:\*\*\s+(\d+)\.(\d+)\.(\d+)\s*$", re.M)
+AMENDMENT_HEADING = re.compile(
+    r"^### v(\d+)\.(\d+)\.(\d+) — (.+?) · prior hash ([0-9a-f]{64})\s*$", re.M
+)
+DECISION_REF = re.compile(r"\bD(\d{3})\b")
+PRIOR_QUOTE = re.compile(r'Prior[^:"\n]*:\s+"(.+?)"\s+Now:', re.S)
+DECISION_HEADING = re.compile(r"^## (D\d{3}) — ", re.M)
+
+
+def _git(*args: str) -> str:
+    proc = subprocess.run(
+        ["git", *args], cwd=ROOT, capture_output=True, text=True, check=False
+    )
+    return proc.stdout
+
+
+def _git_ok(*args: str) -> bool:
+    proc = subprocess.run(["git", *args], cwd=ROOT, capture_output=True, check=False)
+    return proc.returncode == 0
+
 
 def _manifest(name: str) -> set[str]:
     """Declared paths from a manifest file: non-empty, non-comment lines."""
@@ -81,17 +108,17 @@ def _tracked_markdown() -> list[Path]:
     return [f for f in files if f.exists()]
 
 
+def _squash(s: str) -> str:
+    return " ".join(s.split())
+
+
 def gate_spine() -> list[str]:
     return [f"spine: missing {name}" for name in SPINE if not (ROOT / name).exists()]
 
 
 def gate_privacy() -> list[str]:
     """docs/private/ must not be stageable. It never shapes a finding and never ships."""
-    proc = subprocess.run(
-        ["git", "add", "-A", "--dry-run"],
-        cwd=ROOT, capture_output=True, text=True, check=False,
-    )
-    if "docs/private" in proc.stdout:
+    if "docs/private" in _git("add", "-A", "--dry-run"):
         return ["privacy: docs/private/ is stageable -- fix .gitignore before committing"]
     return []
 
@@ -122,13 +149,8 @@ def gate_cited_paths() -> list[str]:
                     continue
                 if not (span.startswith("../") or span.startswith(REPO_ROOTS)):
                     continue
-                bare = span.rstrip("/")
+                bare = span.split("#", 1)[0].rstrip("/")
                 if bare in declared or bare in external:
-                    continue
-                if span.startswith("../"):
-                    if (ROOT / span).exists():
-                        continue
-                    failures.append(f"cited path: {f.relative_to(ROOT)}:{i} -> {span}")
                     continue
                 if (ROOT / bare).exists():
                     continue
@@ -138,8 +160,8 @@ def gate_cited_paths() -> list[str]:
 
 def gate_prereg_frozen() -> list[str]:
     """The pre-registration matches its committed hash. Freezing is the whole argument."""
-    doc = ROOT / "docs" / "PRE-REGISTRATION.md"
-    sig = ROOT / "docs" / "PRE-REGISTRATION.sha256"
+    doc = ROOT / PREREG
+    sig = ROOT / PREREG_SHA
     if not doc.exists() or not sig.exists():
         return ["prereg: document or hash missing"]
     expected = sig.read_text().split()[0]
@@ -153,19 +175,171 @@ def gate_prereg_frozen() -> list[str]:
     return []
 
 
+def _historical_versions() -> dict[str, str]:
+    """sha256 -> commit for every committed version of the pre-registration."""
+    out: dict[str, str] = {}
+    for commit in _git("log", "--format=%H", "--", PREREG).split():
+        blob = _git("show", f"{commit}:{PREREG}")
+        if blob:
+            out[hashlib.sha256(blob.encode()).hexdigest()] = commit
+    return out
+
+
+_SENTENCE = re.compile(r"(?<=[.!?])\s+")
+# What a removed quote or a list marker leaves at the front of a sentence: `**Label.**`,
+# `- `, `> `. Stripped so a bold section label or a bullet is not itself treated as a change.
+_LEADING_RESIDUE = re.compile(r"^(?:(?:[-*>]\s+)|(?:\*\*[^*]+\*\*\s*))+")
+_BODY_SKIP = ("**Version:**", "**Frozen:**", "**Amended:**", "# Pre-registration")
+
+
+_AMENDMENTS_HEADING = re.compile(r"^## Amendments\s*$", re.M)
+
+
+def _body(text: str) -> str:
+    """The frozen part: everything before the `## Amendments` heading (the banner mentions
+    the heading in prose, so this splits on the heading line, not the first mention)."""
+    return _AMENDMENTS_HEADING.split(text, maxsplit=1)[0]
+
+
+def _prior_sentences(prior_body: str, quotes: list[str]) -> list[str]:
+    """Sentences of a prior version that the amendment block does not claim to have replaced."""
+    out: list[str] = []
+    for para in re.split(r"\n\s*\n", prior_body):
+        squashed = _squash(para)
+        if not squashed or any(squashed.startswith(k) for k in _BODY_SKIP):
+            continue
+        for q in quotes:
+            squashed = squashed.replace(_squash(q), " ")
+        for sent in _SENTENCE.split(_squash(squashed)):
+            sent = _LEADING_RESIDUE.sub("", sent).strip()
+            if len(sent) >= 25 and not sent.startswith("|"):
+                out.append(sent)
+    return out
+
+
+def gate_prereg_version() -> list[str]:
+    """Every amendment is a decision with a reversal clause, quoting a real prior version, and
+    nothing in the frozen body changed that the amendment block does not account for.
+
+    A re-hash on its own would let the frozen-hash gate pass for the wrong reason. This
+    gate ties each amendment block to (a) a decision entry that exists and carries
+    `**Reverses if:**`, (b) a prior version whose sha256 is in git history, (c) quoted prior
+    sentences that really were in that version, and (d) the chain: every sentence of that
+    prior version that is not quoted as replaced must still be present in the next version
+    (the following block's prior, or the working file for the newest block). It also refuses
+    any commit that touched the pre-registration without touching its hash and the
+    decisions log.
+    """
+    doc = ROOT / PREREG
+    dec = ROOT / DECISIONS
+    if not doc.exists() or not dec.exists():
+        return ["prereg-version: document or decisions missing"]
+    text = doc.read_text()
+    m = VERSION_LINE.search(text)
+    if not m:
+        return ["prereg-version: no **Version:** line"]
+    minor = int(m.group(2))
+    blocks = list(AMENDMENT_HEADING.finditer(text))
+    failures: list[str] = []
+    if len(blocks) != minor:
+        failures.append(
+            f"prereg-version: {len(blocks)} amendment block(s) but version minor is {minor}"
+        )
+    decisions_text = dec.read_text()
+    entries: dict[str, str] = {}
+    heads = list(DECISION_HEADING.finditer(decisions_text))
+    for j, h in enumerate(heads):
+        end = heads[j + 1].start() if j + 1 < len(heads) else len(decisions_text)
+        entries[h.group(1)] = decisions_text[h.start() : end]
+    history = _historical_versions()
+    chain: list[tuple[str, str, list[str]]] = []  # (label, prior text, quotes)
+    for j, b in enumerate(blocks):
+        end = blocks[j + 1].start() if j + 1 < len(blocks) else len(text)
+        body = text[b.start() : end]
+        label = f"v{b.group(1)}.{b.group(2)}.{b.group(3)}"
+        for ref in sorted(set(DECISION_REF.findall(b.group(4)) + DECISION_REF.findall(body))):
+            key = f"D{ref}"
+            entry = entries.get(key)
+            if entry is None:
+                failures.append(f"prereg-version: {label} cites {key}, not in DECISIONS.md")
+            elif "**Reverses if:**" not in entry:
+                failures.append(f"prereg-version: {key} has no reversal clause")
+        prior_commit = history.get(b.group(5))
+        if prior_commit is None:
+            failures.append(
+                f"prereg-version: {label} prior hash {b.group(5)[:12]} matches no committed version"
+            )
+            continue
+        prior = _git("show", f"{prior_commit}:{PREREG}")
+        quotes = PRIOR_QUOTE.findall(body)
+        for q in quotes:
+            if _squash(q) not in _squash(prior):
+                failures.append(f"prereg-version: {label} quotes text not in its prior: {q[:60]!r}")
+        chain.append((label, prior, quotes))
+    # (d) the chain. Each prior, minus what its block says it replaced, survives into the next.
+    versions = [c[1] for c in chain] + [text]
+    for i, (label, prior, quotes) in enumerate(chain):
+        nxt = _squash(_body(versions[i + 1]))
+        for sent in _prior_sentences(_body(prior), quotes):
+            if sent not in nxt:
+                failures.append(
+                    f"prereg-version: {label} changed or dropped a sentence its amendment "
+                    f"block does not quote: {sent[:70]!r}"
+                )
+    commits = _git("log", "--format=%H", "--", PREREG).split()
+    if commits:
+        for commit in commits[:-1]:  # everything after the add commit
+            touched = set(_git("show", "--name-only", "--format=", commit).split())
+            missing = {PREREG_SHA, DECISIONS} - touched
+            if missing:
+                failures.append(
+                    f"prereg-version: commit {commit[:10]} changed {PREREG} "
+                    f"without {', '.join(sorted(missing))}"
+                )
+    return failures
+
+
 def gate_docs_before_code() -> list[str]:
-    """No source file may predate the documentation. Git history is the evidence."""
-    src = ROOT / "src" / "cyclegraph"
-    real = [p for p in src.rglob("*.py")] if src.exists() else []
-    if not real:
+    """No source file may predate the documentation. Ancestry, not timestamps.
+
+    Timestamps are rewritten by rebase and squash. The check is that the commit adding the
+    pre-registration is an ancestor of the commit adding every `src/**/*.py`, and is not the
+    same commit.
+    """
+    src_files = [p for p in _git("ls-files", "src").split() if p.endswith(".py")]
+    if not src_files:
         return []
-    proc = subprocess.run(
-        ["git", "log", "--diff-filter=A", "--format=%H", "--", "docs/PRE-REGISTRATION.md"],
-        cwd=ROOT, capture_output=True, text=True, check=False,
-    )
-    if not proc.stdout.strip():
+    prereg_adds = _git("log", "--diff-filter=A", "--format=%H", "--", PREREG).split()
+    if not prereg_adds:
         return ["ordering: PRE-REGISTRATION.md has no add commit; cannot prove ordering"]
-    return []
+    prereg_add = prereg_adds[-1]
+    failures: list[str] = []
+    for path in src_files:
+        adds = _git("log", "--diff-filter=A", "--format=%H", "--", path).split()
+        if not adds:
+            failures.append(f"ordering: {path} is tracked but has no add commit (uncommitted?)")
+            continue
+        src_add = adds[-1]
+        if src_add == prereg_add:
+            failures.append(f"ordering: {path} was added in the same commit as {PREREG}")
+        elif not _git_ok("merge-base", "--is-ancestor", prereg_add, src_add):
+            failures.append(f"ordering: {PREREG}'s add commit is not an ancestor of {path}'s")
+    return failures
+
+
+def gate_no_identifier_in_results() -> list[str]:
+    """No factory or worker identifier in anything that could be published."""
+    tracked = _git("ls-files", "results", "MEASUREMENT_CARD.json").split()
+    failures: list[str] = []
+    for rel in tracked:
+        p = ROOT / rel
+        if not p.is_file() or p.suffix not in {".json", ".csv", ".md", ".txt", ".yaml"}:
+            continue
+        for i, line in enumerate(p.read_text(errors="replace").splitlines(), 1):
+            if IDENTIFIER.search(line):
+                failures.append(f"identifier: {rel}:{i}")
+                break
+    return failures
 
 
 GATES = (
@@ -174,7 +348,9 @@ GATES = (
     ("placeholders", gate_no_placeholders),
     ("cited-paths", gate_cited_paths),
     ("prereg-frozen", gate_prereg_frozen),
+    ("prereg-version", gate_prereg_version),
     ("docs-before-code", gate_docs_before_code),
+    ("no-identifier-in-results", gate_no_identifier_in_results),
 )
 
 

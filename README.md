@@ -18,15 +18,16 @@ Nobody has read it that way, because the two communities do not share a corpus.
 ## Why this viewpoint is empty, and it is not because nobody thought of it
 
 Automated ergonomic assessment from video is a mature field with commercial patents behind
-it. Every published system is **third-person**. That is not an accident of fashion: RULA and
-REBA — the standard indices — score trunk, neck and legs, and a head-mounted camera never
-sees a trunk. Egocentric ergonomics is empty because the standard instruments are ill-posed
-from that viewpoint.
+it, and HAL specifically has been recovered from video by one lab since 2013. Every system
+that could be opened is **third-person**. That is not an accident of fashion: RULA and REBA
+— the whole-body indices — score trunk, neck and legs, and a head-mounted camera never sees
+a trunk. Egocentric ergonomics is empty because the standard instruments are ill-posed from
+that viewpoint.
 
 The hand-and-wrist standards are not. HAL, the Strain Index and OCRA were built for
-repetitive manufacturing work and score what an egocentric camera does see: exertion
-frequency, duty cycle, wrist posture. `docs/SURVEY.md` runs the novelty gate on this claim
-and nothing downstream proceeds until it passes.
+repetitive manufacturing work and score what an egocentric camera does see. `docs/SURVEY.md`
+ran the novelty gate on this claim on 2026-09-05 and it cleared, narrowly: the instrument is
+not new, the reading of the vendor's number is.
 
 ## What this cannot do, said first
 
@@ -48,9 +49,9 @@ finding. `MEASUREMENT_CARD.json` carries `verdict: NOT_VERIFIED` until that chan
 | | |
 |---|---|
 | **The argument** | A published per-frame quality statistic is dimensionally an exposure primitive. Checkable by inspection, not by experiment. |
-| **The instrument** | Duty cycle and exertion frequency recovered from egocentric video with no new annotation. Frequency comes from spectral estimation over the manipulation signal, so no exertion has to be hand-segmented. |
-| **The distribution** | HAL across 85 factories and 2,153 workers. Reported at corpus level only. |
-| **The verifiable results** | Spectral frequency against transition-counting; test-retest; variance decomposition; the design effect on clustered estimates. None needs external ground truth. |
+| **The instrument** | Borrowed, not built: the Radwin lab's published speed–duty-cycle and frequency–duty-cycle HAL equations, fed from egocentric video with no new annotation. Hand speed from optical flow inside detected hand boxes, ego-motion subtracted; spectral bout frequency as a cross-check and a stated lower bound. |
+| **The distribution** | HAL across 85 factories and 2,144 workers (2,153 published; `../vernier/docs/UPSTREAM-FINDINGS.md` F12). Reported at corpus level and, where a k-anonymity floor is cleared, by factory-size tercile. Nothing finer. |
+| **The verifiable results** | Two label sources against each other; two sampling rates; spectral frequency against transition-counting; hand-box coverage and flow-failure rates; two negative controls on two corpora; variance decomposition; the design effect on clustered estimates. None needs external ground truth, and the evals card says so. |
 
 ## What is measured is people, and that decides the reporting
 
@@ -67,14 +68,16 @@ be neutral either.
 
 ## Status
 
-**Documentation frozen; no code.** `docs/PRE-REGISTRATION.md` and `docs/RUBRIC.md` are
-committed before `src/` exists, and git history is the evidence of that ordering. A project
-built on the argument that unvalidated measurements get published without protocols does not
-get to improvise its own.
+**Pre-registration v1.2.0; contracts v1.2; W2 landed and reviewed (D020).** `docs/PRE-REGISTRATION.md` and
+`docs/RUBRIC.md` were committed before `src/` existed, and git history is the evidence of that
+ordering — checked by ancestry in `scripts/validate.py`, not by timestamp. Every amendment
+since quotes the sentence it replaced and cites a decision with a reversal clause; the gate
+checks that too. A project built on the argument that unvalidated measurements get published
+without protocols does not get to improvise its own.
 
-`docs/SURVEY.md`'s novelty gate has not been run to completion. Every literature claim in
-this repository is tagged `[S]` — sourced from a search summary, not from opening the paper
-— and none of it is load-bearing until it is opened and re-tagged `[V]`.
+`docs/SURVEY.md`'s novelty gate ran on 2026-09-05 and cleared, narrowly: HAL from video is
+published since 2013, always third-person; no egocentric system scores it. Two reviews could
+not be opened and stay `[S]`; nothing rests on them.
 
 ## Map
 

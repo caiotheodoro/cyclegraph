@@ -69,13 +69,13 @@ endif
 signal:  ## Per-frame manipulation series for each clip in the manifest.
 	$(NOT_YET)
 
-cycles:  ## Exertion frequency: spectral primary, transition-counting cross-check.
+cycles:  ## Frequency axis: hand speed primary, spectral bout frequency and transition-counting as cross-checks.
 	$(NOT_YET)
 
-hal:  ## Duty cycle and the Hand Activity Level axis. Blocked on docs/SURVEY.md S3; fails by design.
+hal:  ## Duty cycle and the Hand Activity Level axis, by the published equations (docs/DECISIONS.md D013).
 	$(NOT_YET)
 
-estimate:  ## Cluster bootstrap over worker_id, with the design effect beside it.
+estimate:  ## Cluster bootstrap over factory_id/worker_id, with the design effect beside it.
 	$(NOT_YET)
 
 card:  ## Regenerate MEASUREMENT_CARD.json. Exits nonzero unless the verdict is VERIFIED.
