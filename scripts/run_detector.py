@@ -1,0 +1,222 @@
+#!/usr/bin/env python3
+"""Hand boxes for every sampled instant in a manifest. `docs/METHOD.md` E3, the GPU stage.
+
+Writes `detections.jsonl` in the shape `cyclegraph.signal.stores.JsonlDetectionStore` reads,
+so everything downstream of it runs offline on CPU afterwards. That split is the reason this
+stage is a script and not a module: 100DOH needs torch, the `signal` extra declares none, and
+`docs/DECISIONS.md` D022 keeps model runtimes out of `src/cyclegraph/signal/`.
+
+**Boxes are written in native clip pixels**, whatever resolution the frames were decoded at,
+because `hand_box_width_px` is the hand-breadth scale and a consumer must not have to know
+this script's decode size to interpret it.
+
+**Resumable per clip.** A spot instance is interrupted, not asked. A run that lost its work on
+preemption would have to be re-bought, so completed clips are skipped on restart and the
+output is appended.
+
+**`--smoke` measures throughput instead of guessing it.** `docs/METHOD.md` E3 estimates
+100DOH at ~20 frames/s and that figure has never been measured; the smoke path runs a bounded
+number of real frames and prints the rate, which is what `docs/REPRODUCTION.md` means by
+"whoever runs a stage records its measured cost beside the estimate".
+
+Usage:
+    python3 scripts/run_detector.py --smoke 200          # measure the rate, write nothing
+    python3 scripts/run_detector.py --detector 100doh    # the pilot run
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+import time
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Iterator, Protocol, Sequence
+
+import numpy as np
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "src"))
+
+from cyclegraph.corpus.decode import decode_gray_frames, ffmpeg_clip_argv  # noqa: E402
+from cyclegraph.corpus.manifest import MetadataRow, clip_refs  # noqa: E402
+from cyclegraph.corpus.sampling import ANALYSIS_HZ, sample_times  # noqa: E402
+from cyclegraph.corpus.shards import REPO_ID, ShardReader  # noqa: E402
+from cyclegraph.models import ClipRef  # noqa: E402
+from cyclegraph.signal.ports import HandBox, MaskSource  # noqa: E402
+
+DECODE_WIDTH, DECODE_HEIGHT = 960, 540
+"""Large enough for a hand at arm's length to survive detection, small enough to decode at
+network speed. Boxes are scaled back to native before they are written."""
+
+
+class FrameDetector(Protocol):
+    """What this script needs of a model. Deliberately narrower than `HandDetector`."""
+
+    @property
+    def mask_source(self) -> MaskSource: ...
+
+    def boxes(self, frame: np.ndarray) -> list[HandBox]: ...
+
+
+@dataclass(frozen=True, slots=True)
+class ClipFrames:
+    """One clip's sampled instants and the frames at them, already decoded."""
+
+    clip: ClipRef
+    times: list[float]
+    frames: list[np.ndarray]
+
+
+def scale_box(box: HandBox, *, from_width: int, from_height: int,
+              to_width: int, to_height: int) -> HandBox:
+    """Detector coordinates to native clip pixels."""
+    sx, sy = to_width / from_width, to_height / from_height
+    return HandBox(x=box.x * sx, y=box.y * sy, width=box.width * sx,
+                   height=box.height * sy, score=box.score)
+
+
+def detections_for_clip(clip_frames: ClipFrames, detector: FrameDetector) -> list[dict[str, object]]:
+    """One JSONL row per sampled instant, including the instants with no box.
+
+    A row is written for every instant the decoder produced, because an instant with no row
+    means "the detector did not run here" to the store that reads this, and an instant where
+    the detector ran and found nothing is a different fact (`signal/stores.py`).
+    """
+    rows: list[dict[str, object]] = []
+    clip = clip_frames.clip
+    for t_s, frame in zip(clip_frames.times, clip_frames.frames, strict=False):
+        try:
+            found = detector.boxes(frame)
+            failed: str | None = None
+        except Exception as exc:  # a frame the model could not process is a value, not a crash
+            found, failed = [], f"{type(exc).__name__}: {str(exc)[:120]}"
+        native = [
+            scale_box(b, from_width=frame.shape[1], from_height=frame.shape[0],
+                      to_width=clip.width, to_height=clip.height)
+            for b in found
+        ]
+        row: dict[str, object] = {
+            "clip_id": clip.clip_id, "t_s": t_s, "mask_source": detector.mask_source,
+            "boxes": [{"x": b.x, "y": b.y, "width": b.width, "height": b.height,
+                       "score": b.score} for b in native],
+        }
+        if failed is not None:
+            row["failed_reason"] = failed
+        rows.append(row)
+    return rows
+
+
+def completed_clips(path: Path) -> set[str]:
+    """Clip ids already written, so a preempted run resumes instead of restarting."""
+    if not path.exists():
+        return set()
+    return {json.loads(line)["clip_id"]
+            for line in path.read_text().splitlines() if line.strip()}
+
+
+def _token() -> str | None:
+    env = ROOT / ".env"
+    if env.exists():
+        for line in env.read_text().splitlines():
+            if line.startswith("HF_TOKEN=") and len(line) > len("HF_TOKEN="):
+                return line.split("=", 1)[1].strip()
+    return os.environ.get("HF_TOKEN")
+
+
+def decode_clip(clip: ClipRef, token: str | None, *, limit: int | None = None) -> ClipFrames:
+    url = ShardReader(REPO_ID, clip.shard, token)._resolve()
+    argv = ffmpeg_clip_argv(url, clip, fps_sampled=ANALYSIS_HZ,
+                            width=DECODE_WIDTH, height=DECODE_HEIGHT, max_frames=limit)
+    frames = list(decode_gray_frames(argv, DECODE_WIDTH, DECODE_HEIGHT))
+    times = sample_times(clip.duration_s)[: len(frames)]
+    return ClipFrames(clip=clip, times=times, frames=frames)
+
+
+def build_detector(name: str) -> FrameDetector:
+    """Construct the real model. Imported lazily so the rest of this file runs without torch."""
+    if name == "100doh":
+        from detectors.doh100 import Doh100Detector
+
+        return Doh100Detector()
+    if name == "egohos":
+        raise RuntimeError(
+            "EgoHOS is docs/METHOD.md's declared fallback if 100DOH's coverage fails H2c, "
+            "and it is not written. Writing it before that gate fires would be building a "
+            "fallback for a failure that has not happened."
+        )
+    raise ValueError(
+        f"{name!r} is not a detector this contract knows. CONTRACTS.md's mask_source is "
+        f"'100doh' or 'egohos'; a hand box never comes from anything else."
+    )
+
+
+def iter_clips(manifest: Path, corpus_rev: str) -> Iterator[ClipRef]:
+    rows = [MetadataRow(**json.loads(line))
+            for line in manifest.read_text().splitlines() if line.strip()]
+    yield from clip_refs(rows, corpus_rev=corpus_rev)
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--manifest", default="results/pilot/clips_factory_001.jsonl")
+    parser.add_argument("--out", default="results/pilot/detections.jsonl")
+    parser.add_argument("--detector", default="100doh", choices=["100doh", "egohos"])
+    parser.add_argument("--corpus-rev", default="3e5f87c88c54ce8343865d8e2a8c171f18385a05")
+    parser.add_argument("--smoke", type=int, default=None,
+                        help="decode and detect this many frames, measure the rate, write nothing")
+    args = parser.parse_args(list(argv) if argv is not None else None)
+
+    token = _token()
+    clips = list(iter_clips(ROOT / args.manifest, args.corpus_rev))
+    detector = build_detector(args.detector)
+
+    if args.smoke:
+        remaining = args.smoke
+        decoded = 0
+        started = time.time()
+        for clip in clips:
+            if remaining <= 0:
+                break
+            batch = decode_clip(clip, token, limit=remaining)
+            detections_for_clip(batch, detector)
+            decoded += len(batch.frames)
+            remaining -= len(batch.frames)
+        elapsed = time.time() - started
+        rate = decoded / elapsed if elapsed else 0.0
+        print(f"smoke: {decoded} frames in {elapsed:.1f}s -> {rate:.1f} frames/s "
+              f"(decode + detect, end to end)")
+        print(f"  docs/METHOD.md E3 estimates ~20 frames/s for the detector alone")
+        print(f"  at this rate the pilot's {sum(1 for _ in clips)} clips need "
+              f"{sum(len(sample_times(c.duration_s)) for c in clips) / rate / 3600:.2f} h"
+              if rate else "  rate unavailable")
+        return 0
+
+    out = ROOT / args.out
+    out.parent.mkdir(parents=True, exist_ok=True)
+    done = completed_clips(out)
+    todo = [c for c in clips if c.clip_id not in done]
+    print(f"{len(clips)} clips, {len(done)} already detected, {len(todo)} to go", flush=True)
+
+    started = time.time()
+    frames_total = 0
+    with out.open("a") as handle:
+        for i, clip in enumerate(todo, 1):
+            batch = decode_clip(clip, token)
+            for row in detections_for_clip(batch, detector):
+                handle.write(json.dumps(row) + "\n")
+            handle.flush()  # a preemption after this loses at most one clip
+            frames_total += len(batch.frames)
+            elapsed = time.time() - started
+            print(f"  {i}/{len(todo)} clips, {frames_total} frames, "
+                  f"{frames_total / elapsed:.1f} frames/s", flush=True)
+
+    print(f"\npilot gates (values stay in {out.parent}, D018):")
+    print(f"  {'PASS' if not todo or frames_total else 'FAIL'}  detections written")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

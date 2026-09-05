@@ -3,7 +3,6 @@
 # explicit so a typo still fails the build. Convention inherited from titer.
 
 # W2 -- models (see below); W3 -- corpus access and the signal
-scripts/run_detector.py
 
 # W2 -- contracts in code
 
