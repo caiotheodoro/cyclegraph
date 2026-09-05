@@ -3,31 +3,21 @@
 # explicit so a typo still fails the build. Convention inherited from titer.
 
 # W2 -- models (see below); W3 -- corpus access and the signal
-src/cyclegraph/models.py
 src/cyclegraph/corpus/
 src/cyclegraph/signal/
 src/cyclegraph/signal/speed.py
 scripts/build_clip_manifest.py
-tests/fixtures.py
 
 # W2 -- contracts in code
-src/cyclegraph/__init__.py
-src/cyclegraph/exposure/hal.py
-src/cyclegraph/estimation/bootstrap.py
-tests/test_models.py
-tests/test_hal_mapping.py
-tests/test_bootstrap.py
 
 # W5 -- cycles
 src/cyclegraph/cycles/
 scripts/estimate_frequency.py
 
 # W7 -- exposure
-src/cyclegraph/exposure/
 scripts/score_hal.py
 
 # W7/W8 -- estimation and the card
-src/cyclegraph/estimation/
 src/cyclegraph/card/
 scripts/refresh_card.py
 MEASUREMENT_CARD.json
