@@ -1,0 +1,54 @@
+# cyclegraph
+
+> A dataset vendor's per-frame quality metric is, dimensionally, an occupational-exposure
+> metric. Build AI's "active manipulation" figure is duty cycle, a primary input to the
+> ACGIH TLV for Hand Activity Level. cyclegraph measures the corpus that way.
+
+Status: documentation frozen, no code. `docs/PRE-REGISTRATION.md` and `docs/RUBRIC.md`
+committed before `src/` exists; git history is the evidence. `docs/SURVEY.md`'s novelty gate
+has NOT been run to completion and it gates everything downstream. Every literature claim in
+this repository is tagged `[S]` -- search summary, not opened -- and is load-bearing on
+nothing until re-tagged `[V]`.
+
+Headline: none yet. No measurement has run. `MEASUREMENT_CARD.json` does not exist until
+results do, and its verdict starts `NOT_VERIFIED`.
+
+Why the viewpoint is empty: automated video ergonomics is mature and patented, and every
+published system is third-person, because RULA and REBA score trunk, neck and legs and a
+head-mounted camera never sees a trunk. The hand-and-wrist standards -- HAL, the Strain
+Index, OCRA -- score what an egocentric camera does see.
+
+## Core
+
+- `CONTRACTS.md` -- every record, frozen at `contracts/v1`. `ExposureAggregate` has no field
+  that can carry an identifier; that is the ethics rule enforced in the schema.
+- `docs/PRE-REGISTRATION.md` -- H1-H5 and the negative control, each with a falsification
+  condition and a threshold fixed before data.
+- `docs/METHOD.md` -- the protocol stage by stage, with the cost of each.
+- `docs/ARCHITECTURE.md` -- module boundaries and the seam where the aggregation floor
+  would leak.
+- `docs/DECISIONS.md` -- append-only, every entry carries what would reverse it.
+
+## Honesty surface
+
+- `docs/COVERAGE.md` -- every ACGIH TLV input, marked observable / partial / unobservable.
+  Peak force: unobservable. No expert agreement statistic: named here first.
+- `docs/RED-TEAM.md` -- attacks written before results exist, so they are not selected for
+  being survivable.
+- `docs/ETHICS.md` -- this measures recordings of identifiable workers whose consent
+  instrument is unpublished. Nothing is reported at an identifiable unit; the dual-use
+  problem is named, and so is the argument against suppressing the work.
+- `docs/RETRACTIONS.md` -- empty by design, committed before there was anything to retract.
+- `docs/RUBRIC.md` -- the operational definitions the standards leave open.
+
+## Operations
+
+- `docs/WAVES.md` -- the wave plan and the ordering constraints that are not negotiable.
+- `docs/REPRODUCTION.md` -- how a stranger re-runs this from a fresh clone.
+- `docs/HANDOFF.md` -- the resume point, and what not to do.
+- `docs/LINEAGE.md` -- Gilbreth's cyclegraph, the TLV literature, and what is inherited
+  from `vernier`.
+
+Run: `make validate`.
+
+Apache-2.0.

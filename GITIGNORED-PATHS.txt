@@ -1,0 +1,16 @@
+# Cited-but-deliberately-absent paths, and why each exists.
+#
+# titer added this file because its cited-path gate had been passing locally for
+# the wrong reason: the files existed on the machine that wrote the docs. A gate
+# that only passes where the author sits is not a gate.
+
+# Private outreach and jurisdiction material. Never leaves the machine; never
+# shapes a finding. See docs/DECISIONS.md D008.
+docs/private/
+
+# Regenerated release staging, derived from results/ and docs/.
+hf/dataset/README.md
+hf/dataset/CONTRACTS.md
+
+# Real credentials. .env.example is tracked; .env is not.
+.env

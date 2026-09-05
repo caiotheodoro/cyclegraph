@@ -1,0 +1,27 @@
+name: validate
+
+# W0's claim is that the gates work on documentation alone, with src/ empty. That claim is
+# only worth anything if something other than the author's machine checks it.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # gate_docs_before_code reads `git log --diff-filter=A`. A shallow clone has no
+          # such history and the check silently no-ops -- the exact failure mode where a
+          # gate passes for the wrong reason.
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install --upgrade pip
+      - run: pip install -e ".[dev]"
+      - run: make validate

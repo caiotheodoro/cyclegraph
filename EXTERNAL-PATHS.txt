@@ -1,0 +1,20 @@
+# Paths in other repositories in this workspace that the docs cite by name.
+# They are real, they are not in this repo, and the cited-path gate must not
+# fail on them. Convention inherited from titer.
+#
+# cyclegraph descends from vernier: same corpus, same access machinery, and
+# several findings are inherited rather than rediscovered. docs/LINEAGE.md
+# states which.
+
+../vernier/docs/UPSTREAM-FINDINGS.md
+../vernier/docs/PRE-REGISTRATION.md
+../vernier/docs/DECISIONS.md
+../vernier/docs/COVERAGE.md
+../vernier/docs/ETHICS.md
+../vernier/docs/METHOD.md
+../vernier/docs/RUBRIC.md
+../vernier/docs/SURVEY.md
+../vernier/CONTRACTS.md
+../vernier/src/vernier/estimation/bootstrap.py
+../vernier/scripts/inspect_raw_shard.py
+../assay/docs/METHOD.md
