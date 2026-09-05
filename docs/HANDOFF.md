@@ -8,8 +8,9 @@ reviewed (D020). W3's code is landed and its corpus gates pass: the manifest rec
 three ways (D027), the decode gate passes (D023, `results/decode_probe.json`), and the A14
 floor is measured and published (D026), and the fresh-context review is complete with all five
 findings addressed (D030, superseding D029). W3 is not closed: it has two external
-dependencies, the hand detector and the manipulation labeller, and neither has run. No
-exposure number exists.**
+dependencies, the hand detector and the manipulation labeller, and neither has run. Both
+records are written for the pilot and every one of them says so: `FrameSignal` at
+`not_attempted`, `HandSpeedEstimate` at `no_detector` (D032). No exposure number exists.**
 
 ## Do not do
 
@@ -39,7 +40,7 @@ exposure number exists.**
 |---|---|
 | Docs | 19 files under `docs/`, spine complete, tightened after W1 |
 | `PRE-REGISTRATION.md` | v1.3.0, D013–D021, hashed; the version gate walks the chain of prior versions |
-| `CONTRACTS.md` | v1.2: provenance on every record, `HALScore` recomputed from its mapping, `pilot_gate`, split dominance shares |
+| `CONTRACTS.md` | v1.3: `FrameSignal.status` gains `not_attempted` with null provenance (D032); v1.2: provenance on every record, `HALScore` recomputed from its mapping, `pilot_gate`, split dominance shares |
 | Code | W2 and W3 landed: `models.py`, `exposure/hal.py`, `estimation/bootstrap.py`, `corpus/` (ports, manifest, sampling, shards, decode), `signal/` (ports, frames, speed, synthetic, flow_farneback, stores); 282 tests; `mypy --strict` clean |
 | Novelty gate | **Cleared 2026-09-05, narrowly.** `docs/SURVEY.md` S1–S6 answered |
 | Corpus access | HF token in `.env` on the author's machine (gitignored, `chmod 600`); rotate after use |
