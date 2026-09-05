@@ -66,10 +66,15 @@ manifest:  ## Clip manifest for one factory. Usage: make manifest FACTORY=factor
 ifndef FACTORY
 	$(error FACTORY is required, e.g. make manifest FACTORY=factory_001)
 endif
-	$(NOT_YET)
+	python3 scripts/build_clip_manifest.py --factory $(FACTORY)
 
-signal:  ## Per-frame manipulation series for each clip in the manifest.
-	$(NOT_YET)
+signal:  ## Per-frame manipulation series and hand speed for each clip in the manifest.
+	@# Refuses without the detector and labeller outputs; see docs/HANDOFF.md "the next three
+	@# things". A stage that substituted a region prior for a detector would satisfy every
+	@# schema and mean nothing.
+	python3 scripts/build_signal.py \
+		--detections results/pilot/detections.jsonl \
+		--labels results/pilot/labels.jsonl
 
 cycles:  ## Frequency axis: hand speed primary, spectral bout frequency and transition-counting as cross-checks.
 	$(NOT_YET)
