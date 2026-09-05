@@ -988,3 +988,46 @@ silently passing.
 **Reverses if:** the false-alarm rate is shown to be materially wrong for binary series at
 these lengths, in which case the null is calibrated by simulation per bin count rather than
 taken from the exponential approximation, and the floor is recomputed from that.
+
+## D035 — 100DOH builds on current hardware; the weights are what block the pilot
+
+**The question this answers.** `docs/METHOD.md` E3 names 100DOH as the detector and
+`scripts/detectors/doh100.py` called it the project's single largest unverified dependency:
+the released model is a Faster R-CNN with custom CUDA ops written against torch 1.x, and no
+current GPU AMI ships a torch that old. Whether it builds at all decided whether W3's remaining
+cost was hours or weeks, so it was measured rather than argued about.
+
+**Measured, on a real instance.** `g5.xlarge` (A10G 23 GB, driver 580.126.09), Deep Learning
+OSS Nvidia Driver AMI GPU PyTorch 2.7 Ubuntu 22.04 (`ami-012ba162b9cd2729c`), torch 2.7.0+cu128,
+torchvision 0.22.0, CUDA 12.8. **The ops compile**, producing `model/_C.*.so` linked against
+`libtorch_cuda`, after an eight-file patch now committed as
+`scripts/detectors/doh100-torch2.patch`.
+
+The patch is entirely one deprecation: `Tensor.type()` used to return a
+`DeprecatedTypeProperties` that could be passed to `AT_DISPATCH_FLOATING_TYPES` and asked
+`.is_cuda()`. Torch 2 wants `scalar_type()` for the first and `is_cuda()` on the tensor for the
+second. Without it the build stops at `cannot convert 'const at::DeprecatedTypeProperties' to
+'c10::ScalarType'`. **No model logic and no numerics change**, which matters: a port that
+altered the detector would make `mask_source: "100doh"` a claim about a model nobody published.
+
+The upstream repository had already commented out its `THC/*` includes, so that generation of
+breakage was fixed by its maintainers and only the dispatch API remained.
+
+**What now blocks the pilot is distribution, not compute.** `faster_rcnn_1_8_132028.pth` is
+published through a Google Drive link that refuses automated download — `gdown` reports the
+file cannot be fetched — the lab's own host returns nothing for the obvious paths, and a
+Hugging Face search for a mirror returns no models. The build is solved and the weights are
+not, which is the opposite of the risk this entry set out to test.
+
+**Cost of finding out.** One on-demand `g5.xlarge` for about 41 minutes, roughly $0.70. Spot
+was attempted first and had no capacity in two availability zones; for a probe this short the
+on-demand premium was smaller than another round of capacity hunting. The instance carried a
+`shutdown -h +90` from first boot so that a forgotten session could not outlive the experiment,
+and it was terminated explicitly along with its security group.
+
+**Not measured, and still an estimate.** The detector's frame rate. `docs/METHOD.md` E3's
+~20 frames/s is unverified because inference needs the weights; `scripts/run_detector.py --smoke`
+exists to measure it in the same session that first loads them.
+
+**Reverses if:** a maintained fork or a mirrored checkpoint appears, at which point the patch
+may be unnecessary and this entry's build instructions are superseded rather than merely dated.

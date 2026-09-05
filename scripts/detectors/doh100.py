@@ -4,21 +4,31 @@
 MIT licence, trained on 100K YouTube frames plus egocentric EPIC-KITCHENS/EGTEA/CharadesEgo --
 which is why it is the contract's primary detector rather than a general-purpose hand model.
 
-**Install, on the instance, not here.** The released model is a Faster R-CNN with custom CUDA
-ops that must be compiled against the installed torch:
+**Install, on the instance, not here.** Verified on a `g5.xlarge` (A10G, driver 580) running
+the Deep Learning OSS Nvidia Driver AMI GPU PyTorch 2.7 (Ubuntu 22.04), `ami-012ba162b9cd2729c`,
+with torch 2.7.0+cu128 and CUDA 12.8 (`docs/DECISIONS.md` D035):
 
     git clone https://github.com/ddshan/hand_object_detector
-    cd hand_object_detector && pip install -r requirements.txt
-    cd lib && python setup.py build develop
-    # checkpoint: faster_rcnn_1_8_132028.pth into models/res101_handobj_100K/pascal_voc/
+    cd hand_object_detector
+    git apply /path/to/cyclegraph/scripts/detectors/doh100-torch2.patch
+    pip install scipy opencv-python-headless
+    cd lib && TORCH_CUDA_ARCH_LIST="8.6" python setup.py build_ext --inplace
+
+`doh100-torch2.patch` is the eight-file change that makes the custom CUDA ops compile against
+torch 2.x: `Tensor.type()` returned a `DeprecatedTypeProperties`, and torch 2 wants
+`scalar_type()` for dispatch and `is_cuda()` directly on the tensor. Without it the build fails
+at `AT_DISPATCH_FLOATING_TYPES` with "cannot convert const at::DeprecatedTypeProperties to
+c10::ScalarType". The patch touches no model logic and changes no numerics.
 
 Point `DOH100_ROOT` at that clone and `DOH100_CHECKPOINT` at the weights.
 
-**This is the project's single largest unverified dependency.** The compile step is against a
-torch generation older than any current GPU AMI ships, and `docs/METHOD.md` already names
-EgoHOS as the fallback if coverage fails H2c. Run `scripts/run_detector.py --smoke` before
-buying the full pilot: it measures the real frame rate and, more importantly, proves the model
-loads at all.
+**The weights are the open blocker, not the build.** The checkpoint
+`faster_rcnn_1_8_132028.pth` is published only through a Google Drive link that now refuses
+automated download, and no mirror was found on Hugging Face. `docs/METHOD.md` names EgoHOS as
+the fallback if coverage fails H2c; it is not a fallback for a file that will not download.
+
+Run `scripts/run_detector.py --smoke` before buying the full pilot: it measures the real frame
+rate, which `docs/METHOD.md` E3 has only ever estimated.
 """
 
 from __future__ import annotations

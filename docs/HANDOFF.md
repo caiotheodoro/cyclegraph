@@ -51,11 +51,13 @@ records are written for the pilot and every one of them says so: `FrameSignal` a
 
 ## The next three things
 
-1. **Run the hand detector.** 100DOH on a `g5.xlarge` spot instance over the pilot manifest,
-   writing `results/pilot/detections.jsonl` in the shape `signal/stores.py` reads. This is
-   W3's one blocking dependency: `scripts/build_signal.py` exits 2 without it and will not
-   substitute anything, because a `HandSpeedEstimate` from a region prior is a contract
-   violation. Roughly 24 GPU-hours for the pilot; checkpoint per clip so a preemption resumes.
+1. **Obtain the 100DOH checkpoint.** `faster_rcnn_1_8_132028.pth` is published only through
+   a Google Drive link that refuses automated download, and no mirror was found (D035). The
+   build itself is solved: the ops compile on a current AMI with
+   `scripts/detectors/doh100-torch2.patch`, measured on real hardware. **This file is now W3's
+   blocking dependency, and it is a distribution problem rather than a compute one** — a
+   browser download by a human, or a mirror, unblocks it. The GPU cost that follows is roughly
+   6 GPU-hours for the pilot, well under an hour of wall-clock at ~$0.50/h.
 2. **Run a manipulation labeller** on the same instants, writing `results/pilot/labels.jsonl`.
    The judge is ~$9 for a calibration subset and needs an OpenAI-compatible endpoint; the
    probe does not exist in this repository yet. Until one runs, H1 is `UNTESTED` — which is
