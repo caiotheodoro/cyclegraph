@@ -387,3 +387,50 @@ merges; no aggregate can be built with an identifier field, a sub-floor stratum,
 `worker_id` cluster unit.
 
 **Reverses if:** nothing; this is a record.
+
+## D021 — The A14 floor is bounded in HAL, not as a fraction of speed
+
+**Decision.** `docs/PRE-REGISTRATION.md` v1.3.0 replaces "at most **20%** of the corpus
+median RMS speed" with "at most **0.25 HAL** at the corpus median RMS speed", and widens what
+the floor comprises: the residual left by a **rotation-only** synthetic under the corpus's own
+fisheye intrinsics counts toward it alongside the translation-only residual. Supersedes the
+A14 pre-commitment D020 added.
+
+**Rationale.** The 20% bound was set without checking what it costs on the mapping it feeds.
+It costs a lot. On `akkas-2015-speed-dc` at a 68% duty cycle, a floor at exactly 20% of speed
+moves HAL by **0.85 at 400 mm/s, 1.22 at 612 mm/s and 1.22 at 800 mm/s** — recomputed from
+`src/cyclegraph/exposure/hal.py`, not transcribed. `docs/EVALS_CARD.md` names 0.74 HAL, the
+best published third-person system's cross-domain RMSE against observers, as "the honest
+prior for how far this port could be off". A pre-committed systematic floor larger than the
+instrument's own honest prior bounds nothing: the path could pass A14 and still be wrong by
+more than the whole port's expected error. 0.25 HAL corresponds to 4.4–5.8% of speed across
+the same band, and is stated in the unit the hypothesis is actually about.
+
+The rotation term is added because the rubric subtracts a **scalar** — the median flow over
+the mask complement. Under pure camera rotation optical flow is depth-independent, so a
+correct model cancels it exactly; a scalar does not, on a wide lens, because rotational flow
+varies radially. That variation is exactly the residual A14 alleges, and a floor defined from
+translation alone would omit it. `docs/WAVES.md`'s checklist row ("a rotation-only synthetic
+with a static hand yields zero residual within tolerance") remains true only in narrow-field
+geometry, where it is a test of the estimator's arithmetic rather than of the attack.
+
+**Timing, which is the point.** This lands before `src/cyclegraph/signal/synthetic.py` exists
+and before any residual has been computed. Changing a threshold after measuring the quantity
+it bounds is post-hoc; changing it while the quantity is unknown is not. A project whose
+argument is that measurements get published without protocols does not get to loosen its own
+after seeing the number.
+
+**Evidence.** The HAL costs above are recomputed by `hal_akkas_2015`; the 0.74 prior is
+`docs/EVALS_CARD.md`, abstract-sourced and `[S]`, and is not load-bearing for the decision —
+any prior in that region gives the same conclusion.
+
+**Alternatives rejected.** Keeping 20% and disclosing the cost: the disclosure would say the
+bound admits an error larger than the instrument's stated accuracy, which is a reason to
+change the bound, not to annotate it. Bounding in percent-of-speed at a tighter value: the
+harm of a speed offset depends on where on the logistic the corpus median sits, so a fixed
+percentage is not a fixed amount of harm; HAL is.
+
+**Reverses if:** the corpus median RMS speed lands far enough onto a tail of the Akkas
+logistic that 0.25 HAL corresponds to a speed fraction the flow estimator cannot resolve, in
+which case the bound is restated with the resolution floor named and the amendment quotes
+this one.

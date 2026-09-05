@@ -4,9 +4,24 @@
 
 # W2 -- models (see below); W3 -- corpus access and the signal
 src/cyclegraph/corpus/
+src/cyclegraph/corpus/ports.py
+src/cyclegraph/corpus/manifest.py
+src/cyclegraph/corpus/sampling.py
+src/cyclegraph/corpus/shards.py
 src/cyclegraph/signal/
+src/cyclegraph/signal/ports.py
+src/cyclegraph/signal/frames.py
 src/cyclegraph/signal/speed.py
+src/cyclegraph/signal/synthetic.py
+src/cyclegraph/signal/flow_farneback.py
+src/cyclegraph/signal/stores.py
 scripts/build_clip_manifest.py
+scripts/measure_a14_floor.py
+scripts/bench_flow.py
+scripts/run_detector.py
+scripts/build_signal.py
+results/a14_translation_floor.json
+results/flow_benchmark.json
 
 # W2 -- contracts in code
 
