@@ -9,7 +9,8 @@ F12), 85 factories, 192,903 clips.
 
 **Current state (2026-09-05):** W1 cleared, pre-registration v1.3.0, contracts v1.2, W2
 landed (models, the two HAL equations, the bootstrap), fresh-context review recorded as
-D020. W3 is in progress; D021 rebased the A14 floor onto HAL before measuring it. `docs/SURVEY.md`'s two unopened reviews stay `[S]` and load-bearing on nothing.
+D020. W3's code is landed and its corpus gates pass (D026-D028); its two external
+dependencies, the detector and the labeller, have not run. `docs/SURVEY.md`'s two unopened reviews stay `[S]` and load-bearing on nothing.
 
 ## The claim
 
