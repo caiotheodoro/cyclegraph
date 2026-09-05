@@ -1,6 +1,6 @@
 # Rubric
 
-**Version:** 1.1.0. Frozen with `docs/PRE-REGISTRATION.md`; amended with it, with the
+**Version:** 1.2.0. Frozen with `docs/PRE-REGISTRATION.md`; amended with it, with the
 replaced text quoted at the end.
 
 The operational definitions the standards leave open. Every one of these is a choice; the
@@ -59,9 +59,13 @@ unobservable here, and `docs/COVERAGE.md` marks it so.
 
 ## Resolvability
 
-A `FrequencyEstimate` is `resolvable` when its spectral peak exceeds **6×** the median power
-of the rest of the spectrum. A clip with no dominant cycle — non-repetitive work, a break, a
-walk between stations — is recorded `status: "no_peak"` with `hz: null`.
+A `FrequencyEstimate` is `resolvable` when its spectral peak exceeds the ratio a white-noise
+spectrum of the same length would exceed only **5%** of the time. That floor is
+`−ln(1 − 0.95^(1/N)) / ln 2` for a periodogram of `N` bins, it rises with clip length, and it
+is **recorded on every `FrequencyEstimate`** because `resolvable` is a function of it — the
+same rule the debounce follows on `ExertionSegment`. A clip with no dominant cycle —
+non-repetitive work, a break, a walk between stations — is recorded `status: "no_peak"` with
+`hz: null`.
 
 **Such clips are counted and excluded, never assigned zero.** Assigning zero would treat "no
 detectable cycle" as "no repetition," which is the single most consequential way this
@@ -125,6 +129,17 @@ blind to the pipeline's output, on a stratified sample drawn before any score is
 the resulting agreement would be reported whatever it said.
 
 ## Amendments
+
+### v1.2.0 — D034
+
+- **Resolvability** (D034). Prior: "A `FrequencyEstimate` is `resolvable` when its spectral
+  peak exceeds **6×** the median power of the rest of the spectrum." Now: the floor is the
+  ratio white noise of the same length would exceed 5% of the time, which rises with bin
+  count and is recorded on the record. A fixed multiple gets *easier* to clear the longer the
+  clip: measured over 40 seeded trials per duration, white noise cleared 6× on 72% of 60 s
+  clips and **100%** of clips at 180 s, 433 s and 1200 s — the corpus's actual durations — so
+  H2b was satisfiable by a corpus with no repetition in it. Amended before any corpus clip was
+  scored spectrally.
 
 ### v1.1.0 — D013, D014, D020
 

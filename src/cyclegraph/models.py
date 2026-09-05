@@ -25,7 +25,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from cyclegraph.exposure.hal import SCALE_REV, hal_akkas_2015, hal_radwin_2015, in_fitted_range
 
-CONTRACTS_REV = "contracts/v1.3"
+CONTRACTS_REV = "contracts/v1.4"
 
 # The corpus's own naming for the two things that must never reach a published number.
 # Matches `factory_001`, `factory001` (shard file names), `Factory-07`; not `factory_id`.
@@ -35,7 +35,10 @@ IDENTIFIER = re.compile(r"(factory|worker)[_-]?\d{2,}", re.I)
 MIN_CLIP_S = 60.0
 UNREADABLE_CEILING = 0.10
 DEBOUNCE_S = 0.5
+# Superseded by a bin-count-aware floor recorded on each record (D034). Kept because
+# `docs/RUBRIC.md` v1.1.0 named it and records written under that rubric carry it.
 PEAK_POWER_FLOOR = 6.0
+SPECTRAL_FALSE_ALARM_RATE = 0.05
 # `docs/RUBRIC.md` "Hand speed" and `docs/PRE-REGISTRATION.md` H2c.
 COVERAGE_FLOOR = 0.60
 FLOW_NULL_CEILING = 0.10
@@ -247,6 +250,7 @@ class FrequencyEstimate(Record):
     hz: float | None
     method: Literal["spectral", "transitions"]
     peak_power_ratio: float | None
+    resolvability_floor: float | None
     resolvable: bool
     hz_ci95: CI95 | None
     nyquist_hz: float = Field(gt=0)
@@ -261,8 +265,13 @@ class FrequencyEstimate(Record):
             if not self.resolvable:
                 raise ValueError("status 'ok' requires resolvable")
             if self.method == "spectral":
-                if self.peak_power_ratio is None or self.peak_power_ratio < PEAK_POWER_FLOOR:
-                    raise ValueError(f"a spectral peak below {PEAK_POWER_FLOOR}x is status 'no_peak'")
+                if self.peak_power_ratio is None or self.resolvability_floor is None:
+                    raise ValueError("a spectral estimate carries its peak ratio and its floor")
+                if self.peak_power_ratio < self.resolvability_floor:
+                    raise ValueError(
+                        f"a spectral peak below its own floor ({self.resolvability_floor:.2f}) "
+                        f"is status 'no_peak'"
+                    )
             if self.hz <= 0:
                 raise ValueError("hz must be positive")
             if self.hz >= self.nyquist_hz:
@@ -274,10 +283,24 @@ class FrequencyEstimate(Record):
         if self.status == "no_peak":
             if self.resolvable:
                 raise ValueError("status 'no_peak' means not resolvable")
-            if self.peak_power_ratio is not None and self.peak_power_ratio >= PEAK_POWER_FLOOR:
-                raise ValueError("a peak above the floor is resolvable, not 'no_peak'")
+            if (
+                self.peak_power_ratio is not None
+                and self.resolvability_floor is not None
+                and self.peak_power_ratio >= self.resolvability_floor
+            ):
+                raise ValueError("a peak above its own floor is resolvable, not 'no_peak'")
         if self.hz is None and self.hz_ci95 is not None:
             raise ValueError("no interval without an estimate")
+        # The floor is a property of the clip's length, so it is recorded rather than
+        # assumed -- the same rule `ExertionSegment.min_duration_s` follows, and for the
+        # same reason: `resolvable` is a function of it and a reader must be able to see it.
+        if (self.resolvability_floor is None) != (self.method == "transitions"):
+            raise ValueError(
+                "a spectral estimate records the floor it was judged against; the "
+                "transition-counting path has none"
+            )
+        if self.resolvability_floor is not None and self.resolvability_floor <= 0:
+            raise ValueError("a resolvability floor is positive")
         return self
 
 

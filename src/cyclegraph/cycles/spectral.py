@@ -27,10 +27,12 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Final
 
+import math
+
 import numpy as np
 
 from cyclegraph.models import (
-    PEAK_POWER_FLOOR,
+    SPECTRAL_FALSE_ALARM_RATE,
     UNREADABLE_CEILING,
     ClipRef,
     FrequencyEstimate,
@@ -38,6 +40,24 @@ from cyclegraph.models import (
 )
 
 Label = bool | None
+
+def resolvability_floor(n_bins: int, *, false_alarm: float = SPECTRAL_FALSE_ALARM_RATE) -> float:
+    """The peak-to-median ratio a white-noise spectrum of this many bins exceeds only
+    `false_alarm` of the time. `docs/RUBRIC.md` v1.2.0, `docs/DECISIONS.md` D034.
+
+    Periodogram bins of noise are exponentially distributed, so the median is `ln 2` and the
+    maximum of `N` of them satisfies `P(max < x) = (1 - e^-x)^N`. Inverting at `1 - alpha`
+    and dividing by the median gives a floor that rises with bin count -- which is the whole
+    correction, since a *fixed* multiple gets easier to clear the longer the clip and the old
+    6x floor was cleared by pure noise essentially always (D033).
+    """
+    if n_bins < 2:
+        raise ValueError("a resolvability floor needs at least two bins")
+    if not 0.0 < false_alarm < 1.0:
+        raise ValueError("the false-alarm rate is a probability")
+    quantile = (1.0 - false_alarm) ** (1.0 / n_bins)
+    return float(-math.log(1.0 - quantile) / math.log(2.0))
+
 
 MIN_SCORED_SAMPLES: Final[int] = 8
 """Below this a periodogram is not a measurement of anything. Any clip clearing the rubric's
@@ -68,11 +88,13 @@ def spectral_frequency(
     n_total = len(series)
     n_excluded = n_total - len(scored)
 
-    def absent(status: str, ratio: float | None = None) -> FrequencyEstimate:
+    def absent(status: str, ratio: float | None = None,
+               floor: float | None = None) -> FrequencyEstimate:
         return FrequencyEstimate(
             clip_id=clip.clip_id, corpus_rev=clip.corpus_rev, label_source=label_source,
-            hz=None, method="spectral", peak_power_ratio=ratio, resolvable=False,
-            hz_ci95=None, nyquist_hz=nyquist,
+            hz=None, method="spectral", peak_power_ratio=ratio,
+            resolvability_floor=floor if floor is not None else 1.0,
+            resolvable=False, hz_ci95=None, nyquist_hz=nyquist,
             status=status,  # type: ignore[arg-type]
         )
 
@@ -98,21 +120,22 @@ def spectral_frequency(
     if not np.any(power):
         return absent("no_peak")  # a constant series has no dominant cycle
 
+    floor = resolvability_floor(int(freqs.size))
     peak = int(np.argmax(power))
     rest = np.delete(power, peak)
     median_rest = float(np.median(rest)) if rest.size else 0.0
     ratio = float(power[peak] / median_rest) if median_rest > 0 else float("inf")
     hz = float(freqs[peak])
 
-    if ratio < PEAK_POWER_FLOOR:
-        return absent("no_peak", ratio)
+    if ratio < floor:
+        return absent("no_peak", ratio, floor)
     if hz >= nyquist:
-        return absent("aliased", ratio)
+        return absent("aliased", ratio, floor)
 
     return FrequencyEstimate(
         clip_id=clip.clip_id, corpus_rev=clip.corpus_rev, label_source=label_source,
-        hz=hz, method="spectral", peak_power_ratio=ratio, resolvable=True,
-        hz_ci95=None, nyquist_hz=nyquist, status="ok",
+        hz=hz, method="spectral", peak_power_ratio=ratio, resolvability_floor=floor,
+        resolvable=True, hz_ci95=None, nyquist_hz=nyquist, status="ok",
     )
 
 

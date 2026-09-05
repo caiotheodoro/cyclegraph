@@ -154,7 +154,8 @@ FREQUENCY: Fixture = {
     "label_source": "judge",
     "hz": 0.42,
     "method": "spectral",
-    "peak_power_ratio": 6.1,
+    "peak_power_ratio": 12.9,
+    "resolvability_floor": 12.78,
     "resolvable": True,
     "hz_ci95": [0.38, 0.47],
     "nyquist_hz": 2.0,
@@ -162,15 +163,24 @@ FREQUENCY: Fixture = {
 }
 
 FREQUENCY_NO_PEAK: Fixture = _with(
-    FREQUENCY, hz=None, peak_power_ratio=2.1, resolvable=False, hz_ci95=None, status="no_peak"
+    FREQUENCY, hz=None, peak_power_ratio=8.4, resolvable=False, hz_ci95=None, status="no_peak"
+)
+
+FREQUENCY_TRANSITIONS: Fixture = _with(
+    FREQUENCY, method="transitions", peak_power_ratio=None, resolvability_floor=None,
+    hz_ci95=None,
 )
 
 FREQUENCY_BROKEN: list[Broken] = [
     ("zero assigned to an unresolvable clip", _with(FREQUENCY, hz=0.0, resolvable=False, hz_ci95=None)),
     ("at Nyquist but status ok", _with(FREQUENCY, hz=2.0, hz_ci95=None)),
     ("no_peak but resolvable", _with(FREQUENCY_NO_PEAK, resolvable=True)),
-    ("no_peak with a peak above the floor", _with(FREQUENCY_NO_PEAK, peak_power_ratio=7.0)),
-    ("ok with a spectral peak below the 6x floor", _with(FREQUENCY, peak_power_ratio=2.0)),
+    ("no_peak with a peak above its own floor", _with(FREQUENCY_NO_PEAK, peak_power_ratio=13.0)),
+    ("ok with a spectral peak below its own floor", _with(FREQUENCY, peak_power_ratio=2.0)),
+    ("a spectral estimate with no floor recorded", _with(FREQUENCY, resolvability_floor=None)),
+    ("a transition estimate carrying a spectral floor",
+     _with(FREQUENCY_TRANSITIONS, resolvability_floor=12.78)),
+    ("a non-positive floor", _with(FREQUENCY, resolvability_floor=0.0)),
     ("ok with no peak ratio at all", _with(FREQUENCY, peak_power_ratio=None)),
     ("interval does not contain the estimate", _with(FREQUENCY, hz_ci95=[0.5, 0.6])),
     ("null hz with status ok", _with(FREQUENCY, hz=None, hz_ci95=None)),
@@ -381,7 +391,7 @@ VALID: dict[str, list[Fixture]] = {
     "FrameSignal": [FRAME_SIGNAL, FRAME_SIGNAL_NOT_ATTEMPTED],
     "ExertionSegment": [EXERTION_SEGMENT],
     "DutyCycleEstimate": [DUTY_CYCLE, _with(DUTY_CYCLE, duty_cycle=None, status="too_short")],
-    "FrequencyEstimate": [FREQUENCY, FREQUENCY_NO_PEAK],
+    "FrequencyEstimate": [FREQUENCY, FREQUENCY_NO_PEAK, FREQUENCY_TRANSITIONS],
     "HandSpeedEstimate": [HAND_SPEED, HAND_SPEED_LOW_COVERAGE, HAND_SPEED_NO_DETECTOR],
     "HALScore": [HAL_AKKAS, HAL_RADWIN, HAL_OUT_OF_RANGE, HAL_ZERO_DC],
     "ExposureAggregate": [AGGREGATE, AGGREGATE_STRATUM],
