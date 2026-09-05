@@ -434,3 +434,98 @@ percentage is not a fixed amount of harm; HAL is.
 logistic that 0.25 HAL corresponds to a speed fraction the flow estimator cannot resolve, in
 which case the bound is restated with the resolution floor named and the amendment quotes
 this one.
+
+## D022 — `hands_visible` is label-sourced; `hand_box_width_px` is detector-sourced
+
+**Decision.** On `FrameSignal`, `hands_visible[i]` comes from the label source and
+`hand_box_width_px[i]` from the hand detector. They are never crossed. A detector box on a
+frame whose labeller reported `hands_visible: 0` is **dropped and counted**; the count is
+published in `docs/BENCHMARK.md`, split by cause.
+
+**Rationale.** `models.py`'s `FrameSignal` validator rejects `manipulation: true` with
+`hands_visible: 0`, and rejects a box width where no hand is visible. H2c pre-registers
+detector coverage as low as **60%**. If `hands_visible` were derived from the detector, up to
+40% of pilot frames would carry `hands_visible: 0`, and every one of those the labeller called
+manipulating would be an unconstructible record. The validator permits the reverse — a visible
+hand with `hand_box_width_px: null` — which is exactly the shape of a labeller that sees hands
+and a detector that misses them. The failure only appears at pilot scale, after the detector
+run, which is the most expensive place in W3 to discover it.
+
+**The cost, stated rather than discovered.** Dropping boxes on labeller-says-no-hands frames
+makes H2c's coverage depend on label quality. If the probe misses hands, the speed path loses
+samples it actually had, and H2c can fail for the labeller's error rather than the detector's
+— which would trigger D014's switch to spectral-primary on a false signal. That is why the
+drop count is a reported quantity and not a run-log detail: a reader must be able to separate
+the two before reading H2c as a statement about the detector. `Detection` carries no
+`hands_visible` field, so crossing the two is a type error rather than a runtime surprise.
+
+**Reverses if:** a label source is adopted that does not report a hand count, in which case
+`hands_visible` has no source and the field's meaning is re-decided rather than back-filled
+from the detector.
+
+## D023 — What absence looks like numerically: zero residual, status precedence, decode denominator
+
+**Decision.** Three operational rules that `docs/RUBRIC.md` states in prose and leaves
+unquantified.
+
+1. **An exactly-zero residual inside the hand box is a flow null**, with a reason, not a
+   speed of zero. It raises `n_flow_null`.
+2. **Status precedence** on `HandSpeedEstimate`, when more than one condition holds:
+   `no_detector` > `too_short` > `low_coverage` > `flow_failed` > `ok`.
+3. **The decode-failure gate is per pair**, with the per-clip rate reported beside it. A clip
+   that fails entirely is `status: "decode_failed"`, counted, never dropped.
+
+**Rationale.** (1) closes a hole in the contract: the validator bars `rms_speed_mm_s <= 0`
+under `ok` and bars `flow_failed` unless the null rate exceeds its ceiling, so a clip with
+boxes everywhere and a dead flow field had **no legal representation** at all. Reading the
+zero as the failure it is gives it one, and is what `docs/RUBRIC.md`'s "flow failure → null
+with reason, never zero" already required. The test is `== 0.0` exactly, not a threshold:
+nulling small residuals would discard real slow motion and bias the corpus upward.
+
+(2) matters because both `low_coverage` and `flow_failed` can be true at once and the schema
+accepts either. Without a fixed order, two runs over the same data disagree about why a clip
+was dropped, and the reason is a published quantity.
+
+(3) `docs/METHOD.md` E2 states "below 1%" without a denominator, and per-pair and per-clip
+rates differ by the number of pairs in a clip. Choosing after seeing the rate is exactly the
+flexibility the pre-registration exists to remove.
+
+**What (1) does not catch, stated because the null rate will be read as a failure rate.**
+An exact zero arises from identical or degenerate frames. Motion blur and low light — the
+causes `docs/RED-TEAM.md` A15 actually names — make dense flow decay toward small *non-zero*
+values, which this rule passes through as real speed. The reported `flow_null_rate` is
+therefore a **lower bound on flow failure**, and H2c's 10% ceiling is correspondingly
+permissive. A15 stays MITIGATED rather than closed.
+
+**Reverses if:** a flow estimator is adopted that reports its own confidence, at which point
+the null test is that confidence rather than an exact zero, and the lower-bound caveat is
+replaced by the estimator's own false-negative rate.
+
+## D024 — How the flow estimator will be chosen, fixed before the rates are measured
+
+**Decision.** Farneback on CPU against RAFT-small on GPU, on the **same** 1,000 pilot pairs,
+drawn deterministically by seed and spanning at least 20 clips so one dark clip cannot decide
+it. The rule, in order:
+
+1. Flow-null rate is primary. An estimator whose null rate exceeds `FLOW_NULL_CEILING` on the
+   sample **fails**, whatever its throughput.
+2. If both clear it, the lower total pilot cost wins — wall-clock times the instance rate, so
+   spot pricing and CPU hours sit on one axis.
+3. If neither clears it, that is H2c failing on the flow arm. The spectral path becomes
+   primary under D014 and **the switch is reported as a failure of the speed path**.
+4. **A tiebreaker that is not a rate.** RAFT-small needs torch, which the `signal` extra does
+   not declare; choosing it costs either a declared `pyproject.toml` change with its own
+   decision entry or a file-backed flow store and a runner script. Farneback costs nothing
+   extra because `opencv-python-headless` is already declared. That asymmetry is written down
+   now so it cannot be discovered later as a convenient reason.
+
+The measured table lands in `results/flow_benchmark.json` and in the entry that records the
+choice, and carries the median residual each estimator leaves on the A14 rotation synthetic
+beside its throughput: an estimator that is fast and rarely nulls but leaves a large
+rotational residual is worse for this project, because A14 is the open attack.
+
+**Rationale.** `docs/HANDOFF.md` says to decide this "by measurement, not preference". A
+measurement whose decision rule is written afterwards is a preference with a table attached.
+
+**Reverses if:** the chosen estimator's null rate on the full pilot exceeds 10%, which is H2c
+and is a re-run against this same rule, not a re-argument of it.

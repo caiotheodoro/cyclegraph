@@ -57,8 +57,10 @@ lock:  ## Regenerate constraints from pyproject.
 
 # --- stages, in the order docs/WAVES.md fixes ---------------------------------
 
-survey:  ## docs/SURVEY.md -- the novelty gate. Nothing downstream runs until this passes.
-	$(NOT_YET)
+survey:  ## docs/SURVEY.md -- the novelty gate. Ran 2026-09-05 and cleared, narrowly.
+	@grep -q '^## Verdict:' docs/SURVEY.md \
+		&& echo "survey: verdict recorded in docs/SURVEY.md (W1 cleared 2026-09-05)" \
+		|| { echo "REFUSING: docs/SURVEY.md carries no verdict line." >&2; exit 1; }
 
 manifest:  ## Clip manifest for one factory. Usage: make manifest FACTORY=factory_001
 ifndef FACTORY

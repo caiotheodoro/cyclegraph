@@ -58,6 +58,26 @@ project's equivalent hypothesis unfalsifiable as written.
 A stratum row below the floor (`docs/DECISIONS.md` D019) is printed as `SUPPRESSED`, not
 omitted, so the suppression is visible.
 
+## Where coverage was lost, split by cause
+
+H2c's coverage figure is not purely a detector property. `docs/DECISIONS.md` D022 makes
+`hands_visible` label-sourced and `hand_box_width_px` detector-sourced, so a detector box on
+a frame the labeller called `hands_visible: 0` is dropped. Those drops are counted and
+printed here rather than folded into the coverage number, because a reader must be able to
+tell a detector miss from a labeller miss before reading H2c as a statement about the
+detector.
+
+| Cause | Samples | % of scored frames |
+|---|---|---|
+| No box: detector found no hand | — | — |
+| Box dropped: labeller reported no visible hand | — | — |
+| Flow null: estimator returned no field | — | — |
+| Contributing to `rms_speed_mm_s` | — | — |
+
+The `flow_null_rate` above is a **lower bound on flow failure** (D023): an exactly-zero
+residual is caught, but motion blur and low light decay flow toward small non-zero values
+that pass through as real speed.
+
 ## Sensitivity
 
 | Choice | Alternatives run | Effect on HAL median |
