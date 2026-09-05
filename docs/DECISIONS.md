@@ -685,3 +685,59 @@ something. The null rate is a lower bound on flow failure, and on this evidence 
 
 **Reverses if:** RAFT-small is measured and either fails the null-rate bound or wins on cost,
 at which point this entry is superseded by the one that records the comparison.
+
+## D029 — W3's fresh-context review: what it covered, and what it did not
+
+**Status: partial, and recorded as partial.** `docs/WAVES.md` requires a fresh-context review
+at the end of every wave and says "a re-read in the same context is not a review". A fresh
+context was given the branch diff, `CONTRACTS.md`, `docs/ARCHITECTURE.md`'s seams,
+`docs/RUBRIC.md` and the checklist, and deliberately not the author's account. It returned two
+findings and then stalled before writing a full report; a second, tighter pass stalled the
+same way. The remainder was checked by the author, which is **weaker by construction** and is
+labelled so rather than presented as an independent result.
+
+**Found independently, and both real.**
+
+1. **`make typecheck` was failing, and had been for several commits.** Three `mypy --strict`
+   errors in the test suite: two `type: ignore` comments made unused when
+   `opencv-python-headless` brought cv2's own stubs with it, and a `func-returns-value` on a
+   `DeadFlow` stub annotated `-> None`. Fixed. **Worth recording is how it stayed hidden:**
+   the author verified each commit with `make validate 2>&1 | grep -E "…|Success"`, and
+   mypy's failure prints no line matching that filter, so the signal was the *absence* of a
+   line rather than the presence of one. A filter that can only show success is not a check.
+2. **The A14 generator survives mutation.** The reviewer built its own mutation harness and
+   confirmed that a generator which loses the fisheye, or loses the two-plane depth split, is
+   caught by the existing tests. That was the question the A14 design most needed answered
+   from outside, since a degenerate generator would have made the speed path look clean.
+
+**Checked by the author afterwards, and therefore weaker evidence.**
+
+- *Numbers against artifacts.* Every figure quoted in D026, D027 and D028 was re-read from
+  `results/a14_translation_floor.json`, `results/decode_probe.json` and
+  `results/flow_benchmark.json`. They match.
+- *Fabrication paths.* Six adversarial probes: a region prior in a detections file is refused
+  on load; an unwritten instant returns `manipulation: None`, never `False`; a failed flow and
+  an exactly-zero residual both return `None` with a reason; a null `mask_source` yields
+  `no_detector` with no speed; a label row without `label_source` is refused. All closed.
+- *Sampling arithmetic.* Brute-forced against a loop over 8,572 `(duration, fps)` pairs: zero
+  mismatches, and the naive `floor(duration·fps)` is confirmed off by one at every exact
+  integer boundary.
+- *Pilot leakage.* Every `print` in `scripts/` was audited. Counts are printed only inside the
+  corpus-level branch; the pilot branch prints gate verdicts. Failed **shard paths** are
+  printed as operational diagnostics so a scan can be retried — those name a worker directory,
+  and the judgement recorded here is that a path needed to resume a read is not a measurement
+  and not a published number. A reviewer who disagrees should say so.
+
+**A finding the author raises against the author's own work.** Two test thresholds --
+`CORPUS_NONUNIFORMITY_CV = 0.10` against a measured 0.19, and `CORPUS_ROTATION_FRACTION = 0.05`
+against a measured 0.127 -- are stated as "the floor a near-uniform field could not clear"
+rather than derived from an independent bound the way their narrow-lens counterparts are. They
+discriminate correctly, because a degenerate generator gives approximately zero, but the
+specific value is a choice and not a derivation. They should be re-derived from the lens
+geometry.
+
+**What is still owed before W3 closes.** A completed fresh-context review covering contract
+fidelity and test quality across the whole branch. The two items above are not that.
+
+**Reverses if:** a completed independent review finds anything the author's own pass missed,
+which is the outcome this entry exists to leave room for.
