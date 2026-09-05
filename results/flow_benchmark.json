@@ -1,0 +1,29 @@
+{
+  "rule": "docs/DECISIONS.md D024, fixed before any rate was measured",
+  "seed": 777,
+  "null_ceiling": 0.1,
+  "arms": {
+    "farneback-cv2": {
+      "measured": true,
+      "pairs": 192,
+      "pairs_per_s": 116.937,
+      "flow_null_rate": 0.0,
+      "clears_null_ceiling": true,
+      "a14_rotation_residual_px": 17.0011,
+      "declared_dependency_cost": "none; opencv-python-headless is in the signal extra",
+      "frame_size": [
+        480,
+        270
+      ],
+      "device": "cpu"
+    },
+    "raft-small": {
+      "measured": false,
+      "why_not": "torch is not installed and is declared in no extra; RAFT-small also needs a GPU for the throughput arm to mean anything. docs/REPRODUCTION.md 'Compute' specifies the g5.xlarge stage.",
+      "torch_importable": true,
+      "declared_dependency_cost": "torch, undeclared in pyproject.toml (D024 tiebreaker)"
+    }
+  },
+  "decision_taken": false,
+  "decision_status": "OPEN: D024 compares two arms and only one has been measured. Recording the measured arm's rates and calling the decision made would be the preference-with-a-table-attached the rule exists to prevent."
+}

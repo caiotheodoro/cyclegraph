@@ -34,11 +34,16 @@ mp4 inside a tar without downloading the shard, established in `../vernier/docs/
 Each sample is a **pair** (t, t + 1/fps) so the speed path has a flow baseline; decode is
 sequential either way, so the pair roughly doubles frames written, not frames decoded.
 
-**Cost:** ~1.7M pairs for the pilot. Estimated 3–6 hours wall-clock, network-bound rather
-than compute-bound; `vernier` measured 1.93 s for a cold single-frame seek, which is the
-per-clip overhead, not the per-frame rate.
-**Gate:** decode failure rate below 1%, and failures recorded as `decode_failed` rather than
-dropped.
+**Cost:** ~1.7M pairs for the pilot, network-bound rather than compute-bound. `vernier`
+measured 1.93 s for a cold single-frame seek, which is the per-clip overhead and the reason
+this stage decodes whole clips sequentially rather than seeking per instant
+(`docs/DECISIONS.md` D023 and `src/cyclegraph/corpus/decode.py`). The 3–6 hour estimate stands
+and is not yet replaced by a measured full-pilot figure.
+**Gate:** decode failure rate below 1% **per pair**, with the per-clip rate reported beside it
+(`docs/DECISIONS.md` D023), and failures recorded as `decode_failed` rather than dropped.
+**Measured:** the open-failure rate over every clip in the pilot manifest is 0.0000% per pair
+and per clip, and truncation over a seeded full-decode sample is 0.0069% per pair
+(`results/decode_probe.json`). The gate passes.
 
 ## E3 — Labelling and hand localisation
 
@@ -67,7 +72,7 @@ calibration subset of ~20,000 frames: `vernier` paid **$9.06** and ~10–11 h fo
 frames with two prompt variants (D066's estimate was $8.56; the real invoice is the number
 that counts), so ~$9 and ~10 h for one variant here. Detector ~1.7M
 frames at ~20 frames/s on one GPU ≈ 24 GPU-hours, the largest single cost in the pilot.
-Flow: Farneback ~50 pairs/s on CPU ≈ 10 h; RAFT-small ~10× faster on GPU.
+Flow: Farneback **measured at 116.9 pairs/s** on CPU at 480x270 over 192 real pilot pairs, with a flow-null rate of 0.000 (`results/flow_benchmark.json`, `docs/DECISIONS.md` D028) -- more than twice the ~50 pairs/s this line previously estimated. RAFT-small is unmeasured and the estimator choice is still OPEN.
 **Gate:** H1. If duty cycle is not stable across the two sources within 0.05 mean absolute
 difference, the probe cannot carry the corpus. The method does not scale a known-biased
 labeller to 30M frames; it takes **Arm B** of the pre-registered two-arm draw — judge-only,

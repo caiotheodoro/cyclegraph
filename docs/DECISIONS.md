@@ -653,3 +653,35 @@ reason having nothing to do with the corpus.
 
 **Reverses if:** the corpus is re-pinned, at which point every count is recomputed and every
 stored record's `corpus_rev` makes the old ones unpoolable rather than merely stale.
+
+## D028 — The flow benchmark: Farneback measured, and the decision stays OPEN
+
+**Result.** `scripts/bench_flow.py` ran Farneback over 192 real pilot pairs drawn from 12
+clips at seed 777, decoded at 480×270: **116.9 pairs/s on CPU, flow-null rate 0.000**, which
+clears `FLOW_NULL_CEILING` with the whole margin. `results/flow_benchmark.json` carries the
+table. The measured throughput is more than twice `docs/METHOD.md` E3's ~50 pairs/s estimate,
+at this frame size.
+
+**The decision is not taken, and that is the rule working rather than failing.** D024 fixed a
+comparison between two arms before either was measured, and RAFT-small has not been measured:
+torch is importable on this machine but is declared in no extra, no RAFT weights are present,
+and the throughput arm is meaningless without the GPU `docs/REPRODUCTION.md` specifies. So
+`decision_taken` is `false` in the artifact and `flow_method` on every record produced so far
+names Farneback as *what ran*, not as *what was chosen*.
+
+Recording one arm's rates and calling the decision made is precisely the
+preference-with-a-table-attached D024 exists to prevent. The temptation is real: Farneback's
+null rate is zero, its dependency is already declared, and the tiebreaker in D024(5) favours
+it. That is an argument for expecting it to win, not for recording that it did.
+
+**What would close it.** RAFT-small on a `g5.xlarge` over the same 192 seeded pairs, giving
+the null rate and the pairs/s that D024(2) and D024(3) compare. Until then the speed path runs
+on Farneback and says so.
+
+**One thing the benchmark did settle.** A zero null rate over 192 real pairs is evidence that
+the `== 0.0` detector almost never fires on real footage, which is the limitation D023 already
+stated in the abstract: real frames are textured enough that even a bad estimate returns
+something. The null rate is a lower bound on flow failure, and on this evidence a loose one.
+
+**Reverses if:** RAFT-small is measured and either fails the null-rate bound or wins on cost,
+at which point this entry is superseded by the one that records the comparison.
