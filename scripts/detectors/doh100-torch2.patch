@@ -1,0 +1,208 @@
+diff --git a/lib/model/csrc/ROIAlign.h b/lib/model/csrc/ROIAlign.h
+index 3907dea..2b049f0 100755
+--- a/lib/model/csrc/ROIAlign.h
++++ b/lib/model/csrc/ROIAlign.h
+@@ -14,7 +14,7 @@ at::Tensor ROIAlign_forward(const at::Tensor& input,
+                             const int pooled_height,
+                             const int pooled_width,
+                             const int sampling_ratio) {
+-  if (input.type().is_cuda()) {
++  if (input.is_cuda()) {
+ #ifdef WITH_CUDA
+     return ROIAlign_forward_cuda(input, rois, spatial_scale, pooled_height, pooled_width, sampling_ratio);
+ #else
+@@ -34,7 +34,7 @@ at::Tensor ROIAlign_backward(const at::Tensor& grad,
+                              const int height,
+                              const int width,
+                              const int sampling_ratio) {
+-  if (grad.type().is_cuda()) {
++  if (grad.is_cuda()) {
+ #ifdef WITH_CUDA
+     return ROIAlign_backward_cuda(grad, rois, spatial_scale, pooled_height, pooled_width, batch_size, channels, height, width, sampling_ratio);
+ #else
+diff --git a/lib/model/csrc/ROIPool.h b/lib/model/csrc/ROIPool.h
+index 200fd73..13db1a2 100755
+--- a/lib/model/csrc/ROIPool.h
++++ b/lib/model/csrc/ROIPool.h
+@@ -13,7 +13,7 @@ std::tuple<at::Tensor, at::Tensor> ROIPool_forward(const at::Tensor& input,
+                                 const float spatial_scale,
+                                 const int pooled_height,
+                                 const int pooled_width) {
+-  if (input.type().is_cuda()) {
++  if (input.is_cuda()) {
+ #ifdef WITH_CUDA
+     return ROIPool_forward_cuda(input, rois, spatial_scale, pooled_height, pooled_width);
+ #else
+@@ -34,7 +34,7 @@ at::Tensor ROIPool_backward(const at::Tensor& grad,
+                                  const int channels,
+                                  const int height,
+                                  const int width) {
+-  if (grad.type().is_cuda()) {
++  if (grad.is_cuda()) {
+ #ifdef WITH_CUDA
+     return ROIPool_backward_cuda(grad, input, rois, argmax, spatial_scale, pooled_height, pooled_width, batch_size, channels, height, width);
+ #else
+diff --git a/lib/model/csrc/cpu/ROIAlign_cpu.cpp b/lib/model/csrc/cpu/ROIAlign_cpu.cpp
+index d35aedf..7050fd7 100755
+--- a/lib/model/csrc/cpu/ROIAlign_cpu.cpp
++++ b/lib/model/csrc/cpu/ROIAlign_cpu.cpp
+@@ -224,8 +224,8 @@ at::Tensor ROIAlign_forward_cpu(const at::Tensor& input,
+                                 const int pooled_height,
+                                 const int pooled_width,
+                                 const int sampling_ratio) {
+-  AT_ASSERTM(!input.type().is_cuda(), "input must be a CPU tensor");
+-  AT_ASSERTM(!rois.type().is_cuda(), "rois must be a CPU tensor");
++  AT_ASSERTM(!input.is_cuda(), "input must be a CPU tensor");
++  AT_ASSERTM(!rois.is_cuda(), "rois must be a CPU tensor");
+ 
+   auto num_rois = rois.size(0);
+   auto channels = input.size(1);
+@@ -239,7 +239,7 @@ at::Tensor ROIAlign_forward_cpu(const at::Tensor& input,
+     return output;
+   }
+ 
+-  AT_DISPATCH_FLOATING_TYPES(input.type(), "ROIAlign_forward", [&] {
++  AT_DISPATCH_FLOATING_TYPES(input.scalar_type(), "ROIAlign_forward", [&] {
+     ROIAlignForward_cpu_kernel<scalar_t>(
+          output_size,
+          input.data<scalar_t>(),
+diff --git a/lib/model/csrc/cpu/nms_cpu.cpp b/lib/model/csrc/cpu/nms_cpu.cpp
+index 1153dea..e7bf2e5 100755
+--- a/lib/model/csrc/cpu/nms_cpu.cpp
++++ b/lib/model/csrc/cpu/nms_cpu.cpp
+@@ -6,9 +6,9 @@ template <typename scalar_t>
+ at::Tensor nms_cpu_kernel(const at::Tensor& dets,
+                           const at::Tensor& scores,
+                           const float threshold) {
+-  AT_ASSERTM(!dets.type().is_cuda(), "dets must be a CPU tensor");
+-  AT_ASSERTM(!scores.type().is_cuda(), "scores must be a CPU tensor");
+-  AT_ASSERTM(dets.type() == scores.type(), "dets should have the same type as scores");
++  AT_ASSERTM(!dets.is_cuda(), "dets must be a CPU tensor");
++  AT_ASSERTM(!scores.is_cuda(), "scores must be a CPU tensor");
++  AT_ASSERTM(dets.scalar_type() == scores.scalar_type(), "dets should have the same type as scores");
+ 
+   if (dets.numel() == 0) {
+     return at::empty({0}, dets.options().dtype(at::kLong).device(at::kCPU));
+@@ -68,7 +68,7 @@ at::Tensor nms_cpu(const at::Tensor& dets,
+                const at::Tensor& scores,
+                const float threshold) {
+   at::Tensor result;
+-  AT_DISPATCH_FLOATING_TYPES(dets.type(), "nms", [&] {
++  AT_DISPATCH_FLOATING_TYPES(dets.scalar_type(), "nms", [&] {
+     result = nms_cpu_kernel<scalar_t>(dets, scores, threshold);
+   });
+   return result;
+diff --git a/lib/model/csrc/cuda/ROIAlign_cuda.cu b/lib/model/csrc/cuda/ROIAlign_cuda.cu
+index 2ad4100..3a323c8 100755
+--- a/lib/model/csrc/cuda/ROIAlign_cuda.cu
++++ b/lib/model/csrc/cuda/ROIAlign_cuda.cu
+@@ -265,8 +265,8 @@ at::Tensor ROIAlign_forward_cuda(const at::Tensor& input,
+                                  const int pooled_height,
+                                  const int pooled_width,
+                                  const int sampling_ratio) {
+-  AT_ASSERTM(input.type().is_cuda(), "input must be a CUDA tensor");
+-  AT_ASSERTM(rois.type().is_cuda(), "rois must be a CUDA tensor");
++  AT_ASSERTM(input.is_cuda(), "input must be a CUDA tensor");
++  AT_ASSERTM(rois.is_cuda(), "rois must be a CUDA tensor");
+ 
+   auto num_rois = rois.size(0);
+   auto channels = input.size(1);
+@@ -285,7 +285,7 @@ at::Tensor ROIAlign_forward_cuda(const at::Tensor& input,
+     return output;
+   }
+ 
+-  AT_DISPATCH_FLOATING_TYPES(input.type(), "ROIAlign_forward", [&] {
++  AT_DISPATCH_FLOATING_TYPES(input.scalar_type(), "ROIAlign_forward", [&] {
+     RoIAlignForward<scalar_t><<<grid, block, 0, stream>>>(
+          output_size,
+          input.contiguous().data<scalar_t>(),
+@@ -314,8 +314,8 @@ at::Tensor ROIAlign_backward_cuda(const at::Tensor& grad,
+                                   const int height,
+                                   const int width,
+                                   const int sampling_ratio) {
+-  AT_ASSERTM(grad.type().is_cuda(), "grad must be a CUDA tensor");
+-  AT_ASSERTM(rois.type().is_cuda(), "rois must be a CUDA tensor");
++  AT_ASSERTM(grad.is_cuda(), "grad must be a CUDA tensor");
++  AT_ASSERTM(rois.is_cuda(), "rois must be a CUDA tensor");
+ 
+   auto num_rois = rois.size(0);
+   auto grad_input = at::zeros({batch_size, channels, height, width}, grad.options());
+@@ -331,7 +331,7 @@ at::Tensor ROIAlign_backward_cuda(const at::Tensor& grad,
+     return grad_input;
+   }
+ 
+-  AT_DISPATCH_FLOATING_TYPES(grad.type(), "ROIAlign_backward", [&] {
++  AT_DISPATCH_FLOATING_TYPES(grad.scalar_type(), "ROIAlign_backward", [&] {
+     RoIAlignBackwardFeature<scalar_t><<<grid, block, 0, stream>>>(
+          grad.numel(),
+          grad.contiguous().data<scalar_t>(),
+diff --git a/lib/model/csrc/cuda/ROIPool_cuda.cu b/lib/model/csrc/cuda/ROIPool_cuda.cu
+index fb5bf20..e03c2e7 100755
+--- a/lib/model/csrc/cuda/ROIPool_cuda.cu
++++ b/lib/model/csrc/cuda/ROIPool_cuda.cu
+@@ -116,8 +116,8 @@ std::tuple<at::Tensor, at::Tensor> ROIPool_forward_cuda(const at::Tensor& input,
+                                 const float spatial_scale,
+                                 const int pooled_height,
+                                 const int pooled_width) {
+-  AT_ASSERTM(input.type().is_cuda(), "input must be a CUDA tensor");
+-  AT_ASSERTM(rois.type().is_cuda(), "rois must be a CUDA tensor");
++  AT_ASSERTM(input.is_cuda(), "input must be a CUDA tensor");
++  AT_ASSERTM(rois.is_cuda(), "rois must be a CUDA tensor");
+ 
+   auto num_rois = rois.size(0);
+   auto channels = input.size(1);
+@@ -138,7 +138,7 @@ std::tuple<at::Tensor, at::Tensor> ROIPool_forward_cuda(const at::Tensor& input,
+     return std::make_tuple(output, argmax);
+   }
+ 
+-  AT_DISPATCH_FLOATING_TYPES(input.type(), "ROIPool_forward", [&] {
++  AT_DISPATCH_FLOATING_TYPES(input.scalar_type(), "ROIPool_forward", [&] {
+     RoIPoolFForward<scalar_t><<<grid, block, 0, stream>>>(
+          output_size,
+          input.contiguous().data<scalar_t>(),
+@@ -168,8 +168,8 @@ at::Tensor ROIPool_backward_cuda(const at::Tensor& grad,
+                                  const int channels,
+                                  const int height,
+                                  const int width) {
+-  AT_ASSERTM(grad.type().is_cuda(), "grad must be a CUDA tensor");
+-  AT_ASSERTM(rois.type().is_cuda(), "rois must be a CUDA tensor");
++  AT_ASSERTM(grad.is_cuda(), "grad must be a CUDA tensor");
++  AT_ASSERTM(rois.is_cuda(), "rois must be a CUDA tensor");
+   // TODO add more checks
+ 
+   auto num_rois = rois.size(0);
+@@ -186,7 +186,7 @@ at::Tensor ROIPool_backward_cuda(const at::Tensor& grad,
+     return grad_input;
+   }
+ 
+-  AT_DISPATCH_FLOATING_TYPES(grad.type(), "ROIPool_backward", [&] {
++  AT_DISPATCH_FLOATING_TYPES(grad.scalar_type(), "ROIPool_backward", [&] {
+     RoIPoolFBackward<scalar_t><<<grid, block, 0, stream>>>(
+          grad.numel(),
+          grad.contiguous().data<scalar_t>(),
+diff --git a/lib/model/csrc/cuda/nms.cu b/lib/model/csrc/cuda/nms.cu
+index c9fa200..2f1a702 100755
+--- a/lib/model/csrc/cuda/nms.cu
++++ b/lib/model/csrc/cuda/nms.cu
+@@ -70,7 +70,7 @@ __global__ void nms_kernel(const int n_boxes, const float nms_overlap_thresh,
+ // boxes is a N x 5 tensor
+ at::Tensor nms_cuda(const at::Tensor boxes, float nms_overlap_thresh) {
+   using scalar_t = float;
+-  AT_ASSERTM(boxes.type().is_cuda(), "boxes must be a CUDA tensor");
++  AT_ASSERTM(boxes.is_cuda(), "boxes must be a CUDA tensor");
+   auto scores = boxes.select(1, 4);
+   auto order_t = std::get<1>(scores.sort(0, /* descending=*/true));
+   auto boxes_sorted = boxes.index_select(0, order_t);
+diff --git a/lib/model/csrc/nms.h b/lib/model/csrc/nms.h
+index 312fed4..0cf71db 100755
+--- a/lib/model/csrc/nms.h
++++ b/lib/model/csrc/nms.h
+@@ -11,7 +11,7 @@ at::Tensor nms(const at::Tensor& dets,
+                const at::Tensor& scores,
+                const float threshold) {
+ 
+-  if (dets.type().is_cuda()) {
++  if (dets.is_cuda()) {
+ #ifdef WITH_CUDA
+     // TODO raise error if not compiled with CUDA
+     if (dets.numel() == 0)
