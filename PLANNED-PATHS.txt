@@ -20,6 +20,8 @@ scripts/measure_a14_floor.py
 scripts/bench_flow.py
 scripts/run_detector.py
 scripts/build_signal.py
+scripts/probe_decode.py
+results/decode_probe.json
 results/a14_translation_floor.json
 results/flow_benchmark.json
 

@@ -1,0 +1,12 @@
+{
+  "gate": 0.01,
+  "denominator": "pairs (docs/DECISIONS.md D023), with the per-clip rate beside it",
+  "open_failure_rate_per_pair": 0.0,
+  "open_failure_rate_per_clip": 0.0,
+  "clips_probed": 97,
+  "truncation_sample_clips": 3,
+  "truncation_missing_rate_per_pair": 6.9e-05,
+  "truncation_note": "Measured on a seeded sample decoded to the end; opening every clip is cheap and finishing every clip is not. Reported as a sample, not as the pilot's rate.",
+  "seed": 777,
+  "reasons": []
+}
