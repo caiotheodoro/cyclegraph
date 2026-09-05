@@ -112,8 +112,13 @@ def build_frame_signal(
     else:
         status = "ok"
 
-    if hand_mask_source == "none":
-        widths = [None] * n_frames
+    if hand_mask_source == "none" and any(w is not None for w in widths):
+        raise ValueError(
+            "hand_mask_source 'none' with detector box widths present. Nulling them here "
+            "would void a whole series of real detector measurements with no count and no "
+            "reason, and would understate H2c's coverage with no trace; this module repairs "
+            "nothing silently (docs/DECISIONS.md D022)"
+        )
 
     return FrameSignal(
         clip_id=clip.clip_id,

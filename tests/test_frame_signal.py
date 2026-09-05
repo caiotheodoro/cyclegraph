@@ -105,8 +105,19 @@ def test_resolve_conflicts_drops_the_box_and_counts_it_by_cause() -> None:
     assert built.n_frames == 4
 
 
-def test_a_mask_source_of_none_carries_no_box_widths() -> None:
-    signal = build_frame_signal(_clip(), _series(20, 0), provenance=PROVENANCE,
+def test_a_mask_source_of_none_with_box_widths_present_raises() -> None:
+    """An earlier version nulled the widths instead. That voided a whole series of real
+    detector measurements with no count and no reason: the record still validated, status
+    stayed `ok`, and the downstream coverage figure understated the detector with no trace.
+    This module repairs nothing silently."""
+    with pytest.raises(ValueError, match="repairs nothing silently"):
+        build_frame_signal(_clip(), _series(20, 0), provenance=PROVENANCE,
+                           hand_mask_source="none", flow_method="f", fps_sampled=4.0)
+
+
+def test_a_mask_source_of_none_is_fine_when_no_detector_ran() -> None:
+    samples = [FrameSample(t_s=i * 0.25, label=_label(True, 2)) for i in range(20)]
+    signal = build_frame_signal(_clip(), samples, provenance=PROVENANCE,
                                 hand_mask_source="none", flow_method="f", fps_sampled=4.0)
     assert all(w is None for w in signal.hand_box_width_px)
 

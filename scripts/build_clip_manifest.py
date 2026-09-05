@@ -70,12 +70,13 @@ def _scanned(path: Path) -> set[str]:
     return {json.loads(line)["shard"] for line in path.read_text().splitlines() if line.strip()}
 
 
-def _scan_one(shard: str, token: str | None) -> tuple[str, list[MetadataRow], str | None]:
+def _scan_one(shard: str, token: str | None) -> tuple[str, list[MetadataRow], int, str | None]:
     try:
         reader = ShardReader(REPO_ID, shard, token)
-        return shard, clip_records_from_shard(shard, reader.read_range), None
+        contents = clip_records_from_shard(shard, reader.read_range)
+        return shard, contents.rows, contents.dropped, None
     except Exception as exc:  # a failed shard is recorded, never silently skipped
-        return shard, [], f"{type(exc).__name__}: {exc}"
+        return shard, [], 0, f"{type(exc).__name__}: {exc}"
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -107,11 +108,15 @@ def main(argv: list[str] | None = None) -> int:
           flush=True)
 
     failures: list[str] = []
+    dropped_total = 0
     with out.open("a") as handle, ThreadPoolExecutor(max_workers=args.workers) as pool:
-        for i, (shard, rows, error) in enumerate(pool.map(lambda s: _scan_one(s, token), todo), 1):
+        for i, (shard, rows, dropped, error) in enumerate(
+            pool.map(lambda s: _scan_one(s, token), todo), 1
+        ):
             if error is not None:
                 failures.append(f"{shard}: {error}")
                 continue
+            dropped_total += dropped
             for row in rows:
                 handle.write(json.dumps(asdict(row)) + "\n")
             handle.flush()
@@ -122,6 +127,7 @@ def main(argv: list[str] | None = None) -> int:
             for line in out.read_text().splitlines() if line.strip()]
     refs = clip_refs(rows, corpus_rev=revision)
     print(f"\nfailed shards: {len(failures)}")
+    print(f"sidecars dropped (orphan or oversized): {dropped_total}")
     for f in failures[:10]:
         print(f"  {f}")
 

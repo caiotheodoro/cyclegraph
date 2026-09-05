@@ -741,3 +741,61 @@ fidelity and test quality across the whole branch. The two items above are not t
 
 **Reverses if:** a completed independent review finds anything the author's own pass missed,
 which is the outcome this entry exists to leave room for.
+
+## D030 — W3's fresh-context review, completed: five findings, two blocking, all addressed
+
+**Supersedes D029's "partial" status.** A third fresh context, given a narrow scope (contract
+fidelity and test quality), a hard budget of 15 tool calls and an instruction to report rather
+than keep investigating, returned a complete report in 11 calls. The two earlier attempts had
+stalled by investigating without reporting; the fix was scope and a budget, which is worth
+recording because the review step is otherwise easy to declare done on an empty result.
+
+**Finding 1, blocking: the speed path's only statistical output had no golden case.**
+`rms_speed_mm_s` is the number `HandSpeedEstimate` exists to carry and nothing asserted a value
+for it — the only assertion on the field was that it was `None`. The reviewer proved it by
+mutation rather than by inspection: deleting the pixel-to-millimetre scaling outright left
+`tests/test_hand_speed.py` at **17 passed**, and swapping `np.median` for `np.mean` in
+`ego_motion` and in the box-width statistic left **26 passed** across two files. The cause was
+a fixture that gave every sample the same speed and the same box width, where RMS, mean, median
+and max all coincide.
+
+Fixed with a hand-computable case: speeds `(300, 400, 1200)` px/s and widths `(100, 209, 400)`
+px give a median width of 209, an RMS of 750.5553 px/s and therefore
+`750.5553 x 85 / 209 = 305.2498` mm/s. Three further tests separate RMS from mean, median from
+mean in the ego-motion estimate (on a deliberately skewed background, which is the fisheye case
+the rubric's median exists to defend against), and median from first-or-largest in the width.
+Re-run under the same mutations: **A now fails 2 tests, B fails 3, C — substituting a mean for
+the RMS — fails 2.** The reviewer's own worked example gave 741.62 px/s and 301.6 mm/s; those
+figures are wrong and the values above are recomputed here.
+
+**Finding 2, blocking: `build_frame_signal` silently voided detector measurements.** Under
+`hand_mask_source="none"` it replaced every `hand_box_width_px` with `None`, in a module whose
+own docstring promises it repairs nothing silently. A caller that mis-wired the mask source
+while a detection store was loaded would have produced a record that validated, kept
+`status: "ok"`, and understated H2c's detector coverage with no trace anywhere. It now raises.
+
+**Finding 3, non-blocking: the manifest dropped rows with no count and no reason.** A sidecar
+with no sibling media, or one too large to be a sidecar, was skipped silently; a truncated or
+corrupt tar header ended the walk with a bare `return`, making a partial member list
+indistinguishable from a complete one. `clip_records_from_shard` now returns `ShardContents`
+carrying `orphan_sidecars` and `oversized_sidecars`, and a malformed header raises
+`ShardReadError` — which is what the eleven shards that failed the first corpus pass should
+have done rather than quietly shortening the manifest (D027).
+
+**Finding 4, non-blocking:** a dead conditional in the `HandSpeedEstimate` constructor whose
+branches were identical. Collapsed.
+
+**Finding 5: the reviewer disputed the author's own self-report, and was right.** D029 flagged
+`CORPUS_NONUNIFORMITY_CV = 0.10` and `CORPUS_ROTATION_FRACTION = 0.05` as possibly tuned. Measured,
+they sit 1.9x and 2.5x clear of their observations (0.1909 and 0.1266) while their long-lens
+controls sit 59x and 24x the other way, so neither is an observation rounded — they survive a
+2x shift in either direction and still separate the two lenses. What was actually wrong was the
+**provenance claimed in the comments**: one derived a sec^2 bound of ~5% and then asserted 1%,
+another cited a grid spacing of 0.06 px and asserted 1e-3, and both used O(h) reasoning for an
+O(h^2) interpolation error. Four comments are rewritten to state what these constants are —
+one-sided separation bounds with their measured margins — rather than asserting derivations
+that do not produce them.
+
+**Reverses if:** a later review finds the speed path's golden case still admits a mutation the
+three above do not cover, in which case the fixture is extended rather than the finding
+re-argued.

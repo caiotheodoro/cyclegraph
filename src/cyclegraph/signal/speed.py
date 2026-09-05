@@ -187,7 +187,7 @@ def hand_speed_estimate(
         coverage=coverage,
         flow_null_rate=flow_null_rate,
         hand_breadth_mm=hand_breadth_mm,
-        median_box_width_px=median_box_width_px if status == "ok" else median_box_width_px,
+        median_box_width_px=median_box_width_px,
         mask_source=mask_source,
         flow_method=flow_method,
         ego_motion="mask_complement_median",

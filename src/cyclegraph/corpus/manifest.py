@@ -38,6 +38,17 @@ _REGULAR = {b"0", b"\x00"}
 _MAX_SIDECAR_BYTES: Final[int] = 10_000
 
 
+class ShardReadError(RuntimeError):
+    """A shard that cannot be walked to its end.
+
+    Raised rather than returning a short member list, because a truncated walk and a complete
+    one are otherwise indistinguishable: the caller would get a plausible `list[MetadataRow]`
+    and no signal at all. `scripts/build_clip_manifest.py` records the shard as failed and the
+    run reports itself not authoritative, which is what happened to eleven shards on the first
+    corpus pass (`docs/DECISIONS.md` D027).
+    """
+
+
 def _round_up_block(size: int) -> int:
     return ((size + _BLOCK - 1) // _BLOCK) * _BLOCK
 
@@ -51,13 +62,19 @@ def walk_tar_members(read_range: ReadRange) -> Iterator[tuple[str, int, int]]:
     offset = 0
     while True:
         header = read_range(offset, offset + _BLOCK - 1)
-        if len(header) < _BLOCK or header[_NAME][:1] == b"\x00":
-            return
+        if not header or header[_NAME][:1] == b"\x00":
+            return  # the end-of-archive marker, or a clean end of stream
+        if len(header) < _BLOCK:
+            raise ShardReadError(
+                f"truncated header at offset {offset}: read {len(header)} of {_BLOCK} bytes"
+            )
         raw_size = header[_SIZE].rstrip(b"\x00 ").lstrip(b"0") or b"0"
         try:
             size = int(raw_size, 8)
         except ValueError:
-            return
+            raise ShardReadError(
+                f"unparseable size field at offset {offset}: {header[_SIZE]!r}"
+            ) from None
         name = header[_NAME].rstrip(b"\x00").decode("utf-8", "replace")
         prefix = header[_PREFIX].rstrip(b"\x00").decode("utf-8", "replace")
         if prefix:
@@ -96,17 +113,42 @@ def parse_clip_id(cid: str) -> tuple[str, str, int]:
     return parts[0], parts[1], int(parts[2])
 
 
-def clip_records_from_shard(shard: str, read_range: ReadRange) -> list[MetadataRow]:
+@dataclass(frozen=True, slots=True)
+class ShardContents:
+    """A shard's clips, and what was in it that did not become one.
+
+    `CONTRACTS.md`'s rule that absence is explicit applies to manifest rows as much as to
+    record fields: a sidecar with no sibling media, or one too large to be a sidecar, is
+    counted here rather than dropped, so a repacked or partly-corrupt shard is visible as a
+    number instead of as a slightly short manifest.
+    """
+
+    rows: list[MetadataRow]
+    orphan_sidecars: int
+    oversized_sidecars: int
+
+    @property
+    def dropped(self) -> int:
+        return self.orphan_sidecars + self.oversized_sidecars
+
+
+def clip_records_from_shard(shard: str, read_range: ReadRange) -> ShardContents:
     """Every clip in one shard, from its members' sidecars. No media is read."""
     members = list(walk_tar_members(read_range))
     media = {name.rsplit(".", 1)[0]: (off, size)
              for name, off, size in members if name.endswith(".mp4")}
     rows: list[MetadataRow] = []
+    orphans = 0
+    oversized = 0
     for name, off, size in members:
         if not name.endswith(".json"):
             continue
         stem = name.rsplit(".", 1)[0]
-        if stem not in media or size > _MAX_SIDECAR_BYTES:
+        if stem not in media:
+            orphans += 1
+            continue
+        if size > _MAX_SIDECAR_BYTES:
+            oversized += 1
             continue
         payload = json.loads(read_range(off, off + size - 1).decode("utf-8"))
         mp4_off, mp4_size = media[stem]
@@ -123,7 +165,7 @@ def clip_records_from_shard(shard: str, read_range: ReadRange) -> list[MetadataR
             height=int(payload["height"]),
             codec=str(payload["codec"]),
         ))
-    return rows
+    return ShardContents(rows=rows, orphan_sidecars=orphans, oversized_sidecars=oversized)
 
 
 def clip_refs(rows: Iterable[MetadataRow], *, corpus_rev: str) -> list[ClipRef]:

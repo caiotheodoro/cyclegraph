@@ -33,19 +33,25 @@ from cyclegraph.signal.synthetic import (
 )
 
 # `project(unproject(p)) == p` is exact arithmetic; the only error is the 20,001-point table
-# `unproject` interpolates on, whose spacing is 1.18 rad / 2e4 ~ 6e-5 rad ~ 0.06 px at f=1030.
+# `unproject` interpolates on. Linear interpolation of a smooth function has error O(h^2), not
+# O(h), so the grid spacing alone does not give the bound -- the round trip measures 1.87e-06 px
+# and this is set ~500x above that, loose enough to survive a platform's float differences and
+# still ~1000x tighter than any error that would matter to a residual in pixels.
 ROUNDTRIP_TOLERANCE_PX = 1e-3
 
 # Rotational flow under a long lens varies as sec^2(theta) across the field. NARROW_CAMERA's
-# half-angle is ~13 deg, so sec^2 spans 1.000-1.054 and the coefficient of variation cannot
-# exceed ~2%. One percent is that bound with room, and it is a geometric bound rather than an
-# observation.
+# half-angle is ~13 deg, where sec^2 - 1 = 5.3%, so geometry bounds the coefficient of
+# variation ABOVE by a few percent and says nothing tighter. The measured value is 0.0017.
+# This is therefore a separation bound and not a derivation: it sits ~6x above the observation
+# and ~100x below the corpus lens's, which is the gap it exists to assert.
 NARROW_UNIFORMITY_CV = 0.01
 
 # The corpus lens reaches 67.9 deg and its rotational flow at the edge of the image circle is
-# less than half the value at the centre. The measured coefficient of variation is ~0.19; the
-# test asserts it clears 0.10, which no near-uniform field can do. This is the A14 mechanism
-# expressed as a property of the flow field.
+# less than half the value at the centre. Measured coefficient of variation: 0.1909, against
+# 0.0017 for the long lens. This threshold is a one-sided separation bound at roughly half the
+# observation -- not a derived quantity, and stated as such -- chosen so that it survives a 2x
+# shift in either direction while still lying ~59x above the long lens's value. A generator
+# that lost the fisheye produces a near-uniform field and fails it by two orders of magnitude.
 CORPUS_NONUNIFORMITY_CV = 0.10
 
 
