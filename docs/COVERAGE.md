@@ -50,6 +50,19 @@ Not attempted at all. It requires recovery periods, additional factors and daily
 none reconstructible from a clip corpus with no shift structure. Listed so that the reader
 who knows the field can see it was considered.
 
+## A gap that is not about the instrument
+
+**The primary detector's weights cannot be obtained.** 100DOH's two published checkpoints both
+return 404 from the Google Drive links its paper and repository give, no mirror was found, and
+the repository still advertises them without a deprecation notice (`docs/DECISIONS.md` D037).
+The code builds and the training description is still `[V]`; the model those claims describe is
+not downloadable.
+
+This is listed here rather than in the red team because it is not an attack on a finding — it
+is a hole in what `docs/REPRODUCTION.md` promises. A stranger cannot re-run the speed path as
+specified, and that is true regardless of which detector this project ends up using or what
+the numbers turn out to be.
+
 ## Within what is measured, what is and is not tested
 
 | | Status |

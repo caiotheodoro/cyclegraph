@@ -51,7 +51,11 @@ records are written for the pilot and every one of them says so: `FrameSignal` a
 
 ## The next three things
 
-1. **Obtain the 100DOH checkpoint.** `faster_rcnn_1_8_132028.pth` is published only through
+1. **Decide the detector.** 100DOH's weights are gone -- both published checkpoints 404 and
+   no mirror exists (D037) -- while EgoHOS's download resolves. That is a decision, not an
+   errand: EgoHOS is segmentation and `docs/RUBRIC.md` scales speed by a detected **box**
+   width, so adopting it means deciding what that field means for a mask and amending the
+   rubric. **Superseded, for the record:** `faster_rcnn_1_8_132028.pth` is published only through
    a Google Drive link that refuses automated download, and no mirror was found (D035). The
    build itself is solved: the ops compile on a current AMI with
    `scripts/detectors/patch_doh100.py`, measured on real hardware. **This file is now W3's

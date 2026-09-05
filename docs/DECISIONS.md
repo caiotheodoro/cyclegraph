@@ -1055,3 +1055,50 @@ exists, which is the gate working. No other word of D035 is touched.
 
 **Reverses if:** upstream adopts the fix, at which point the script prints "nothing to patch"
 and both it and D035's build instructions become historical.
+
+## D037 — 100DOH's published weights are gone; EgoHOS's are not
+
+**Checked, not assumed.** `docs/METHOD.md` E3 names 100DOH as the detector and
+`docs/SURVEY.md` tags it `[V]` from its repository. The code is still there and, per D035,
+still builds. **The weights are not.**
+
+| Artifact | Source the paper publishes | Result |
+|---|---|---|
+| `faster_rcnn_1_8_132028.pth` (handobj_100K+ego) | Google Drive `1H2tWsZkS7tDF8q1-jdjx6V9XrK25EDbE` | **HTTP 404** |
+| `faster_rcnn_1_8_89999.pth` (handobj_100K) | Google Drive `166IM6CXA32f9L6V7-EMd9m8gin6TFpim` | **HTTP 404** |
+| EgoHOS checkpoints | Google Drive `1DEJBeQ3cR1q7cjjzwDUIQVSoptT-y9U7`, via `download_checkpoints.sh` | **HTTP 200** |
+
+Both 100DOH ids fail, so this is not one broken link. The upstream README still advertises
+them unchanged and carries no deprecation notice, so the loss is silent rather than announced.
+No mirror was found: Hugging Face has no copy of either checkpoint — its one near hit,
+`ThompsonC21/100DOH-TinyExplorer-Tuned-hand-detection`, is a fine-tune on infant head-camera
+data and is a **different model**, so using it and writing `mask_source: "100doh"` would be a
+claim about weights nobody published. Two downstream repositories that use 100DOH
+(`idejie/ego_hand_detecor`, `nripstein/Thesis-100-DOH`) both redirect to the same dead links.
+
+**The `[V]` tag stays true and is now narrower.** `docs/SURVEY.md` verified the *repository*
+and its training description; both still hold. What has changed is that a reader cannot obtain
+the model those claims are about.
+
+**This breaks a promise `docs/REPRODUCTION.md` makes**, independently of which detector the
+project ends up using: "if this document does not let a stranger obtain commensurable numbers,
+the project has failed on its own terms." A pipeline whose primary detector cannot be
+downloaded does not let a stranger do anything. That is now true of 100DOH whatever else is
+decided, and it is a coverage gap rather than a task.
+
+**The fallback exists but its trigger has not fired.** `docs/METHOD.md` names EgoHOS as the
+fallback "if 100DOH's coverage fails H2c", and `CONTRACTS.md` already admits
+`mask_source: "egohos"`. Coverage has not failed H2c; nothing has been measured at all. So
+switching is a different decision from the one METHOD anticipated and needs its own reason on
+the record rather than borrowing that one.
+
+**And it is not a drop-in.** EgoHOS is *segmentation*, and `docs/RUBRIC.md` scales pixel speed
+to mm/s by "the clip's median detected **box** width". A width derived from a mask is not the
+same quantity as a detector's box width — masks trace the hand's outline where a box bounds
+it, so the two differ by a factor that depends on hand pose. Adopting EgoHOS therefore
+requires deciding what `hand_box_width_px` means for a mask and saying so in the rubric, not
+just changing an enum value.
+
+**Reverses if:** the authors restore the files, a mirror surfaces, or the weights arrive by
+another route, at which point 100DOH is used as `docs/METHOD.md` specifies and this entry
+records an outage rather than a redirection.
