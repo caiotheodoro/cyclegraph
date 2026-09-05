@@ -10,12 +10,11 @@ with torch 2.7.0+cu128 and CUDA 12.8 (`docs/DECISIONS.md` D035):
 
     git clone https://github.com/ddshan/hand_object_detector
     cd hand_object_detector
-    git apply /path/to/cyclegraph/scripts/detectors/doh100-torch2.patch
+    python3 /path/to/cyclegraph/scripts/detectors/patch_doh100.py .
     pip install scipy opencv-python-headless
     cd lib && TORCH_CUDA_ARCH_LIST="8.6" python setup.py build_ext --inplace
 
-`doh100-torch2.patch` is the eight-file change that makes the custom CUDA ops compile against
-torch 2.x: `Tensor.type()` returned a `DeprecatedTypeProperties`, and torch 2 wants
+`patch_doh100.py` makes the custom CUDA ops compile against torch 2.x, across eight files: `Tensor.type()` returned a `DeprecatedTypeProperties`, and torch 2 wants
 `scalar_type()` for dispatch and `is_cuda()` directly on the tensor. Without it the build fails
 at `AT_DISPATCH_FLOATING_TYPES` with "cannot convert const at::DeprecatedTypeProperties to
 c10::ScalarType". The patch touches no model logic and changes no numerics.

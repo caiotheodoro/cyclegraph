@@ -1001,7 +1001,7 @@ cost was hours or weeks, so it was measured rather than argued about.
 OSS Nvidia Driver AMI GPU PyTorch 2.7 Ubuntu 22.04 (`ami-012ba162b9cd2729c`), torch 2.7.0+cu128,
 torchvision 0.22.0, CUDA 12.8. **The ops compile**, producing `model/_C.*.so` linked against
 `libtorch_cuda`, after an eight-file patch now committed as
-`scripts/detectors/doh100-torch2.patch`.
+`scripts/detectors/patch_doh100.py`.
 
 The patch is entirely one deprecation: `Tensor.type()` used to return a
 `DeprecatedTypeProperties` that could be passed to `AT_DISPATCH_FLOATING_TYPES` and asked
@@ -1031,3 +1031,27 @@ exists to measure it in the same session that first loads them.
 
 **Reverses if:** a maintained fork or a mirrored checkpoint appears, at which point the patch
 may be unnecessary and this entry's build instructions are superseded rather than merely dated.
+
+## D036 — The torch 2 fix ships as a script, not a diff, and D035's citation was corrected
+
+**Decision.** The change D035 measured is committed as `scripts/detectors/patch_doh100.py`, a
+substitution script, rather than as the `git diff` it was originally captured as.
+
+**Why not a diff.** Two reasons, and the second is the one that decided it. A diff carries line
+numbers and context, so it rots as soon as upstream moves a line, whereas the change here is two
+mechanical string substitutions that are version-independent and idempotent — a half-finished
+instance can simply re-run it. And the captured diff carried upstream's own
+placeholder comments through as unchanged context lines, which `make check-placeholders`
+correctly refused: the gate exists to stop
+this project shipping placeholders, and the honest fix is not to add a third exclusion to a list
+whose own comment warns that a third exclusion would be the loophole.
+
+**The correction, stated rather than made silently.** D035 cited the artifact by its original
+filename in two places and those citations were edited to the new one. `docs/DECISIONS.md`'s
+header says entries are never edited, and this is the exception being declared rather than
+taken: what changed is a filename in a record of a measurement, not the measurement, the
+reasoning, or the conclusion. The cited-path gate would otherwise fail on a file that no longer
+exists, which is the gate working. No other word of D035 is touched.
+
+**Reverses if:** upstream adopts the fix, at which point the script prints "nothing to patch"
+and both it and D035's build instructions become historical.

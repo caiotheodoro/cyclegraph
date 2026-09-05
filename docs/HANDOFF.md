@@ -54,7 +54,7 @@ records are written for the pilot and every one of them says so: `FrameSignal` a
 1. **Obtain the 100DOH checkpoint.** `faster_rcnn_1_8_132028.pth` is published only through
    a Google Drive link that refuses automated download, and no mirror was found (D035). The
    build itself is solved: the ops compile on a current AMI with
-   `scripts/detectors/doh100-torch2.patch`, measured on real hardware. **This file is now W3's
+   `scripts/detectors/patch_doh100.py`, measured on real hardware. **This file is now W3's
    blocking dependency, and it is a distribution problem rather than a compute one** — a
    browser download by a human, or a mirror, unblocks it. The GPU cost that follows is roughly
    6 GPU-hours for the pilot, well under an hour of wall-clock at ~$0.50/h.
