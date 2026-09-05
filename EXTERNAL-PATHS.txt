@@ -18,3 +18,4 @@
 ../vernier/src/vernier/estimation/bootstrap.py
 ../vernier/scripts/inspect_raw_shard.py
 ../assay/docs/METHOD.md
+../vernier

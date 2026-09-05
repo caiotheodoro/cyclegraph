@@ -3,8 +3,9 @@
 The resume point. A fresh session should be able to continue from this file without
 re-deriving anything.
 
-**Last updated: 2026-09-05 — W1 cleared, pre-registration at v1.1.0, contracts at v1.1,
-W2 in progress. The next thing is W2's three isolated commits, then W3.**
+**Last updated: 2026-09-05 — W1 cleared; pre-registration v1.2.0; contracts v1.2; W2
+landed as three isolated commits and reviewed in a fresh context (D020, 32 findings, all
+addressed). The next thing is W3.**
 
 ## Do not do
 
@@ -33,9 +34,9 @@ W2 in progress. The next thing is W2's three isolated commits, then W3.**
 | | |
 |---|---|
 | Docs | 19 files under `docs/`, spine complete, tightened after W1 |
-| `PRE-REGISTRATION.md` | v1.1.0, D013–D019, hashed, amendment gate green |
-| `CONTRACTS.md` | v1.1: `HandSpeedEstimate`, mapping-conditional `HALScore`, strata + k-floor on `ExposureAggregate` |
-| Code | W2 in progress: `models.py`, `exposure/hal.py`, `estimation/bootstrap.py` as isolated commits |
+| `PRE-REGISTRATION.md` | v1.2.0, D013–D020, hashed; the version gate walks the chain of prior versions |
+| `CONTRACTS.md` | v1.2: provenance on every record, `HALScore` recomputed from its mapping, `pilot_gate`, split dominance shares |
+| Code | W2 landed: `models.py`, `exposure/hal.py`, `estimation/bootstrap.py`; 190+ tests; `mypy --strict` clean |
 | Novelty gate | **Cleared 2026-09-05, narrowly.** `docs/SURVEY.md` S1–S6 answered |
 | Corpus access | Inherited from `../vernier`; a gated HF token with accepted terms is required |
 | HAL scale | **Resolved.** Radwin 2015 and Akkas 2015, open access, residuals published |
@@ -44,13 +45,9 @@ W2 in progress. The next thing is W2's three isolated commits, then W3.**
 
 ## The next three things
 
-1. **Finish W2.** `src/cyclegraph/models.py` with every validator `CONTRACTS.md` names
-   (mapping-conditional nulls, k-floor, identifier-pattern rejection); fixtures; golden tests
-   for both equations against Radwin 2015 Table 3 and for the bootstrap against synthetic
-   clustered data. `mypy --strict` clean.
-2. **W3.** `make manifest FACTORY=<first in sorted manifest>`; decode pairs at 4 Hz; run
+1. **W3.** `make manifest FACTORY=<first in sorted manifest>`; decode pairs at 4 Hz; run
    100DOH; write `FrameSignal` and `HandSpeedEstimate` for the pilot; A14 synthetics.
-3. **Decide the flow estimator by measurement, not preference.** Farneback CPU vs RAFT-small
+2. **Decide the flow estimator by measurement, not preference.** Farneback CPU vs RAFT-small
    GPU on 1,000 pairs; the one that meets H2c's null-rate bound at lower cost wins, recorded
    as a DECISIONS entry with the measured rates.
 
@@ -61,5 +58,6 @@ W2 in progress. The next thing is W2's three isolated commits, then W3.**
 | Whether EPIC-KITCHENS-100 is reachable for the frequency control | Its institutional-email requirement is met, or the control is reported `UNTESTED` |
 | Whether the pilot factory is degenerate | The manifest is built and its task and worker spread inspected (D012) |
 | Whether the vendor's manipulation label and the TLV's duty cycle are the same construct | Largely answered by the TLV's own definition of exertion (`docs/SURVEY.md` S3); closed when the pilot's judge labels are read against that sentence. `docs/RED-TEAM.md` A3 |
-| The A14 translation floor | The synthetic runs at W3 and the residual is measured |
+| The A14 translation floor | The synthetic runs at W3 and the residual is measured; the 20% pre-commitment is in the pre-registration (v1.2.0) |
+| Who resolves S2's abstract-only rows | Anyone who opens the six Radwin-lab papers in full and re-tags them; nothing downstream needs it |
 | Whether 100DOH's box width is a usable hand-breadth proxy on fisheye | H2c coverage and the hand-breadth sensitivity row at W7 |

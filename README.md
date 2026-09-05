@@ -50,7 +50,7 @@ finding. `MEASUREMENT_CARD.json` carries `verdict: NOT_VERIFIED` until that chan
 |---|---|
 | **The argument** | A published per-frame quality statistic is dimensionally an exposure primitive. Checkable by inspection, not by experiment. |
 | **The instrument** | Borrowed, not built: the Radwin lab's published speed–duty-cycle and frequency–duty-cycle HAL equations, fed from egocentric video with no new annotation. Hand speed from optical flow inside detected hand boxes, ego-motion subtracted; spectral bout frequency as a cross-check and a stated lower bound. |
-| **The distribution** | HAL across 85 factories and 2,153 workers. Reported at corpus level and, where a k-anonymity floor is cleared, by factory-size tercile. Nothing finer. |
+| **The distribution** | HAL across 85 factories and 2,144 workers (2,153 published; `../vernier/docs/UPSTREAM-FINDINGS.md` F12). Reported at corpus level and, where a k-anonymity floor is cleared, by factory-size tercile. Nothing finer. |
 | **The verifiable results** | Two label sources against each other; two sampling rates; spectral frequency against transition-counting; hand-box coverage and flow-failure rates; two negative controls on two corpora; variance decomposition; the design effect on clustered estimates. None needs external ground truth, and the evals card says so. |
 
 ## What is measured is people, and that decides the reporting
@@ -68,7 +68,7 @@ be neutral either.
 
 ## Status
 
-**Pre-registration v1.1.0; contracts v1.1; W2 in progress.** `docs/PRE-REGISTRATION.md` and
+**Pre-registration v1.2.0; contracts v1.2; W2 landed and reviewed (D020).** `docs/PRE-REGISTRATION.md` and
 `docs/RUBRIC.md` were committed before `src/` existed, and git history is the evidence of that
 ordering — checked by ancestry in `scripts/validate.py`, not by timestamp. Every amendment
 since quotes the sentence it replaced and cites a decision with a reversal clause; the gate

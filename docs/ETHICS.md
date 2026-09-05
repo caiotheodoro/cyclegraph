@@ -17,7 +17,8 @@ stated here, and it is narrower in what it permits than what it replaces.
 
 ## What is knowable, and what is not
 
-From the public release: 10,000 hours from 2,153 workers across 85 factories, captured on
+From the public release: 10,000 hours from 2,153 workers as published — 2,144 as shipped
+(`../vernier/docs/UPSTREAM-FINDINGS.md` F12) — across 85 factories, captured on
 the vendor's head-mounted devices in production environments, released under Apache-2.0,
 gated on contact details.
 

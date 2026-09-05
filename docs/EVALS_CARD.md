@@ -40,7 +40,7 @@ seen. `docs/RUBRIC.md` fixes that protocol in advance precisely so the result wo
 reportable whatever it said.
 
 The best published third-person system reports a cross-domain RMSE of 0.74 HAL points
-against observers (`docs/SURVEY.md` S2). That is the honest prior for how far this port
+against observers (`docs/SURVEY.md` S2; abstract-sourced, `[S]`). That is the honest prior for how far this port
 could be off, and nothing here measures it.
 
 ## Golden-case requirement
@@ -48,7 +48,9 @@ could be off, and nothing here measures it.
 Every statistical unit ships at least one test with a hand-computable expected answer:
 
 - the two HAL equations against Radwin 2015 Table 3 cells, within the paper's residual;
-- the bootstrap against synthetic clustered data with a known design effect, within ±10%;
+- the bootstrap against synthetic clustered data with a known design effect, within 12%
+  (the relative standard error of a 400-cluster variance estimate is ~7%, so 10% would be
+  a coin flip on a fixed seed and 12% is the honest bound);
 - the duty-cycle estimator against a series whose mean is known by construction;
 - the spectral estimator against a synthetic signal of known frequency;
 - the speed estimator against a rotation-only synthetic with a static hand (zero residual)

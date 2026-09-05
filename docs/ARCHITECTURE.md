@@ -95,9 +95,9 @@ the size-tercile strata.
 and what is rewritten.
 
 **Seam, and it is the one that matters most in this repository:** *the aggregation floor is
-a property of the report, not a default.* `cluster_unit`, `stratum`, `k_factories`,
-`k_workers`, `max_factory_share` and `aggregation_reason` are required with no default
-value. A module able to emit a per-worker, per-factory or sub-floor number is an ethics
+a property of the report, not a default.* `cluster_unit`, `stratum`, `n_factories`,
+`n_workers`, `max_factory_share_workers`, `max_factory_share_clips`, `label_source` and
+`aggregation_reason` are required with no default value. A module able to emit a per-worker, per-factory or sub-floor number is an ethics
 failure whether or not anything calls it, so `ExposureAggregate` has no field that can
 carry an identifier, its validator rejects any string that looks like one, and the k-floor
 is checked on construction — the constraint is in the schema, not in this module's
@@ -105,9 +105,9 @@ discipline. `docs/ETHICS.md` is the reason; `docs/DECISIONS.md` D019 is the rule
 
 ## `card`
 
-**Owns.** `MeasurementCard`. Every claim cites a path under `results/` that must exist, must
-contain the number the claim states, and must contain no identifier
-(`scripts/validate.py`).
+**Owns.** `MeasurementCard`. Every claim cites a path under `results/` that must contain no
+identifier (`scripts/validate.py`, enforced now) and — once `make card` exists at W8 — must
+exist and contain the number the claim states. A pilot-gated claim carries no value.
 
 **Depends on.** Everything, and nothing depends on it.
 

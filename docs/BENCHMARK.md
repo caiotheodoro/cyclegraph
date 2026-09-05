@@ -48,7 +48,7 @@ project's equivalent hypothesis unfalsifiable as written.
 
 ## Strata
 
-| Stratum | k factories | k workers | max factory share | HAL mean | CI95 |
+| Stratum | n factories | n workers | max share (workers / clips) | HAL mean | CI95 |
 |---|---|---|---|---|---|
 | corpus | — | — | — | — | — |
 | size tercile 1 | — | — | — | — | — |

@@ -40,7 +40,7 @@ and this table exists to make that hard to do by accident.
 | **Efforts per minute** | **Observable.** | This is exertion frequency in other units. |
 | **Hand/wrist posture** | **Partially observable, not attempted in v1.** | Wrist deviation is in principle recoverable from egocentric hand pose. It needs a pose estimator on fisheye imagery, which vision foundation models handle badly `[S]`, and it is out of scope. Named here so its absence is a decision rather than an oversight. |
 | **Speed of work** | **Not attempted.** | A subjective observer rating with no video-derivable definition this project is willing to invent. |
-| **Duration of task per day** | **Unobservable.** | The corpus has clips, not shifts. Mean ~7 hours per worker is published for the 100K release, but nothing links clips into a working day. |
+| **Duration of task per day** | **Unobservable.** | The corpus has clips, not shifts. Mean ~7 hours per worker is published for the 100K release (`../vernier/docs/ETHICS.md`), but nothing links clips into a working day. |
 
 **One of six.**
 

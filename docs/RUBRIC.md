@@ -1,6 +1,7 @@
 # Rubric
 
-**Version:** 1.0.0. Frozen with `docs/PRE-REGISTRATION.md`.
+**Version:** 1.1.0. Frozen with `docs/PRE-REGISTRATION.md`; amended with it, with the
+replaced text quoted at the end.
 
 The operational definitions the standards leave open. Every one of these is a choice; the
 standards state constructs, not procedures, and a procedure invented after seeing the data
@@ -13,8 +14,10 @@ than with a number.
 needs duration. Not a shift, because the corpus does not reconstruct shifts.
 
 **Clips shorter than 60 s are excluded** with `status: "too_short"`, counted, and reported.
-Sixty seconds is three cycles at the slowest frequency the analysis rate can resolve, and a
-duty cycle over fewer than three cycles is dominated by where the clip happened to start.
+The clip length bounds the *slowest* cycle the analysis can see; sixty seconds is three
+cycles at 0.05 Hz, a 20 s period, and a duty cycle over fewer than three cycles is dominated
+by where the clip happened to start. The analysis rate bounds the *fastest* (Nyquist,
+2 Hz); the two limits are separate and this floor is about the first.
 
 ## Duty cycle
 
@@ -120,3 +123,20 @@ This section exists to record that the omission is known rather than overlooked,
 what would happen if it changed: a certified ergonomist would score whole clips on HAL,
 blind to the pipeline's output, on a stratified sample drawn before any score is seen, and
 the resulting agreement would be reported whatever it said.
+
+## Amendments
+
+### v1.1.0 — D013, D014, D020
+
+- **Mapping to the Hand Activity Level scale** (D013). Prior: "The exact mapping — whether
+  the published regression or the categorical table, and which edition — is **an open
+  question, not a placeholder.** **Resolving trigger:** the ACGIH TLV documentation for Hand
+  Activity Level is obtained and opened, and the mapping transcribed with its edition
+  recorded in `scale_rev` on every `HALScore`. Until then no `HALScore` may be written;
+  `make hal` fails loudly rather than using an approximation." Now: the two published
+  equations, their fits, and their ranges.
+- **Hand speed** (D014). New section. No prior text replaced.
+- **The unit** (D020). Prior: "Sixty seconds is three cycles at the slowest frequency the
+  analysis rate can resolve, and a duty cycle over fewer than three cycles is dominated by
+  where the clip happened to start." Now: the clip length bounds the slowest cycle and the
+  analysis rate the fastest; the sentence had conflated them.

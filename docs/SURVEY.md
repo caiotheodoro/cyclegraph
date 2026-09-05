@@ -70,26 +70,29 @@ that could be opened, and is restated with its evidence rather than as a slogan.
 
 ## S2 — Has HAL been automated from video at all? **Yes, third-person, since 2013.** `[V]`
 
-One lab (Radwin, Hu, Chen, Akkas, Azari; University of Wisconsin), one viewpoint. Every
-paper below was opened via its PubMed record.
+One lab (Radwin, Hu, Chen, Akkas, Azari; University of Wisconsin), one viewpoint. The two
+2015 equation papers were read in full and are `[V]`. The other six were opened only through
+their PubMed abstracts, which under `AGENTS.md` rule 5 is `[S]`; they are tagged so in the
+table, and S2's answer rests on the two full papers plus the consistency of six abstracts,
+not on any number from the six.
 
 | PMID | Year | What | Viewpoint | Agreement |
 |---|---|---|---|---|
-| 23691826 | 2013 | Automated video exposure assessment of repetitive HAL for a load-transfer task (*Hum Factors*). Cross-correlation template matching on one region of interest. | Fixed camera, 12 subjects, paced lab task | slopes 0.98 (R² .79) frequency, 1.27 (R² .63) duty cycle, 1.06 (R² .77) HAL |
-| 25343278 | 2015 | Hand speed–duty cycle equation for HAL (*Ergonomics* 58(2):184–194; PMC4664886) | Latko's 33 job videos + 30 validation tasks | R² 0.99, MSE 0.16 on validation |
-| 25978764 | 2015 | Accuracy of conventional 2D video for upper-limb kinematics in repetitive tasks | Fixed | median speed error 86.5 mm/s, "sufficient for HAL" |
-| 26848051 | 2016 | Measuring elemental time and duty cycle using automated video processing (*Ergonomics*) | Fixed, marker-less | duty-cycle error 2.7–3.3%, HAL error 0.1 |
-| 28640656 | 2017 | Exertion time, duty cycle and HAL for industrial tasks using computer vision (*Ergonomics*) | Fixed | HAL difference 0.3–0.5 |
-| 28284701 | 2017 | Visualising stressful aspects of repetitive tasks (*Appl Ergon*) | Fixed | — |
-| 36227226 | 2023 | Observer vs single-frame video vs computer-vision HAL (*Ergonomics*) | Fixed | 68% within ±1 HAL; R² 0.89 CV vs single-frame |
-| 40811128 | 2026 | HAL from upper-limb pose trajectories, probabilistic regression (*Ergonomics*) | Third-person pose | RMSE 0.24 in-domain, 0.74 cross-domain |
+| 23691826 `[S]` | 2013 | Automated video exposure assessment of repetitive HAL for a load-transfer task (*Hum Factors*). Cross-correlation template matching on one region of interest. | Fixed camera, 12 subjects, paced lab task | slopes 0.98 (R² .79) frequency, 1.27 (R² .63) duty cycle, 1.06 (R² .77) HAL |
+| 25343278 `[V]` | 2015 | Hand speed–duty cycle equation for HAL (*Ergonomics* 58(2):184–194; PMC4664886) | Latko's 33 job videos + 30 validation tasks | R² 0.99, MSE 0.16 on validation |
+| 25978764 `[S]` | 2015 | Accuracy of conventional 2D video for upper-limb kinematics in repetitive tasks | Fixed | median speed error 86.5 mm/s, "sufficient for HAL" |
+| 26848051 `[S]` | 2016 | Measuring elemental time and duty cycle using automated video processing (*Ergonomics*) | Fixed, marker-less | duty-cycle error 2.7–3.3%, HAL error 0.1 |
+| 28640656 `[S]` | 2017 | Exertion time, duty cycle and HAL for industrial tasks using computer vision (*Ergonomics*) | Fixed | HAL difference 0.3–0.5 |
+| 28284701 `[S]` | 2017 | Visualising stressful aspects of repetitive tasks (*Appl Ergon*) | Fixed | — |
+| 36227226 `[S]` | 2023 | Observer vs single-frame video vs computer-vision HAL (*Ergonomics*) | Fixed | 68% within ±1 HAL; R² 0.89 CV vs single-frame |
+| 40811128 `[S]` | 2026 | HAL from upper-limb pose trajectories, probabilistic regression (*Ergonomics*) | Third-person pose | RMSE 0.24 in-domain, 0.74 cross-domain |
 
 **Consequence for this project.** The instrument — HAL from (frequency, duty cycle) or from
 (hand speed, duty cycle) recovered by computer vision — is published, validated against
-observer ratings, and has a cross-domain error of 0.74 HAL points in its best current form.
-cyclegraph inherits that lineage rather than competing with it (`docs/LINEAGE.md`), and the
-cross-domain figure is the honest prior for how far an unvalidated egocentric port could be
-off.
+observer ratings, and reports a cross-domain error of 0.74 HAL points in its best current
+form (abstract-sourced, `[S]`). cyclegraph inherits that lineage rather than competing with
+it (`docs/LINEAGE.md`), and the cross-domain figure is the honest prior for how far an
+unvalidated egocentric port could be off — a prior, not a load-bearing number.
 
 ## S3 — Exact HAL mapping and edition. **Resolved; two open equations.** `[V]`
 
@@ -113,11 +116,13 @@ PDF: `https://stacks.cdc.gov/view/cdc/200748` (and `ergo.wisc.edu`). Read in ful
   **This is the sentence that decides `docs/RED-TEAM.md` A3**: the TLV's own operational
   definition of exertion is *handling an object*, which is what the vendor's "hands working
   on a workpiece" label approximates. Idle grip for support is recovery under both.
-- **Golden cells** (their Table 3, one decimal): F=0.5, D 20–40 → 4.0; F=0.5, D 40–60 →
-  4.5; F=0.5, D 60–80 → 4.9; F=0.5, D 80–100 → 5.2; F=1.0, D 60–80 → 6.7; F=1.0,
-  D 80–100 → 7.1; F=1.5, D 60–80 → 7.4; F=1.5, D 80–100 → 7.8; F=0.25, D 20–40 → 2.4;
-  F=0.125, D 0–20 → 0.8. Tests evaluate the equation at cell mid-points and must land
-  within the paper's residual SD of the cell value.
+- **Golden cells** (their Table 3, one decimal, every non-shaded cell): F=0.125, D 0–20 →
+  0.8; F=0.125, D 20–40 → 1.2; F=0.25, D 20–40 → 2.4; F=0.25, D 40–60 → 2.8; F=0.5,
+  D 20–40 → 4.0; F=0.5, D 40–60 → 4.5; F=0.5, D 60–80 → 4.9; F=0.5, D 80–100 → 5.2;
+  F=1.0, D 60–80 → 6.7; F=1.0, D 80–100 → 7.1; F=1.5, D 60–80 → 7.4; F=1.5, D 80–100 →
+  7.8. The paper says the curves are "fitted values for duty cycles of 10, 30, 50, 70 and
+  90"; evaluated there, the largest miss against a printed cell is 0.058 (F=0.5, D=30:
+  3.942 vs 4.0), so the tests assert one-decimal agreement within ±0.1 and say so.
 - **`scale_rev = "radwin-2015-freq-dc"`**, and every `HALScore` records that it is a
   regression fit to the ACGIH 2001 table, not the table itself.
 
@@ -131,6 +136,12 @@ equation for estimating the ACGIH hand activity level rating*, *Ergonomics* 58(2
 - **Normalisation:** pixel speed is converted to mm/s using **hand breadth** as the scale
   (population means 90.4 mm male, 79.5 mm female; CoV 0.046/0.048). This is the scale
   cyclegraph must reproduce: a hand-box width in pixels against a hand breadth in mm.
+- **Golden rows** (their Table 1, Latko's rated jobs, as printed): Inspection S=255.3, D=26,
+  HAL 0.6; Line stack S=665.9, D=31, HAL 3.5; Fabric wrap S=574.0, D=74, HAL 5.98; Curler
+  S=1055.0, D=71, HAL 8.13. The paper prints no HAL table, so these rated jobs are the only
+  external anchor; the equation is held to them within 1.3 points (observers agree within
+  one point 91% of the time, plus the fit's residual), with the largest miss 1.23 on Fabric
+  wrap, and must rank the four in rated order.
 - **`scale_rev = "akkas-2015-speed-dc"`.**
 
 **The "purchase required" blocker in the prior RUBRIC and METHOD text was wrong.** The

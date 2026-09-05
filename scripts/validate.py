@@ -64,15 +64,16 @@ PLACEHOLDERS = re.compile(r"\b(TBD|TODO|FIXME|XXX)\b")
 PATH_SPAN = re.compile(r"`([^`\s]+)`")
 REPO_ROOTS = ("docs/", "src/", "tests/", "scripts/", "results/", "hf/", ".github/")
 
-# An identifier that must never reach a published number. Matches the corpus's own naming.
-IDENTIFIER = re.compile(r"\b(factory_\d+|worker_\d+)\b")
+# An identifier that must never reach a published number. Matches the corpus's own naming,
+# including shard file names (`factory001_worker001_part00.tar`) and any capitalisation.
+IDENTIFIER = re.compile(r"(factory|worker)[_-]?\d{2,}", re.I)
 
 VERSION_LINE = re.compile(r"^\*\*Version:\*\*\s+(\d+)\.(\d+)\.(\d+)\s*$", re.M)
 AMENDMENT_HEADING = re.compile(
     r"^### v(\d+)\.(\d+)\.(\d+) — (.+?) · prior hash ([0-9a-f]{64})\s*$", re.M
 )
 DECISION_REF = re.compile(r"\bD(\d{3})\b")
-PRIOR_QUOTE = re.compile(r'Prior:\s+"(.+?)"\s+Now:', re.S)
+PRIOR_QUOTE = re.compile(r'Prior[^:"\n]*:\s+"(.+?)"\s+Now:', re.S)
 DECISION_HEADING = re.compile(r"^## (D\d{3}) — ", re.M)
 
 
@@ -184,14 +185,50 @@ def _historical_versions() -> dict[str, str]:
     return out
 
 
+_SENTENCE = re.compile(r"(?<=[.!?])\s+")
+# What a removed quote or a list marker leaves at the front of a sentence: `**Label.**`,
+# `- `, `> `. Stripped so a bold section label or a bullet is not itself treated as a change.
+_LEADING_RESIDUE = re.compile(r"^(?:(?:[-*>]\s+)|(?:\*\*[^*]+\*\*\s*))+")
+_BODY_SKIP = ("**Version:**", "**Frozen:**", "**Amended:**", "# Pre-registration")
+
+
+_AMENDMENTS_HEADING = re.compile(r"^## Amendments\s*$", re.M)
+
+
+def _body(text: str) -> str:
+    """The frozen part: everything before the `## Amendments` heading (the banner mentions
+    the heading in prose, so this splits on the heading line, not the first mention)."""
+    return _AMENDMENTS_HEADING.split(text, maxsplit=1)[0]
+
+
+def _prior_sentences(prior_body: str, quotes: list[str]) -> list[str]:
+    """Sentences of a prior version that the amendment block does not claim to have replaced."""
+    out: list[str] = []
+    for para in re.split(r"\n\s*\n", prior_body):
+        squashed = _squash(para)
+        if not squashed or any(squashed.startswith(k) for k in _BODY_SKIP):
+            continue
+        for q in quotes:
+            squashed = squashed.replace(_squash(q), " ")
+        for sent in _SENTENCE.split(_squash(squashed)):
+            sent = _LEADING_RESIDUE.sub("", sent).strip()
+            if len(sent) >= 25 and not sent.startswith("|"):
+                out.append(sent)
+    return out
+
+
 def gate_prereg_version() -> list[str]:
-    """Every amendment is a decision with a reversal clause, quoting a real prior version.
+    """Every amendment is a decision with a reversal clause, quoting a real prior version, and
+    nothing in the frozen body changed that the amendment block does not account for.
 
     A re-hash on its own would let the frozen-hash gate pass for the wrong reason. This
     gate ties each amendment block to (a) a decision entry that exists and carries
-    `**Reverses if:**`, (b) a prior version whose sha256 is in git history, and (c) quoted
-    prior sentences that really were in that version. It also refuses any commit that
-    touched the pre-registration without touching its hash and the decisions log.
+    `**Reverses if:**`, (b) a prior version whose sha256 is in git history, (c) quoted prior
+    sentences that really were in that version, and (d) the chain: every sentence of that
+    prior version that is not quoted as replaced must still be present in the next version
+    (the following block's prior, or the working file for the newest block). It also refuses
+    any commit that touched the pre-registration without touching its hash and the
+    decisions log.
     """
     doc = ROOT / PREREG
     dec = ROOT / DECISIONS
@@ -215,26 +252,40 @@ def gate_prereg_version() -> list[str]:
         end = heads[j + 1].start() if j + 1 < len(heads) else len(decisions_text)
         entries[h.group(1)] = decisions_text[h.start() : end]
     history = _historical_versions()
+    chain: list[tuple[str, str, list[str]]] = []  # (label, prior text, quotes)
     for j, b in enumerate(blocks):
         end = blocks[j + 1].start() if j + 1 < len(blocks) else len(text)
         body = text[b.start() : end]
+        label = f"v{b.group(1)}.{b.group(2)}.{b.group(3)}"
         for ref in sorted(set(DECISION_REF.findall(b.group(4)) + DECISION_REF.findall(body))):
             key = f"D{ref}"
             entry = entries.get(key)
             if entry is None:
-                failures.append(f"prereg-version: amendment cites {key}, not in DECISIONS.md")
+                failures.append(f"prereg-version: {label} cites {key}, not in DECISIONS.md")
             elif "**Reverses if:**" not in entry:
                 failures.append(f"prereg-version: {key} has no reversal clause")
         prior_commit = history.get(b.group(5))
         if prior_commit is None:
             failures.append(
-                f"prereg-version: prior hash {b.group(5)[:12]} matches no committed version"
+                f"prereg-version: {label} prior hash {b.group(5)[:12]} matches no committed version"
             )
             continue
-        prior = _squash(_git("show", f"{prior_commit}:{PREREG}"))
-        for q in PRIOR_QUOTE.findall(body):
-            if _squash(q) not in prior:
-                failures.append(f"prereg-version: quoted prior text not in prior version: {q[:60]!r}")
+        prior = _git("show", f"{prior_commit}:{PREREG}")
+        quotes = PRIOR_QUOTE.findall(body)
+        for q in quotes:
+            if _squash(q) not in _squash(prior):
+                failures.append(f"prereg-version: {label} quotes text not in its prior: {q[:60]!r}")
+        chain.append((label, prior, quotes))
+    # (d) the chain. Each prior, minus what its block says it replaced, survives into the next.
+    versions = [c[1] for c in chain] + [text]
+    for i, (label, prior, quotes) in enumerate(chain):
+        nxt = _squash(_body(versions[i + 1]))
+        for sent in _prior_sentences(_body(prior), quotes):
+            if sent not in nxt:
+                failures.append(
+                    f"prereg-version: {label} changed or dropped a sentence its amendment "
+                    f"block does not quote: {sent[:70]!r}"
+                )
     commits = _git("log", "--format=%H", "--", PREREG).split()
     if commits:
         for commit in commits[:-1]:  # everything after the add commit

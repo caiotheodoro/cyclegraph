@@ -317,3 +317,73 @@ stratum level that a site cannot be identified from.
 
 **Reverses if:** any published stratum is shown to identify a site, at which point strata
 are withdrawn and the corpus-level aggregate is the only reporting unit again.
+
+## D020 — Fresh-context review of the W1–W2 branch: 32 findings, and what changed
+
+**Decision.** The review `docs/WAVES.md` requires at the end of every wave ran on
+2026-09-05 in a fresh context against the whole branch (`333b167..1f5c2d6`). It returned 32
+findings, three blocking. Every one is addressed in the commit that carries this entry, and
+the ones that change a frozen document or a schema are listed here so the record is
+complete. This entry also names two supersessions the file's own header requires and that
+D014 and D019 omitted: **D014 supersedes D005** (spectral is no longer primary) and **D019
+supersedes D006** (corpus-level is no longer the only reporting unit).
+
+**Blocking, and fixed.**
+
+1. `scripts/validate.py`'s pre-registration version gate bound the amendment blocks and the
+   hash, not the frozen body: a simulated silent edit of H3 with a re-hash and a one-line
+   DECISIONS touch passed both gates. The gate now walks the chain — every sentence of each
+   prior version that its amendment block does not quote as replaced must still be present
+   in the next version — and a test performs the tampering and asserts it is caught. Running
+   the new gate on v1.1.0 found **four sentences its own amendment record did not quote**
+   (the reporting-unit enforcement sentence, H2's "second half" sentence, and two negative-
+   control sentences). They are added to the v1.1.0 block now; the quotes are checked
+   against the v1.0.0 blob so the correction cannot itself be wrong.
+2. A pilot value could reach the card through `MeasurementClaim.interval` on an H1/H2 claim.
+   `pilot_gate` is now a required field, must be `true` exactly for the pilot-gated claim
+   ids, and a gated claim with an interval is rejected.
+3. The identifier pattern missed the corpus's shard naming (`factory001_worker001_part00`)
+   and any capitalisation. It is now `(factory|worker)[_-]?\d{2,}`, case-insensitive, in
+   both `models.py` and `validate.py`, and dictionary keys are walked as well as values.
+
+**Schema changes, `contracts/v1.2`.** `corpus_rev` on every record and `label_source` on
+every estimate at or above `HALScore` (seams 1 and 2 were prose above the frame level).
+`HALScore.hal` is recomputed from the named mapping on construction, `scale_rev` must equal
+the mapping's, `out_of_range` is derived, and a zero duty cycle is `status:
+"zero_duty_cycle"` rather than mapped through `ln D`. `ExposureAggregate` drops the
+redundant `k_*` fields — the floor is on `n_factories`/`n_workers` directly — and splits the
+dominance rule into `max_factory_share_workers` and `max_factory_share_clips` because D019
+says "or"; the design effect must equal the squared width ratio of the record's own two
+intervals within `design_effect_mc_band`; `bootstrap_b` is the literal 10,000; timestamps
+must be UTC. The rubric's frozen thresholds — 60 s clip floor, 10% unreadable ceiling, 0.5 s
+debounce, 6× peak-power floor — are constants in `models.py` and a status that contradicts
+them is rejected. `HandSpeedEstimate.mask_source` is null exactly when no detector ran.
+Zero speed or zero frequency is refused on the record, as it already was in the mapping.
+
+**Record corrections.** D015 attributed the "37 bare ids across 216 pairs" finding to
+vernier D072; it is in vernier **D071**. D018 and `docs/METHOD.md` called $8.56 "measured";
+vernier D066 records $8.56 as the *estimate* and **$9.06** as the real cost, so Arm B is
+≈$68, not $65. The README, AGENTS and ETHICS said 2,153 workers; the corpus ships **2,144**
+(`../vernier/docs/UPSTREAM-FINDINGS.md` F12) and the published figure is 2,153. LINEAGE
+still carried the 0.693/0.8 conflation METHOD had corrected, and said the standards were
+`[S]` after SURVEY had opened them. `docs/RUBRIC.md` had been rewritten without a version
+bump; it is now v1.1.0 with an amendments list. The EVALS card promised ±10% on the
+bootstrap golden test where the test uses 12%; the card now says 12%.
+
+**Pre-registration v1.2.0.** Two substantive changes, each with its reversal here: a
+switch to spectral-primary under D014 makes the frequency control `FAILED` and H3 `UNTESTED`
+for v1, because the destination path has no thresholded control of its own (the review's
+finding 22); and the A14 translation floor is pre-committed at 20% of the corpus median RMS
+speed rather than living only in the red team. **Reverses if:** a spectral-path frequency
+control is pre-registered with its own threshold in a later amendment.
+
+**Tagging.** `docs/SURVEY.md` S2 rows opened only through their PubMed abstract are
+re-tagged `[S]`; the two papers read in full stay `[V]`. The Radwin 2026 cross-domain RMSE
+of 0.74 is abstract-sourced and is now cited as such. 100DOH is `[V]` from its repository.
+
+**What the review did not find, and is still true.** No commit on the branch carries an AI
+attribution trailer; the ordering holds by ancestry and survives both `--no-ff` and squash
+merges; no aggregate can be built with an identifier field, a sub-floor stratum, or a bare
+`worker_id` cluster unit.
+
+**Reverses if:** nothing; this is a record.

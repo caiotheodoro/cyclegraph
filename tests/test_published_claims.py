@@ -58,6 +58,20 @@ def test_no_identifier_can_reach_a_published_number() -> None:
 
 
 def test_the_identifier_pattern_matches_the_corpus_naming() -> None:
-    assert validate.IDENTIFIER.search("hal for factory_007 was") is not None
-    assert validate.IDENTIFIER.search("cluster over worker_001") is not None
+    for hit in ("hal for factory_007 was", "cluster over worker_001",
+                "factory001_worker001_part00.tar", "Factory_007", "xworker-0012"):
+        assert validate.IDENTIFIER.search(hit) is not None, hit
     assert validate.IDENTIFIER.search("cluster_unit factory_id/worker_id") is None
+    assert validate.IDENTIFIER.search("85 factories, worker-hours") is None
+
+
+def test_a_silent_body_edit_is_caught_even_after_a_rehash() -> None:
+    """The scenario the gate exists for: change a threshold, re-hash, touch DECISIONS."""
+    prior = validate._git("show", f"HEAD:{validate.PREREG}")
+    current = (validate.ROOT / validate.PREREG).read_text()
+    assert "[2.4, 6.2]" in current
+    tampered = current.replace("[2.4, 6.2]", "[1.0, 9.0]")
+    quotes = validate.PRIOR_QUOTE.findall(tampered[len(validate._body(tampered)):])
+    survivors = validate._prior_sentences(validate._body(prior), quotes)
+    missing = [s for s in survivors if s not in validate._squash(validate._body(tampered))]
+    assert missing, "a changed H3 sentence must be detected as unquoted"

@@ -75,7 +75,7 @@ cycles:  ## Frequency axis: hand speed primary, spectral bout frequency and tran
 hal:  ## Duty cycle and the Hand Activity Level axis, by the published equations (docs/DECISIONS.md D013).
 	$(NOT_YET)
 
-estimate:  ## Cluster bootstrap over worker_id, with the design effect beside it.
+estimate:  ## Cluster bootstrap over factory_id/worker_id, with the design effect beside it.
 	$(NOT_YET)
 
 card:  ## Regenerate MEASUREMENT_CARD.json. Exits nonzero unless the verdict is VERIFIED.

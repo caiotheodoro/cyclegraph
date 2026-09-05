@@ -4,11 +4,12 @@
 
 cyclegraph reads a dataset vendor's per-frame quality metric as an occupational-exposure
 primitive, and measures the corpus that way. The corpus is `builddotai/Egocentric-10K`:
-10,000 hours, 2,153 workers, 85 factories, 192,903 clips.
+10,000 hours, 2,153 workers published and 2,144 shipped (`../vernier/docs/UPSTREAM-FINDINGS.md`
+F12), 85 factories, 192,903 clips.
 
-**Current state (2026-09-05):** documentation frozen, no code. `docs/SURVEY.md`'s novelty
-gate ran and cleared, narrowly; its two unopened reviews stay `[S]` and load-bearing on
-nothing.
+**Current state (2026-09-05):** W1 cleared, pre-registration v1.2.0, contracts v1.2, W2
+landed (models, the two HAL equations, the bootstrap), fresh-context review recorded as
+D020. `docs/SURVEY.md`'s two unopened reviews stay `[S]` and load-bearing on nothing.
 
 ## The claim
 

@@ -51,8 +51,10 @@ against 0.8"; corrected 2026-09-05. Those numbers are a warning, not a licence: 
 H1 exists. The **judge** runs on a stratified calibration subset only, sized so that H1's
 cross-source comparison is powered, not on the full corpus.
 
-**Hand boxes.** 100DOH (Shan et al. 2020, MIT licence, trained partly on egocentric
-EPIC-KITCHENS/EGTEA/CharadesEgo) on every sampled frame; box width recorded. EgoHOS is the
+**Hand boxes.** 100DOH (Shan et al., CVPR 2020; MIT licence; the released model is trained
+on 100K YouTube frames plus egocentric EPIC-KITCHENS/EGTEA/CharadesEgo — `[V]`, from the
+repository `github.com/ddshan/hand_object_detector`, opened 2026-09-05) on every sampled
+frame; box width recorded. EgoHOS is the
 fallback segmenter if 100DOH's coverage fails H2c.
 
 **Hand speed.** Dense optical flow on each pair (Farneback on CPU, or RAFT-small on GPU if
@@ -61,14 +63,15 @@ residual RMS inside the box; scaled by the clip's median box width against 85 mm
 (`docs/RUBRIC.md`). Emits `HandSpeedEstimate`.
 
 **Cost:** probe ~1.7M frames at ~100 frames/s ≈ 5 GPU-hours for the pilot. Judge on a
-calibration subset of ~20,000 frames: `vernier` measured $8.56 and ~10–11 h for 10,000
-frames with two prompt variants, so ~$9 and ~10 h for one variant here. Detector ~1.7M
+calibration subset of ~20,000 frames: `vernier` paid **$9.06** and ~10–11 h for 10,000
+frames with two prompt variants (D066's estimate was $8.56; the real invoice is the number
+that counts), so ~$9 and ~10 h for one variant here. Detector ~1.7M
 frames at ~20 frames/s on one GPU ≈ 24 GPU-hours, the largest single cost in the pilot.
 Flow: Farneback ~50 pairs/s on CPU ≈ 10 h; RAFT-small ~10× faster on GPU.
 **Gate:** H1. If duty cycle is not stable across the two sources within 0.05 mean absolute
 difference, the probe cannot carry the corpus. The method does not scale a known-biased
 labeller to 30M frames; it takes **Arm B** of the pre-registered two-arm draw — judge-only,
-200 clips (≈150,000 frames, ≈$65 at `vernier`'s measured rate), with H4 and H5 reported
+200 clips (≈150,000 frames, ≈$68 at `vernier`'s paid rate; D020 corrects D018's $65), with H4 and H5 reported
 `UNTESTED` (`docs/DECISIONS.md` D018). And H2c: detector coverage ≥60%, flow-null ≤10%.
 
 ## E4 — Duty cycle
