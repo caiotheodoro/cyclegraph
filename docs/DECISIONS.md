@@ -882,3 +882,57 @@ built and pointed at the pilot, and nothing more than that.
 **Reverses if:** the status is ever used to carry a value — a record at `not_attempted` with
 anything non-null beyond its identity and counts — at which point the validator's biconditional
 has been weakened and the entry that weakens it supersedes this one.
+
+## D033 — The 6x peak-power floor does not discriminate: white noise clears it
+
+**Found by running the estimator on noise before running it on the corpus.** `docs/RUBRIC.md`
+makes a `FrequencyEstimate` `resolvable` when its spectral peak exceeds **6x the median power
+of the rest of the spectrum**. Measured against synthetic white noise at 4 Hz, with 40 seeded
+trials per duration:
+
+| Clip duration | Periodogram bins | Predicted noise ratio, ln(N)/ln 2 | Measured median | Share reported `resolvable` |
+|---|---|---|---|---|
+| 60 s | 120 | 6.91 | 7.81 | **72%** |
+| 180 s | 360 | 8.49 | 8.89 | **100%** |
+| 433 s | 866 | 9.76 | 9.89 | **100%** |
+| 1200 s | 2400 | 11.23 | 11.96 | **100%** |
+
+The corpus's observed clip durations are 180, 433 and 1200 s
+(`../vernier/docs/DECISIONS.md` D071), so **an unstructured series is reported resolvable
+essentially always**, and H2b — "at least 70% of pilot clips are `resolvable`" — can be
+satisfied by a corpus containing no repetition whatever.
+
+**Why, and why it was predictable.** The periodogram of white noise is exponentially
+distributed per bin, so the ratio of the maximum to the median grows like `ln(N)/ln 2` in the
+number of bins `N`, and `N` grows with clip length. A fixed multiplicative floor therefore
+gets *easier* to clear the longer the clip. The measurement tracks the prediction to within
+about 13% at every duration, which is what makes this a property of the statistic rather than
+an artefact of one implementation.
+
+**What this is not.** It is not a defect in `src/cyclegraph/cycles/spectral.py`, which
+implements the rubric's sentence faithfully, and it is not `docs/RED-TEAM.md` A12. A12
+anticipated H2b **failing** by construction on a saturated series; this is the opposite and
+worse failure — H2b **passing** by construction, which would look like a result.
+
+It is the same class of error as the design-effect ambiguity that made a sibling project's
+equivalent hypothesis unfalsifiable and that `docs/PRE-REGISTRATION.md` H5 was written to
+avoid: a threshold stated in units that do not mean what the sentence assumes they mean.
+
+**Timing.** This is measured on synthetic noise, before any corpus clip has been scored
+spectrally, which is the only point at which the threshold can be changed without it being
+post-hoc — the same position D021 was in for the A14 floor.
+
+**Status: OPEN, and deliberately not fixed here.** `PEAK_POWER_FLOOR` is frozen in
+`docs/RUBRIC.md` and referenced by `docs/PRE-REGISTRATION.md` H2b, so changing it is an
+amendment to both and is the project author's decision rather than the implementer's. The
+estimator keeps the rubric's rule, `tests/test_cycles.py` pins the defect with an assertion
+that a later amendment must deliberately change, and no corpus spectral estimate has been
+produced.
+
+**Candidate fixes, for whoever takes the decision.** A floor that scales with bin count
+(`c · ln(N)`); the Lomb-Scargle false-alarm probability, which is the standard significance
+test for exactly this and is bin-count aware by construction; or a fixed frequency grid so `N`
+does not vary with clip length, which makes a constant floor meaningful again but discards
+resolution on long clips.
+
+**Reverses if:** nothing — this is a measurement. The amendment that acts on it supersedes it.
