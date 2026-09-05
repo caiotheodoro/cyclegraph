@@ -7,8 +7,8 @@ primitive, and measures the corpus that way. The corpus is `builddotai/Egocentri
 10,000 hours, 2,153 workers, 85 factories, 192,903 clips.
 
 **Current state (2026-09-05):** documentation frozen, no code. `docs/SURVEY.md`'s novelty
-gate has not been run to completion, and it gates everything. Every literature claim in this
-repository is `[S]` — search summary, not opened — and load-bearing on nothing.
+gate ran and cleared, narrowly; its two unopened reviews stay `[S]` and load-bearing on
+nothing.
 
 ## The claim
 

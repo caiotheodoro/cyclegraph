@@ -30,9 +30,9 @@ is the next thing and it blocks everything.**
 | Docs | Frozen. 19 files under `docs/`, spine complete |
 | `PRE-REGISTRATION.sha256` | Committed |
 | Code | None. `src/cyclegraph/` is a `.gitkeep` |
-| Novelty gate | **Not run.** `docs/SURVEY.md` S1–S6 all open |
+| Novelty gate | **Cleared 2026-09-05, narrowly.** `docs/SURVEY.md` S1–S6 answered; two reviews unopened, non-load-bearing |
 | Corpus access | Inherited from `../vernier`; a gated HF token with accepted terms is required |
-| HAL scale | **Blocked** on obtaining the ACGIH TLV documentation. S3 |
+| HAL scale | **Resolved.** Radwin 2015 and Akkas 2015 equations, open access, residuals published. S3 |
 | Expert anchor | **None, and none expected.** `docs/DECISIONS.md` D009 |
 
 ## The next three things

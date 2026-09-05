@@ -38,8 +38,11 @@ dropped.
 ## E3 — Labelling, two sources
 
 The primary label source is a **cheap probe** — frozen backbone features plus a linear head,
-the shape `vernier` built and published as a negative result at 0.693 fidelity against a
-0.8 target. That number is a warning, not a licence: it is why H1 exists.
+the shape `vernier` built and published as a negative result: teacher fidelity 0.6933 against
+a pre-registered ≥0.90, with the agreement floor met (0.8421 against ≥0.80) only by abstaining
+on 60% of frames (`../vernier/docs/DECISIONS.md`, D061 result table). An earlier version of
+this sentence conflated the two rows as "0.693 against 0.8"; corrected 2026-09-05. Those
+numbers are a warning, not a licence: they are why H1 exists.
 
 The **judge** runs on a stratified calibration subset only, sized so that H1's cross-source
 comparison is powered, not on the full corpus.

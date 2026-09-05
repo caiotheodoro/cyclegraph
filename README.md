@@ -72,9 +72,9 @@ committed before `src/` exists, and git history is the evidence of that ordering
 built on the argument that unvalidated measurements get published without protocols does not
 get to improvise its own.
 
-`docs/SURVEY.md`'s novelty gate has not been run to completion. Every literature claim in
-this repository is tagged `[S]` — sourced from a search summary, not from opening the paper
-— and none of it is load-bearing until it is opened and re-tagged `[V]`.
+`docs/SURVEY.md`'s novelty gate ran on 2026-09-05 and cleared, narrowly: HAL from video is
+published since 2013, always third-person; no egocentric system scores it. Two reviews could
+not be opened and stay `[S]`; nothing rests on them.
 
 ## Map
 

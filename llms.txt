@@ -6,9 +6,9 @@
 
 Status: documentation frozen, no code. `docs/PRE-REGISTRATION.md` and `docs/RUBRIC.md`
 committed before `src/` exists; git history is the evidence. `docs/SURVEY.md`'s novelty gate
-has NOT been run to completion and it gates everything downstream. Every literature claim in
-this repository is tagged `[S]` -- search summary, not opened -- and is load-bearing on
-nothing until re-tagged `[V]`.
+ran 2026-09-05 and cleared, narrowly: HAL from video is published (third-person, since
+2013); no egocentric system scores it. Two unopened reviews stay `[S]`, load-bearing on
+nothing.
 
 Headline: none yet. No measurement has run. `MEASUREMENT_CARD.json` does not exist until
 results do, and its verdict starts `NOT_VERIFIED`.

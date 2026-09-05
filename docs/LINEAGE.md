@@ -27,6 +27,21 @@ The reframe that makes this viewpoint workable — hand-and-wrist standards inst
 whole-body RULA/REBA — is a choice, not a discovery. It is available to anyone who notices
 that a head-mounted camera cannot see a trunk.
 
+## From the Radwin lab — the instrument, already built
+
+HAL has been recovered from video by computer vision since 2013 (University of Wisconsin;
+`docs/SURVEY.md` S2 lists eight papers). Two of them supply what cyclegraph runs on:
+
+| From | What | Where it lands |
+|---|---|---|
+| Radwin et al. 2015, *Ergonomics* 58(2):173 | `HAL = 6.56 ln D [F^1.31/(1+3.18F^1.31)]`, fitted to the ACGIH 2001 table, residual SD 1.18 | `exposure` module, `scale_rev = radwin-2015-freq-dc` |
+| Akkas et al. 2015, *Ergonomics* 58(2):184 | `HAL = 10 σ(−15.87 + 0.02D + 2.25 ln S)`, S in mm/s via hand breadth, R² 0.99 on validation | `exposure` module, `scale_rev = akkas-2015-speed-dc`; the reason the speed path exists (D014) |
+| Radwin 2015 §2 | The TLV's operational definition of exertion — "holding, manipulating, triggering, pushing, pulling or otherwise handling an object" — and of recovery | `docs/RED-TEAM.md` A3's answer |
+| Radwin et al. 2026, *Ergonomics* (PMID 40811128) | Cross-domain RMSE 0.74 HAL points for the best current third-person system | The honest prior for an unvalidated egocentric port |
+
+Every one of these is a fixed third-person camera. cyclegraph ports the instrument to the
+worker's viewpoint; it did not invent it.
+
 ## From `vernier` — the corpus, the machinery, and two limits
 
 `../vernier` is the sibling that audits the same vendor's quality claim on the same corpus.
@@ -59,8 +74,8 @@ uncertainty.*
 
 One observation, and what follows from it: **a per-frame data-quality statistic published by
 a dataset vendor is dimensionally an occupational-exposure primitive.** The instrument
-follows from the observation. `docs/SURVEY.md` gates whether even that survives contact with
-the literature, and it has not yet been run.
+follows from the observation and is borrowed, not built. `docs/SURVEY.md` ran the gate on
+2026-09-05 and it cleared, narrowly; the narrowing is recorded there.
 
 ## Ideas checked and abandoned before arriving here
 
