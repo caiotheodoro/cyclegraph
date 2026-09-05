@@ -1,8 +1,8 @@
 # Pre-registration
 
-**Version:** 1.3.0
+**Version:** 1.4.0
 **Frozen:** 2026-09-05, before `src/` exists and before a single clip is decoded.
-**Amended:** 2026-09-05, v1.1.0, v1.2.0 and v1.3.0, still before a single clip is decoded. The
+**Amended:** 2026-09-05, v1.1.0 through v1.4.0, still before a single clip is decoded. The
 amendment blocks at the end quote every prior sentence they replaced, and
 `scripts/validate.py` refuses any change to the frozen body that a block does not quote.
 
@@ -97,7 +97,9 @@ re-plan.
 
 **H2a/H2b, spectral path.** On pilot clips where both estimators resolve, spectral frequency
 and transition-counting frequency agree to within **20% relative difference**, and **at
-least 70%** of pilot clips are `resolvable` under the pre-registered peak-power floor.
+least 70%** of pilot clips are `resolvable` under the pre-registered peak-power floor, which
+is the ratio a white-noise spectrum of the same length would exceed only 5% of the time and
+therefore rises with clip length (`docs/RUBRIC.md`; `docs/DECISIONS.md` D034).
 
 **H2c, speed path.** Detector hand-box coverage is **at least 60%** of scored frames on the
 pilot in aggregate, and the flow-failure (`null`) rate is **at most 10%** of samples with a
@@ -273,3 +275,23 @@ point at which changing it is not post-hoc.
   400–1000 mm/s, which exceeds the 0.74 HAL cross-domain residual `docs/EVALS_CARD.md`
   names as the honest prior for this port; a bound looser than the instrument's own prior
   bounds nothing. 0.25 HAL is 4.4–5.8% of speed over the same band.
+
+### v1.4.0 — D034 · prior hash 83a9b53e410387ea77dd25301ec7cccb7b1ffab578b6150be8a0091689f9e33b
+
+Applied 2026-09-05, after the spectral estimator was run on synthetic noise and before it was
+run on any corpus clip. As with v1.3.0, the threshold is changed while the quantity it bounds
+is still unmeasured on real data, which is the only point at which changing it is not
+post-hoc.
+
+- **Header** (D034). Prior: "**Amended:** 2026-09-05, v1.1.0, v1.2.0 and v1.3.0, still before
+  a single clip is decoded." Now: names the range.
+- **H2** (D034). Prior: "least 70%** of pilot clips are `resolvable` under the pre-registered
+  peak-power floor." Now: the same 70%, against a floor defined as the ratio white noise of
+  the same length would exceed only 5% of the time. The 70% is unchanged; what changed is
+  that the floor now discriminates. Under the previous fixed 6× floor, measured over 40
+  seeded trials per duration, white noise was reported `resolvable` on 72% of 60 s clips and
+  **100%** of clips at 180 s, 433 s and 1200 s — the corpus's actual durations — because a
+  noise periodogram's peak-to-median ratio grows as ln(N)/ln 2 in bin count and a fixed
+  multiple therefore gets easier to clear the longer the clip. H2b was satisfiable by a
+  corpus containing no repetition, which is the same class of defect as the design-effect
+  ambiguity H5 was written to avoid.

@@ -1,6 +1,6 @@
 # Contracts
 
-`contracts/v1.3`, frozen 2026-09-05, before any clip is decoded. Schemas are the seam between the
+`contracts/v1.4`, frozen 2026-09-05, before any clip is decoded. Schemas are the seam between the
 modules described in `docs/ARCHITECTURE.md`; changing one is a decision and belongs in
 `docs/DECISIONS.md`. The changelog at the end records what v1.1 changed and why.
 
@@ -118,7 +118,7 @@ Three rules apply to all of them.
 
 ```json
 { "clip_id": "...", "corpus_rev": "3e5f87c8", "label_source": "judge",
-  "hz": 0.42, "method": "spectral", "peak_power_ratio": 6.1,
+  "hz": 0.42, "method": "spectral", "peak_power_ratio": 12.9, "resolvability_floor": 12.78,
   "resolvable": true, "hz_ci95": [0.38, 0.47], "nyquist_hz": 2.0, "status": "ok" }
 ```
 
@@ -266,3 +266,4 @@ Three rules apply to all of them.
 | `contracts/v1.1` | 2026-09-05 | `FrameSignal` gains hand-box width, mask source, flow method. New `HandSpeedEstimate`. `FrequencyEstimate.hz` documented as bout frequency. `HALScore` gains `mapping` and `rms_speed_mm_s` with mapping-conditional null rules. `ExposureAggregate` gains `stratum`, k-floor fields, `weighting`, `seed`, width-ratio, identifier-pattern rejection; `cluster_unit` is the composite. `MeasurementCard` gains `arm`, `FAILED`, `UNTESTED_ARM_B`. Still before `src/` exists. | D013–D019 |
 | `contracts/v1.2` | 2026-09-05 | After the fresh-context review. `corpus_rev` on every record; `label_source` up to the aggregate. `HALScore` recomputes `hal`, binds `scale_rev`, derives `out_of_range`, adds `zero_duty_cycle`. `ExposureAggregate` drops `k_*`, splits the dominance share, binds the design effect to its own intervals, fixes `bootstrap_b`, requires UTC. `MeasurementClaim.pilot_gate`. Identifier pattern covers shard naming and keys. Rubric thresholds enforced. | D020 |
 | `contracts/v1.3` | 2026-09-05 | `FrameSignal` gains `status: "not_attempted"` for a clip whose signal stage has not run, and makes `label_source`, `label_rev` and `prompt_variant` null exactly under that status. Recording an un-run stage previously required asserting that labelling ran and failed, or that decoding failed. | D031 |
+| `contracts/v1.4` | 2026-09-05 | `FrequencyEstimate` gains `resolvability_floor`, the noise-derived ratio the peak is judged against, recorded because it varies with clip length. The fixed 6x floor it replaces was cleared by white noise at every clip duration in this corpus. | D033, D034 |

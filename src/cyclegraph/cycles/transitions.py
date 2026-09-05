@@ -121,19 +121,22 @@ def transition_frequency(
     if not segments:
         return FrequencyEstimate(
             clip_id=clip.clip_id, corpus_rev=clip.corpus_rev, label_source=label_source,
-            hz=None, method="transitions", peak_power_ratio=None, resolvable=False,
+            hz=None, method="transitions", peak_power_ratio=None,
+            resolvability_floor=None, resolvable=False,
             hz_ci95=None, nyquist_hz=nyquist, status="no_peak",
         )
     hz = len(segments) / clip.duration_s
     if hz >= nyquist:
         return FrequencyEstimate(
             clip_id=clip.clip_id, corpus_rev=clip.corpus_rev, label_source=label_source,
-            hz=None, method="transitions", peak_power_ratio=None, resolvable=False,
+            hz=None, method="transitions", peak_power_ratio=None,
+            resolvability_floor=None, resolvable=False,
             hz_ci95=None, nyquist_hz=nyquist, status="aliased",
         )
     return FrequencyEstimate(
         clip_id=clip.clip_id, corpus_rev=clip.corpus_rev, label_source=label_source,
-        hz=hz, method="transitions", peak_power_ratio=None, resolvable=True,
+        hz=hz, method="transitions", peak_power_ratio=None,
+        resolvability_floor=None, resolvable=True,
         hz_ci95=None, nyquist_hz=nyquist, status="ok",
     )
 

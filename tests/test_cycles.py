@@ -13,6 +13,7 @@ import pytest
 
 from cyclegraph.cycles.spectral import (
     H2B_RESOLVABLE_FRACTION,
+    resolvability_floor,
     resolvable_fraction,
     spectral_frequency,
 )
@@ -24,7 +25,12 @@ from cyclegraph.cycles.transitions import (
     runs,
     transition_frequency,
 )
-from cyclegraph.models import DEBOUNCE_S, PEAK_POWER_FLOOR, ClipRef
+from cyclegraph.models import (
+    DEBOUNCE_S,
+    PEAK_POWER_FLOOR,
+    SPECTRAL_FALSE_ALARM_RATE,
+    ClipRef,
+)
 from tests import fixtures
 
 FPS = 4.0
@@ -169,23 +175,59 @@ def test_the_resolvable_fraction_is_over_every_clip_the_estimator_ran_on() -> No
         resolvable_fraction([])
 
 
-def test_white_noise_clears_the_pre_registered_peak_floor_which_is_a_defect() -> None:
-    """**This pins a defect, not a behaviour.** `docs/DECISIONS.md` D033.
+def test_the_resolvability_floor_rises_with_bin_count() -> None:
+    """The whole correction. A *fixed* multiple gets easier to clear the longer the clip,
+    because a noise periodogram's peak-to-median ratio grows as ln(N)/ln 2 in bin count. The
+    derived floor tracks that growth instead of ignoring it (`docs/DECISIONS.md` D034)."""
+    floors = [resolvability_floor(n) for n in (120, 360, 866, 2400)]
+    assert floors == sorted(floors)
+    assert all(f > PEAK_POWER_FLOOR for f in floors)  # every one above the superseded 6x
+    # The old floor was below the noise level at every corpus clip length; the new one is not.
+    assert floors[0] == pytest.approx(11.19, abs=0.05)
+    assert floors[-1] == pytest.approx(15.51, abs=0.05)
 
-    A periodogram of white noise has peak-to-median ratio growing as ln(N)/ln(2) in the number
-    of bins, and the bin count grows with clip length. At the corpus's clip durations that
-    ratio exceeds the pre-registered 6x floor essentially always, so an unstructured series is
-    reported `resolvable` and H2b can be satisfied by noise. The estimator is faithful to the
-    rubric; the rubric's floor is what does not discriminate.
 
-    The test asserts the defect so that a later amendment has to change it deliberately.
-    """
-    rng = np.random.default_rng(1)
-    series: list[Label] = [bool(rng.random() < 0.5) for _ in range(1200)]
-    est = spectral_frequency(_clip(300.0), series, fps=FPS, label_source="judge")
-    assert est.peak_power_ratio is not None
-    assert est.peak_power_ratio > PEAK_POWER_FLOOR
-    assert est.resolvable  # and it should not be
-    # The predicted noise ratio for this bin count, which the measurement tracks closely.
-    n_bins = int(300.0 * FPS / 2)
-    assert est.peak_power_ratio == pytest.approx(math.log(n_bins) / math.log(2), rel=0.35)
+def test_white_noise_is_no_longer_reported_resolvable() -> None:
+    """D033's defect, fixed. At 180 s -- below the corpus median clip length -- pure noise
+    cleared the old 6x floor 100% of the time. Against its own derived floor it clears at
+    about the nominal false-alarm rate instead, so H2b is a test again rather than something
+    a corpus with no repetition in it would pass."""
+    duration = 180.0
+    resolved = 0
+    trials = 40
+    for seed in range(trials):
+        rng = np.random.default_rng(1000 + seed)
+        series: list[Label] = [bool(rng.random() < 0.5) for _ in range(int(duration * FPS))]
+        est = spectral_frequency(_clip(duration), series, fps=FPS, label_source="judge")
+        resolved += int(est.resolvable)
+    assert resolved / trials <= 0.15  # nominal 5%; the bound leaves room for 40 trials
+
+
+def test_a_real_signal_still_clears_the_stricter_floor_by_orders_of_magnitude() -> None:
+    """The floor must reject noise without rejecting signal. A 0.25 Hz square wave clears its
+    own floor by more than three orders of magnitude at every corpus clip length."""
+    for duration in (180.0, 433.0):
+        est = spectral_frequency(_clip(duration), _square(0.25, duration), fps=FPS,
+                                 label_source="judge")
+        assert est.status == "ok"
+        assert est.peak_power_ratio is not None and est.resolvability_floor is not None
+        assert est.peak_power_ratio > 1000 * est.resolvability_floor
+
+
+def test_the_floor_is_recorded_on_the_record_and_transitions_carry_none() -> None:
+    """`resolvable` is a function of the floor and the floor now varies by clip, so it is
+    recorded -- the same rule `ExertionSegment.min_duration_s` follows."""
+    spectral = spectral_frequency(_clip(300.0), _square(0.25, 300.0), fps=FPS,
+                                  label_source="judge")
+    counted = transition_frequency(_clip(300.0), _square(0.25, 300.0), fps=FPS,
+                                   label_source="judge")
+    assert spectral.resolvability_floor is not None
+    assert counted.resolvability_floor is None
+
+
+def test_the_false_alarm_rate_is_the_pre_registered_one() -> None:
+    assert SPECTRAL_FALSE_ALARM_RATE == 0.05
+    with pytest.raises(ValueError):
+        resolvability_floor(1)
+    with pytest.raises(ValueError):
+        resolvability_floor(100, false_alarm=0.0)

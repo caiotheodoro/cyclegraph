@@ -936,3 +936,55 @@ does not vary with clip length, which makes a constant floor meaningful again bu
 resolution on long clips.
 
 **Reverses if:** nothing — this is a measurement. The amendment that acts on it supersedes it.
+
+## D034 — The resolvability floor is derived from the noise null, not chosen
+
+**Acts on D033**, which measured that the rubric's fixed 6× peak-power floor was cleared by
+white noise on 72% of 60 s clips and 100% of clips at every duration the corpus actually
+contains. `docs/RUBRIC.md` is at v1.2.0 and `docs/PRE-REGISTRATION.md` at v1.4.0.
+
+**The rule.** A `FrequencyEstimate` is `resolvable` when its peak-to-median ratio exceeds the
+value white noise of the same length would exceed only **5%** of the time:
+
+    floor(N) = −ln(1 − 0.95^(1/N)) / ln 2
+
+for a periodogram of `N` bins. Periodogram bins of noise are exponentially distributed, so the
+median is `ln 2` and the maximum of `N` of them satisfies `P(max < x) = (1 − e^−x)^N`;
+inverting at the 95th percentile and dividing by the median gives the floor. Nothing here is
+fitted or chosen except the false-alarm rate, which is one interpretable number rather than a
+multiplier whose meaning changed with clip length.
+
+| Clip duration | Bins | Old floor | Derived floor | Noise reported `resolvable`, old → new |
+|---|---|---|---|---|
+| 60 s | 120 | 6.0 | 11.19 | 72% → 13% |
+| 180 s | 360 | 6.0 | 12.78 | 100% → 5% |
+| 433 s | 866 | 6.0 | 14.04 | 100% → 5% |
+| 1200 s | 2400 | 6.0 | 15.51 | — |
+
+**It rejects noise without rejecting signal.** A 0.25 Hz square wave clears its own floor by
+more than three orders of magnitude at every corpus clip length, so the correction costs no
+real detection.
+
+**Where it is still loose, stated rather than found later.** At 60 s the measured false-alarm
+rate is 13% against a nominal 5%: the exponential null is optimistic for the shortest series,
+where there are fewer independent bins and the binary signal is furthest from the Gaussian
+assumption behind it. The corpus's shortest clip is 62.3 s and **0.67% of its 192,903 clips
+are under 180 s**, so this affects a fraction of a percent of the corpus and is disclosed
+rather than corrected with a second fudge.
+
+**The floor is recorded on every record.** It varies with clip length, so `FrequencyEstimate`
+gains `resolvability_floor` (`contracts/v1.4`) and the validator checks the peak against the
+record's own floor rather than a global. This is the rule `ExertionSegment.min_duration_s`
+already followed and for the same reason: `resolvable` is a function of the floor and a reader
+must be able to see which one was applied. `PEAK_POWER_FLOOR = 6.0` stays in `models.py`,
+superseded but not deleted, because it is what any record written under rubric v1.1.0 was
+judged against.
+
+**Timing.** Amended after running the estimator on synthetic noise and before running it on a
+single corpus clip — the same position D021 took for the A14 bound. The test that pinned
+D033's defect now asserts the fix, so the amendment had to change it deliberately rather than
+silently passing.
+
+**Reverses if:** the false-alarm rate is shown to be materially wrong for binary series at
+these lengths, in which case the null is calibrated by simulation per bin count rather than
+taken from the exponential approximation, and the floor is recomputed from that.
