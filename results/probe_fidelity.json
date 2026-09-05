@@ -1,0 +1,15 @@
+{
+  "backbone": "facebook/dinov2-small",
+  "target": "manipulation",
+  "n_frames": 750,
+  "source": "../vernier stored judge labels (gemini-2.5-flash, prompt variant P0b)",
+  "fidelity": {
+    "n": 750,
+    "accuracy": 0.8546666666666667,
+    "majority_baseline": 0.7746666666666666,
+    "balanced_accuracy": 0.784512521769241,
+    "aggregate_prevalence_judge": 0.7746666666666666,
+    "aggregate_prevalence_probe": 0.784
+  },
+  "what_this_is_not": "H1a's statistic. That is a per-clip mean absolute difference in duty cycle, and these frames are from the evaluation release, whose frame_id carries no clip linkage (docs/DECISIONS.md D011). The aggregate prevalence gap below is weaker: errors cancel across a pool in a way they do not within a clip."
+}

@@ -19,3 +19,10 @@
 ../vernier/scripts/inspect_raw_shard.py
 ../assay/docs/METHOD.md
 ../vernier
+
+# W4 -- the labeller. Judge labels, cached backbone features and the trained hand-count
+# head, all inherited rather than regenerated (docs/DECISIONS.md D038).
+../vernier/data/rung1_stored_labels.json
+../vernier/data/dinov2_features.json
+../vernier/data/rung1_probe.joblib
+../vernier/src/vernier/distil/linear_probe.py

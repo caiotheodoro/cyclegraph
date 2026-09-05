@@ -44,5 +44,10 @@ mypy_path = "src"
 strict = true
 
 [[tool.mypy.overrides]]
-module = ["scipy", "scipy.*", "cv2", "cv2.*"]
+# Third-party packages that ship no type information. These are runtimes used by
+# `scripts/` -- the detector and the labeller -- and deliberately not `[project]` extras:
+# `docs/DECISIONS.md` D022 keeps model runtimes out of `src/cyclegraph/`, so they name no
+# module in `docs/ARCHITECTURE.md` and an extra for them would be the drift this file warns
+# about.
+module = ["scipy", "scipy.*", "cv2", "cv2.*", "sklearn", "sklearn.*", "joblib", "joblib.*"]
 ignore_missing_imports = true

@@ -54,6 +54,10 @@ worker's viewpoint; it did not invent it.
 | `../vernier/docs/DECISIONS.md` | The design-effect threshold ambiguity — "a design effect of 2" versus "twice the width" — which made that project's equivalent hypothesis unfalsifiable as written | H5 states both readings in one sentence |
 | `../vernier/docs/COVERAGE.md` | That the vendor's manipulation figure reproduced within tolerance while its 2-hands figure did not | `docs/RED-TEAM.md` A1 |
 | `../vernier/docs/DECISIONS.md` D061 | The rung-1 probe and its published failure: teacher fidelity 0.6933 against ≥0.90, agreement floor 0.8421 against ≥0.80 met only by abstaining on 60% of frames | E3's choice of labeller, and the reason H1 exists |
+| `../vernier/data/rung1_stored_labels.json` | 29,400 `gemini-2.5-flash` P0b judge labels carrying `manipulation` **and** `hands_visible` | The training target for cyclegraph's manipulation head; no judge call is re-paid |
+| `../vernier/data/dinov2_features.json` | Cached `facebook/dinov2-small` features for 843 of those frames | The features both heads read |
+| `../vernier/data/rung1_probe.joblib` | The trained **hand-count** head | Reused as-is: `CONTRACTS.md` requires `hands_visible` beside every manipulation label, and this is the head that was built and measured for it |
+| `../vernier/src/vernier/distil/linear_probe.py` | The frozen-backbone-plus-linear-head shape | The method, reimplemented against a different target rather than imported |
 | `../vernier/docs/ETHICS.md` | The worker-as-cluster-not-subject rule | Extended, and deliberately not inherited — see below |
 
 **What is deliberately not inherited:** `vernier`'s ethics basis. That document disclaims

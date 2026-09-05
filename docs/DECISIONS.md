@@ -1102,3 +1102,58 @@ just changing an enum value.
 **Reverses if:** the authors restore the files, a mirror surfaces, or the weights arrive by
 another route, at which point 100DOH is used as `docs/METHOD.md` specifies and this entry
 records an outage rather than a redirection.
+
+## D038 — The labeller is two linear heads over one frozen backbone, and one of them is inherited
+
+**Decision.** `docs/METHOD.md` E3's cheap probe is implemented as a `facebook/dinov2-small`
+backbone, frozen, with two linear heads over the same features: a **manipulation** head fitted
+here, and `../vernier`'s trained **hand-count** head reused unchanged. The training labels are
+vernier's 29,400 stored `gemini-2.5-flash` P0b judge responses. No judge call is re-paid and no
+backbone is fine-tuned.
+
+**Why two heads and not one.** `CONTRACTS.md` makes `manipulation` and `hands_visible` null
+together or not at all, and rejects `manipulation: true` with `hands_visible: 0`. A
+manipulation-only probe therefore cannot write a legal record without inventing a hand count,
+and inventing one to satisfy a schema is the failure this project keeps naming. Vernier's head
+already predicts exactly that field, for exactly that corpus, with its fidelity published as a
+negative result — reusing it costs one matrix multiply per frame and re-fitting it would be
+rebuilding something already measured and already disclosed.
+
+**Vernier's *trained* probe is not reused for manipulation, and that was checked rather than
+assumed.** It predicts `hands_visible` — a three-class head, 384 inputs — because that was
+vernier's own hypothesis. Its weights carry no information about the manipulation column. What
+is inherited is the labels, the features, and the shape of the method.
+
+**Measured fidelity of the manipulation head**, five-fold stratified cross-validation over the
+750 frames that have both features and labels (`results/probe_fidelity.json`):
+
+| | |
+|---|---|
+| Accuracy | **0.8547** |
+| Majority-class baseline | 0.7747 |
+| Balanced accuracy | 0.7845 |
+| Aggregate prevalence, judge vs probe | 0.7747 vs 0.7840 |
+
+Accuracy is never reported here without the baseline beside it: on a corpus where three frames
+in four are manipulating, a head that always answered "yes" would score 0.775 and look
+respectable. It beats that, and by less than it first appears.
+
+**What the last row is not.** It is **not** H1a. H1a's statistic is the *per-clip* mean
+absolute difference in duty cycle between two label sources, and errors cancel across a pooled
+sample in a way they do not within a clip, so a 0.009 aggregate gap says almost nothing about a
+per-clip one. It cannot be computed from these frames at all: they are evaluation-release
+frames, whose `frame_id` carries no clip linkage (D011). **H1a is answerable only by running
+two labellers over raw-release pilot clips**, which is what W4 is.
+
+**Where the two heads contradict each other, the frame is unreadable.** `manipulation: true`
+with `hands_visible: 0` is a real disagreement between two heads, not a schema inconvenience.
+Those frames are written `null` with a reason and counted, never repaired toward whichever
+answer would keep them — the rule D022 sets for a detector and a labeller disagreeing, applied
+to two heads of one labeller. The rate is a reported gate.
+
+**The domain step, stated.** The heads are fitted on evaluation-release frames and applied to
+raw-release clips. Same corpus, same cameras, same vendor pipeline, but not the same frames,
+and nothing here measures the gap. It is a disclosed assumption rather than a validated one.
+
+**Reverses if:** H1a fails on the pilot, which selects Arm B and the judge-only draw (D018) —
+this probe is then reported as the biased labeller H1 was written to catch, not patched.
