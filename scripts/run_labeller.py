@@ -50,7 +50,10 @@ from cyclegraph.corpus.shards import REPO_ID, ShardReader  # noqa: E402
 from cyclegraph.models import ClipRef  # noqa: E402
 from labellers.probe import (  # noqa: E402
     BACKBONE,
-    IMAGE_SIZE,
+    CROP_SIZE,
+    IMAGE_MEAN,
+    IMAGE_STD,
+    RESIZE_SHORTEST_EDGE,
     HandCountProbe,
     ManipulationProbe,
 )
@@ -95,37 +98,56 @@ def label_rows(clip: ClipRef, times: Sequence[float], manipulation: Sequence[boo
 
 
 class DinoFeatures:
-    """Frozen `facebook/dinov2-small`, mean-pooled over patch tokens."""
+    """Frozen `facebook/dinov2-small`, mean-pooled over patch tokens.
+
+    The preprocessing is written out rather than delegated to `AutoImageProcessor`, for two
+    reasons. It is one fewer dependency -- the processor pulls torchvision, which the pipeline
+    otherwise never needs. And more importantly the exact steps are part of what a saved head
+    was fitted to: a processor config that changed under us would move the feature
+    distribution silently, and the head would keep returning confident answers to a different
+    question. These are the steps vernier used (`docs/LINEAGE.md`).
+    """
 
     def __init__(self, device: str = "cuda") -> None:
         self._device = device
         self._model: Any = None
-        self._processor: Any = None
 
-    def _load(self) -> tuple[Any, Any]:
+    def _load(self) -> Any:
         if self._model is None:
             import torch
-            from transformers import AutoImageProcessor, AutoModel
+            from transformers import AutoModel
 
-            # transformers ships partial typing; these factories are untyped there.
-            self._processor = AutoImageProcessor.from_pretrained(BACKBONE)  # type: ignore[no-untyped-call]
-            model = AutoModel.from_pretrained(BACKBONE).to(self._device).eval()
-            self._model = model
+            self._model = AutoModel.from_pretrained(BACKBONE).to(self._device).eval()
             torch.set_grad_enabled(False)
-        assert self._model is not None and self._processor is not None
-        return self._model, self._processor
+        return self._model
+
+    @staticmethod
+    def preprocess(frame: np.ndarray) -> np.ndarray:
+        """One greyscale frame to a normalised (3, 224, 224) array."""
+        from PIL import Image
+
+        image = Image.fromarray(frame).convert("RGB")
+        width, height = image.size
+        scale = RESIZE_SHORTEST_EDGE / min(width, height)
+        image = image.resize((round(width * scale), round(height * scale)), resample=3)
+        width, height = image.size
+        left, top = (width - CROP_SIZE) // 2, (height - CROP_SIZE) // 2
+        image = image.crop((left, top, left + CROP_SIZE, top + CROP_SIZE))
+        array: np.ndarray = np.asarray(image, dtype=np.float32) / 255.0
+        mean = np.asarray(IMAGE_MEAN, dtype=np.float32)
+        std = np.asarray(IMAGE_STD, dtype=np.float32)
+        normalised: np.ndarray = ((array - mean) / std).astype(np.float32)
+        return normalised.transpose(2, 0, 1)
 
     def extract(self, frames: Sequence[np.ndarray]) -> list[list[float]]:
         import torch
 
-        model, processor = self._load()
-        rgb = [np.repeat(f[:, :, None], 3, axis=2) for f in frames]
-        batch = processor(images=rgb, return_tensors="pt", size={"height": IMAGE_SIZE,
-                                                                "width": IMAGE_SIZE})
-        pixel_values = batch["pixel_values"].to(self._device)
+        model = self._load()
+        batch = np.stack([self.preprocess(f) for f in frames])
+        tensor = torch.from_numpy(batch).to(self._device)
         with torch.no_grad():
-            out = model(pixel_values=pixel_values)
-        pooled = out.last_hidden_state[:, 1:, :].mean(dim=1)  # patch tokens, no CLS
+            out = model(pixel_values=tensor)
+        pooled = out.last_hidden_state[:, 1:, :].mean(dim=1)  # patch tokens, CLS discarded
         return [[float(v) for v in row] for row in pooled.cpu().numpy()]
 
 

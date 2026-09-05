@@ -11,10 +11,12 @@ over is its 29,400 stored judge labels, which record `manipulation` alongside th
 its cached DINOv2 features, and the shape of the method. This module trains a new head on the
 same features against the `manipulation` column.
 
-**The backbone is `facebook/dinov2-small` and the pooling is mean over patch tokens.** Neither
-travels with a saved head, so both are named here: a linear head is meaningless without the
-exact features it was fitted to, and a caller who changed either would get a probe that
-silently scored a different quantity.
+**The backbone, the preprocessing and the pooling are all named here**, because none of them
+travels with a saved head and all three change the features it was fitted to. A caller who
+resized differently would get a probe that silently scored a different quantity rather than an
+error. The pipeline is vernier's, reproduced rather than re-derived: resize the shortest edge
+to 256 with bicubic resampling, centre-crop to 224, rescale to [0, 1], normalise by the
+ImageNet mean and standard deviation, and mean-pool the patch tokens, discarding CLS.
 """
 
 from __future__ import annotations
@@ -30,7 +32,8 @@ BACKBONE: Final[str] = "facebook/dinov2-small"
 FEATURE_DIM: Final[int] = 384
 IMAGE_MEAN: Final[tuple[float, float, float]] = (0.485, 0.456, 0.406)
 IMAGE_STD: Final[tuple[float, float, float]] = (0.229, 0.224, 0.225)
-IMAGE_SIZE: Final[int] = 224
+RESIZE_SHORTEST_EDGE: Final[int] = 256
+CROP_SIZE: Final[int] = 224
 SEED: Final[int] = 777
 
 
