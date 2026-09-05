@@ -529,3 +529,49 @@ measurement whose decision rule is written afterwards is a preference with a tab
 
 **Reverses if:** the chosen estimator's null rate on the full pilot exceeds 10%, which is H2c
 and is a re-run against this same rule, not a re-argument of it.
+
+## D025 — The corpus ships one camera calibration, not 2,144; the A14 synthetic uses it
+
+**Decision.** The A14 synthetics are built on the corpus's own lens model rather than an
+invented one. The model is recorded here as a corpus constant, and the fact that it *is* a
+constant is recorded as a limitation.
+
+**What was found.** `builddotai/Egocentric-10K` at revision
+`3e5f87c88c54ce8343865d8e2a8c171f18385a05` ships 2,144 `intrinsics.json` files, one per
+worker directory — the same count as the shipped workers (`../vernier/docs/UPSTREAM-FINDINGS.md`
+F12). Sixteen of them were drawn at an even stride across the sorted list, landing in sixteen
+different factories, and **all sixteen are byte-identical**: 302 bytes, one sha256. The
+per-worker calibration is a single calibration replicated.
+
+| Field | Value |
+|---|---|
+| `model` | `fisheye` |
+| `image_width` × `image_height` | 1920 × 1080 |
+| `fx`, `fy` | 1030.587009, 1032.815725 |
+| `cx`, `cy` | 966.691189, 539.687801 |
+| `k1` … `k4` | −0.116554, −0.023589, +0.069364, −0.046334 |
+
+Four radial coefficients, no tangential terms, and the field names and `model` string are
+OpenCV's fisheye convention, which is Kannala–Brandt on an equidistant base. That is now `[V]`
+from the shipped files rather than inferred from the coefficient count.
+
+**Why it matters twice.** First, it settles the privacy question the synthetic would otherwise
+raise: a lens model that is identical for every worker is a property of the corpus, not of a
+person, so embedding it in a committed test emits no per-worker value. Second, and less
+comfortably, **the corpus has no real per-camera calibration**. Whatever lens-to-lens variation
+exists across 2,144 physical cameras is unmodelled and unmeasurable from the release, so the
+A14 floor computed from this model is a floor for *the nominal lens*, not for the fleet.
+`../vernier/docs/COVERAGE.md` describes the release as shipping "per-worker fisheye
+intrinsics"; that is what the files are named and not what they contain, and cyclegraph records
+the correction rather than inheriting the phrasing.
+
+**Consequence for A14.** The lens is wide enough for the attack to be real: at `fx` ≈ 1030 on a
+1920-pixel width, the horizontal half-angle is on the order of a radian, so rotational flow
+varies substantially between image centre and edge and a scalar ego-motion subtraction cannot
+cancel it. The rotation residual is therefore measured under this model and counted toward the
+floor (D021), and the narrow-field rotation case is retained only as a test of the estimator's
+arithmetic.
+
+**Reverses if:** a later release ships genuinely per-worker calibrations, at which point the
+floor is recomputed per calibration and its spread reported, or a wider sample of the current
+release finds a worker whose `intrinsics.json` differs from these sixteen.
