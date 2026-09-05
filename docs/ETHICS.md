@@ -41,11 +41,18 @@ records that the consent instrument is unknown.
 
 - **No per-worker result, ever.** `worker_id` is load-bearing for every interval — clips
   from one person are not independent observations — and appears in no published number.
-- **No per-factory result either.** This goes further than `vernier`. Factory-level
-  aggregation protects individuals while exposing *sites*: "this plant shows exposure above
-  the action limit" is a finding about an identifiable workplace whose operators never
-  participated, and the people most exposed to the consequences are the workers there.
-  85 sites with published client sectors are not meaningfully anonymous.
+- **No per-factory result either, and no stratum below the floor.** This goes further than
+  `vernier`. Factory-level aggregation protects individuals while exposing *sites*: "this
+  plant shows exposure above the action limit" is a finding about an identifiable workplace
+  whose operators never participated, and the people most exposed to the consequences are
+  the workers there. Eighty-five sites are not meaningfully anonymous, and the corpus
+  metadata carries no sector field that would let a sector be named either. The only unit
+  between corpus and nothing is a **factory-size tercile** that clears ≥5 factories, ≥50
+  workers and no factory above 40% of its workers or clips, with one `corpus_rev` per
+  release so no two published aggregates can be differenced (`docs/DECISIONS.md` D019).
+  A stratum that fails the floor is printed as suppressed, not omitted.
+- **No pilot value.** The pilot factory is nameable by construction; its gates publish pass
+  or fail only.
 - **No ranking of anything.** Not workers, not sites, not shifts.
 - **No re-identification of any kind.** No face recognition, no cross-clip linkage, no
   linkage to any external source.
@@ -66,6 +73,13 @@ The aggregation floor is the mitigation and it is the only one. It is worth bein
 that it is a *design* mitigation, not a technical impossibility: anyone with the corpus and
 this repository's method can compute the per-worker number. What this project controls is
 what it publishes and what its own code will emit, and it controls both.
+
+For the same reason this project does **not** ship a "run it on your own site" tool. An
+instrument a site runs on its own footage is worker surveillance unless the workers, not
+the site, consented to that use; nothing here can inspect that consent, so nothing here
+offers the path. The finding is aggregate, and the way to make it actionable is a study
+run with the participation of the people concerned — a different study with a different
+document.
 
 ## The argument against not doing this
 

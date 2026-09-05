@@ -10,7 +10,8 @@ coming.
 The pipeline needs a per-frame manipulation label at a cost that scales to tens of millions
 of frames. It does not need a *new* model to produce one. `docs/METHOD.md` E3 uses a frozen
 backbone plus a linear head — the shape `../vernier` already built, published, and reported
-as a negative result at 0.693 fidelity against a 0.8 target.
+as a negative result: teacher fidelity 0.6933 against a pre-registered ≥0.90
+(`../vernier/docs/DECISIONS.md` D061).
 
 Reusing a published negative result as a component is deliberate. Its failure is documented,
 so its contribution to error is bounded by something a reader can go and check, and H1 is

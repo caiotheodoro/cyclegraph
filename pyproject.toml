@@ -17,7 +17,7 @@ dependencies = [
 # module, or a module with no extra, means the architecture and the packaging have drifted.
 [project.optional-dependencies]
 corpus     = ["huggingface_hub>=0.35", "pillow>=10"]
-signal     = ["numpy>=1.26"]
+signal     = ["numpy>=1.26", "opencv-python-headless>=4.9"]
 cycles     = ["numpy>=1.26", "scipy>=1.11"]
 exposure   = ["numpy>=1.26"]
 estimation = ["numpy>=1.26", "scipy>=1.11"]
@@ -41,9 +41,8 @@ target-version = "py311"
 [tool.mypy]
 python_version = "3.11"
 mypy_path = "src"
-packages = ["cyclegraph"]
 strict = true
 
 [[tool.mypy.overrides]]
-module = ["scipy", "scipy.*"]
+module = ["scipy", "scipy.*", "cv2", "cv2.*"]
 ignore_missing_imports = true

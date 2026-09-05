@@ -64,20 +64,51 @@ walk between stations — is recorded `status: "no_peak"` with `hz: null`.
 detectable cycle" as "no repetition," which is the single most consequential way this
 pipeline could understate exposure.
 
+## Hand speed
+
+The primary frequency-axis input (`docs/DECISIONS.md` D014). Defined so that a reader can
+disagree with a rule rather than with a number.
+
+- **A speed sample** is taken at each 4 Hz instant from the frame pair (t, t + 1/fps):
+  dense optical flow, the **median flow over the complement of the hand mask** taken as the
+  camera's ego-motion and subtracted, then the **RMS residual flow magnitude inside the
+  largest detected hand box**. Pixels per second.
+- **Scale.** Pixel speed is converted to mm/s by `hand_breadth_mm / median_box_width_px`,
+  the clip's median detected box width standing in for hand breadth as Akkas 2015 requires.
+  `hand_breadth_mm = 85`, the mean of the paper's male and female population means, because
+  sex is not known per clip. The choice is disclosed on every `HandSpeedEstimate` and its
+  effect on HAL is bounded by re-running with 79.5 and 90.4 in the sensitivity table.
+- **Absence.** No box → `null` sample. Flow failure → `null` sample with reason, never zero
+  (`docs/RED-TEAM.md` A15). A clip with box coverage below **60%** of scored frames is
+  `status: "low_coverage"`; with a flow-null rate above **10%** of boxed samples it is
+  `status: "flow_failed"`. Either carries `rms_speed_mm_s: null` and contributes no HAL on
+  this path. Both rates are reported.
+- **The clip's estimate** is the RMS over its valid samples. It is a sampled speed process,
+  not a tracked trajectory; no hand is followed between samples and Nyquist does not apply.
+- **Never from a region prior.** A "lower half of the frame" mask is not a hand mask; a
+  record built from one is a contract violation.
+
 ## Mapping to the Hand Activity Level scale
 
-HAL is a 0–10 scale determined from exertion frequency and duty cycle. The exact mapping —
-whether the published regression or the categorical table, and which edition — is **an open
-question, not a placeholder.**
+HAL is a 0–10 scale. Two published regression fits to the ACGIH 2001 look-up table are used,
+each with its residual on record (`docs/SURVEY.md` S3; `docs/DECISIONS.md` D013):
 
-**Resolving trigger:** the ACGIH TLV documentation for Hand Activity Level is obtained and
-opened, and the mapping transcribed with its edition recorded in `scale_rev` on every
-`HALScore`. Until then no `HALScore` may be written; `make hal` fails loudly rather than
-using an approximation.
+| `mapping` | Inputs | Equation | Fit |
+|---|---|---|---|
+| `radwin-2015-freq-dc` | F exertions/s, D % | `HAL = 6.56 · ln D · [F^1.31 / (1 + 3.18 F^1.31)]` | residual SD 1.18 on Latko's 33 jobs |
+| `akkas-2015-speed-dc` | S mm/s, D % | `HAL = 10 · σ(−15.87 + 0.02 D + 2.25 ln S)` | R² 0.99, MSE 0.16 on 30 validation tasks |
 
-This is deliberate. An approximate mapping would produce numbers that look like HAL, compare
-against published HAL distributions in H3, and be wrong by an unknown offset that H3 could
-not detect.
+- The speed mapping is primary; the frequency mapping runs on the spectral cross-check
+  path with `F` understood as bout frequency, a lower bound.
+- Values are reported to one decimal, as Radwin 2015 recommends for comparison and
+  arithmetic, and rounded to integers only where a TLV category is named.
+- Inputs outside the fitted range (F 0.125–1.67/s, D 11–100%, S 255–1288 mm/s) are mapped
+  and flagged `out_of_range: true`; their share is reported. Extrapolation is not hidden.
+- **No approximation of this project's own.** An approximate mapping would produce numbers
+  that look like HAL, compare against published HAL in H3, and be wrong by an offset H3
+  could not detect. The published fits carry their own residual, which is the point.
+- `scale_rev` on every `HALScore` names the table edition and the fit. If ACGIH revises the
+  table, a new `scale_rev` is added and old records keep theirs.
 
 ## What a rater would do, if there were one
 

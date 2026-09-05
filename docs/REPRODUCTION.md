@@ -14,8 +14,9 @@ the path as it is being built, and the free portion of it is already real.
   `ffmpeg -protocols | grep -E 'https|subfile'`; the corpus path needs both.
 - For anything touching the corpus: a Hugging Face token with `builddotai/Egocentric-10K`'s
   terms accepted. The dataset is gated. Put it in `.env`; see `.env.example`.
-- For E6 onward: the ACGIH TLV documentation for Hand Activity Level. It is a purchase and
-  there is no free substitute. `docs/RUBRIC.md` records why an approximation is refused.
+- For E6 onward: nothing to buy. The HAL mappings are the two open, peer-reviewed equations
+  in `docs/SURVEY.md` S3, transcribed into `src/cyclegraph/exposure/hal.py` with golden
+  tests against the papers' table cells.
 
 ## The free path — $0, no token, no network
 
@@ -41,7 +42,7 @@ the assumption beside each figure and replaces it with a measured value as it la
 make manifest FACTORY=factory_001    # E1. Negligible: shard index reads only.
 make signal                          # E2+E3. ~1.7M frames for the pilot factory.
 make cycles                          # E5. Negligible.
-make hal                             # E6. BLOCKED until docs/SURVEY.md S3 resolves.
+make hal                             # E6. Published equations; docs/DECISIONS.md D013.
 make estimate                        # E8. Minutes.
 make card                            # E9. Exits nonzero while the verdict is NOT_VERIFIED.
 ```
@@ -52,7 +53,8 @@ before it is.
 
 ## Known footguns
 
-- **`make hal` is meant to fail** right now. It is blocked on the scale mapping, not broken.
+- **`make hal` still fails** at W1–W2 because the stage is not written, not because anything
+  is blocked. The mapping is resolved (`docs/DECISIONS.md` D013).
 - **The evaluation release will not work.** Its `frame_id` carries no clip linkage, so no
   duty cycle can be computed from it. Use the raw release. `docs/DECISIONS.md` D011.
 - **A shallow clone breaks the ordering check.** `git log --diff-filter=A` needs full

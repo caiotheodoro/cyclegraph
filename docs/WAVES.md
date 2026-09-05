@@ -9,8 +9,8 @@ fan-out → re-verify. A re-read in the same context is not a review.
   the frozen text.
 - **`docs/SURVEY.md`'s novelty gate before W1.** If egocentric hand-activity assessment is
   already published, re-scope. A redundant result is worth less than the honesty of noticing.
-- **S3 before E6.** The HAL scale mapping must come from the primary standard. `make hal`
-  fails loudly rather than approximating.
+- **The published equations before E6.** HAL is mapped only by `radwin-2015-freq-dc` or
+  `akkas-2015-speed-dc` with `scale_rev` set; `make hal` refuses any other mapping.
 - **H1 before the main draw.** If duty cycle is not stable across label sources, the cheap
   labeller cannot carry 30 million frames and scaling it anyway would be knowingly building
   on a biased estimate. H1 failing selects Arm B of the pre-registered two-arm draw
@@ -29,12 +29,12 @@ fan-out → re-verify. A re-read in the same context is not a review.
 |---|---|---|
 | **W0** | Frozen docs, no `src/` | `make validate` green on docs gates; `PRE-REGISTRATION.sha256` committed; every cited path resolves or is declared |
 | **W1** | Novelty gate | `docs/SURVEY.md` S1–S6 answered, every `[S]` opened and re-tagged, verdict recorded |
-| **W2** | `CONTRACTS.md` in code | `src/cyclegraph/models.py` implements every record as a frozen pydantic model with `extra="forbid"`; fixtures generated; `mypy --strict` clean |
-| **W3** | `corpus` + `signal` | Pilot factory manifest reconciles against published counts; decode failure rate <1%; `FrameSignal` written for the pilot |
+| **W2** | `CONTRACTS.md` in code | `src/cyclegraph/models.py` implements every record as a frozen pydantic model with `extra="forbid"`; fixtures generated; the two HAL equations and the bootstrap land as pure functions with golden tests; `mypy --strict` clean. Three isolated commits: models, `exposure/hal`, `estimation/bootstrap` |
+| **W3** | `corpus` + `signal` | Pilot factory manifest reconciles against published counts; decode failure rate <1%; `FrameSignal` and `HandSpeedEstimate` written for the pilot; A14 synthetics pass |
 | **W4** | H1 | Duty cycle stable across label sources and sampling rates → Arm A; or H1 reported FAILED and Arm B (judge-only, 200 clips) runs, with H4/H5 `UNTESTED` |
-| **W5** | `cycles` + H2 | Spectral and counting agree within 20%; ≥70% resolvable |
-| **W6** | Negative control | Median HAL separates factory from non-repetitive corpus by ≥1.0 |
-| **W7** | `exposure` + `estimation` | H3, H4, H5 measured with clustered intervals and the design effect published beside them |
+| **W5** | `cycles` + H2 | H2a/H2b on the spectral path; H2c coverage ≥60% and flow-null ≤10% on the speed path |
+| **W6** | Negative control | Ego4D duty-cycle gap ≥0.25 and HAL gap ≥1.0; EPIC speed-path HAL gap ≥0.5 |
+| **W7** | `exposure` + `estimation` | H3, H4, H5 with clustered intervals over `factory_id/worker_id`; strata above the D019 floor, suppressed rows printed as such |
 | **W8** | The card | `make card` regenerates; verdict `NOT_VERIFIED` with `docs/COVERAGE.md`'s gaps enumerated |
 
 ## Per-unit review checklist
@@ -47,7 +47,8 @@ Every unit is reviewed against the seams in `docs/ARCHITECTURE.md`:
 | Test quality | Behavioural or golden-case, not schema-only, for every statistical unit. A spectral estimator gets a synthetic signal with a known frequency; a bootstrap gets synthetic clustered data with a known design effect. `pytest` passing is not sufficient acceptance on its own |
 | Isolation | `git diff --name-only` touches only the unit's files and its test file |
 | Seam discipline | The unit's named seam is honoured, and the review says how it was checked rather than that it was |
-| Aggregation floor | No code path emits an identifiable unit. Checked by reading, on every unit, every wave |
+| Aggregation floor | No code path emits an identifiable unit or a stratum below the D019 floor. Checked by reading, on every unit, every wave, and by `scripts/validate.py`'s identifier gate on `results/` |
+| Speed-path golden | For `signal/speed.py`: a rotation-only synthetic with a static hand yields zero residual within tolerance; a translation-only synthetic's residual is recorded as the path's floor (`docs/RED-TEAM.md` A14) |
 
 ## Acceptance, mechanical
 

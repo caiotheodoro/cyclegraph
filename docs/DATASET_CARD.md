@@ -12,8 +12,9 @@ Derived exposure records — never frames, never clips, never media of any kind.
 
 | Config | Contents |
 |---|---|
-| `clip_estimates` | One row per clip: duty cycle, frequency by both methods, resolvability, exclusion status. **Identifiers replaced by a salted opaque key** that supports clustering and supports nothing else |
-| `aggregates` | `ExposureAggregate` rows. Corpus level only |
+| `clip_estimates` | One row per clip: duty cycle, spectral bout frequency, RMS hand speed, HAL on both paths, exclusion status. **No grouping key of any kind** — no worker, factory, or opaque surrogate |
+| `bootstrap_replicates` | The B = 10,000 cluster-bootstrap replicate means for every published interval, so H5 and every CI are reproducible without a grouping key |
+| `aggregates` | `ExposureAggregate` rows: corpus, and size-tercile strata above the D019 floor |
 | `results` | The raw result JSONs each claim in the card cites |
 
 Plus copies of `CONTRACTS.md`, `docs/PRE-REGISTRATION.md` and `docs/RUBRIC.md`, so the
@@ -24,16 +25,11 @@ release is self-describing.
 - Any frame or clip. The corpus is Build AI's to distribute and the workers' likeness is not
   Build AI's to license — the same argument `../vernier/docs/ETHICS.md` makes about
   republication, and it applies with more force here because these records are about bodies.
-- Any real `worker_id` or `factory_id`. The opaque key is one-way and per-release salted, so
-  two releases cannot be joined to recover a worker.
-- Any per-worker or per-factory statistic, in any form, including one a reader could
-  reconstruct by grouping `clip_estimates`.
-
-That last item is a genuine tension and it is not resolved by the salt: publishing per-clip
-rows with a stable grouping key lets anyone compute per-group means, salted or not.
-**Resolving trigger:** before any release, decide whether `clip_estimates` ships at all, or
-ships without the grouping key and therefore without the ability to reproduce H5. Recorded
-here rather than discovered at publication time.
+- Any real or surrogate `worker_id` or `factory_id`. An earlier draft proposed a salted
+  opaque key; it was dropped because a stable grouping key, salted or not, lets anyone
+  compute per-group means from `clip_estimates`. The rows ship with no key, and the
+  clustered intervals are reproducible from `bootstrap_replicates` instead.
+- Any per-worker, per-factory or sub-floor statistic, in any form.
 
 ## Provenance
 

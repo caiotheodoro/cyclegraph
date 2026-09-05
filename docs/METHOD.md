@@ -4,14 +4,15 @@ The protocol, stage by stage, with the cost of each. Cost is published because a
 nobody can afford is not a check — the convention is inherited from `../assay/docs/METHOD.md`.
 
 **Every figure in the cost column is an estimate under stated assumptions, not a
-measurement.** They are replaced with measured values as each stage runs, and the assumption
-is named so a reader can see which way an error would run.
+measurement**, except where it cites a sibling's measured rate. They are replaced with
+measured values as each stage runs, and the assumption is named so a reader can see which
+way an error would run.
 
 ## Scale, first, because it determines the method
 
 One factory is roughly 2,270 clips (192,903 ÷ 85). At a mean clip duration near 187 s and
-the pre-registered 4 Hz analysis rate, that is **~1.7 million frames for the pilot factory
-alone**. The 40,000-clip main draw is **~30 million frames**.
+the pre-registered 4 Hz analysis rate, that is **~1.7 million sample instants for the pilot
+factory alone**, each a frame pair. The 40,000-clip Arm A main draw is **~30 million**.
 
 This rules out labelling every frame with a VLM judge, at any price. The method that follows
 is shaped by that arithmetic rather than by preference, and the consequence is a real
@@ -22,39 +23,53 @@ weakness recorded in `docs/RED-TEAM.md` A1.
 Enumerate clips for the pilot factory from the shard index and the per-clip metadata the
 release ships. No decode. Emits `ClipRef`.
 
-**Cost:** negligible; HTTP range reads of shard indices only.
+**Cost:** negligible; HTTP range reads of shard indices only. `vernier` indexed the whole
+16 TB corpus moving ~150 MB.
 **Gate:** clip count and total duration reconcile against the published per-factory figures.
 
 ## E2 — Frame extraction
 
 Decode at 4 Hz via ffmpeg's `subfile` protocol over HTTP range requests — a frame out of an
 mp4 inside a tar without downloading the shard, established in `../vernier/docs/DECISIONS.md`.
+Each sample is a **pair** (t, t + 1/fps) so the speed path has a flow baseline; decode is
+sequential either way, so the pair roughly doubles frames written, not frames decoded.
 
-**Cost:** ~1.7M frames for the pilot. Estimated 2–4 hours wall-clock at a few hundred frames
-per second, network-bound rather than compute-bound.
+**Cost:** ~1.7M pairs for the pilot. Estimated 3–6 hours wall-clock, network-bound rather
+than compute-bound; `vernier` measured 1.93 s for a cold single-frame seek, which is the
+per-clip overhead, not the per-frame rate.
 **Gate:** decode failure rate below 1%, and failures recorded as `decode_failed` rather than
 dropped.
 
-## E3 — Labelling, two sources
+## E3 — Labelling and hand localisation
 
-The primary label source is a **cheap probe** — frozen backbone features plus a linear head,
-the shape `vernier` built and published as a negative result: teacher fidelity 0.6933 against
-a pre-registered ≥0.90, with the agreement floor met (0.8421 against ≥0.80) only by abstaining
-on 60% of frames (`../vernier/docs/DECISIONS.md`, D061 result table). An earlier version of
-this sentence conflated the two rows as "0.693 against 0.8"; corrected 2026-09-05. Those
-numbers are a warning, not a licence: they are why H1 exists.
+**Manipulation label, two sources.** The primary label source is a **cheap probe** — frozen
+backbone features plus a linear head, the shape `vernier` built and published as a negative
+result: teacher fidelity 0.6933 against a pre-registered ≥0.90, with the agreement floor met
+(0.8421 against ≥0.80) only by abstaining on 60% of frames (`../vernier/docs/DECISIONS.md`,
+D061 result table). An earlier version of this sentence conflated the two rows as "0.693
+against 0.8"; corrected 2026-09-05. Those numbers are a warning, not a licence: they are why
+H1 exists. The **judge** runs on a stratified calibration subset only, sized so that H1's
+cross-source comparison is powered, not on the full corpus.
 
-The **judge** runs on a stratified calibration subset only, sized so that H1's cross-source
-comparison is powered, not on the full corpus.
+**Hand boxes.** 100DOH (Shan et al. 2020, MIT licence, trained partly on egocentric
+EPIC-KITCHENS/EGTEA/CharadesEgo) on every sampled frame; box width recorded. EgoHOS is the
+fallback segmenter if 100DOH's coverage fails H2c.
+
+**Hand speed.** Dense optical flow on each pair (Farneback on CPU, or RAFT-small on GPU if
+the CPU rate is too slow); ego-motion as the median flow over the mask complement;
+residual RMS inside the box; scaled by the clip's median box width against 85 mm
+(`docs/RUBRIC.md`). Emits `HandSpeedEstimate`.
 
 **Cost:** probe ~1.7M frames at ~100 frames/s ≈ 5 GPU-hours for the pilot. Judge on a
-calibration subset of ~20,000 frames, on the order of tens of dollars at the rates
-`../vernier/docs/METHOD.md` records.
+calibration subset of ~20,000 frames: `vernier` measured $8.56 and ~10–11 h for 10,000
+frames with two prompt variants, so ~$9 and ~10 h for one variant here. Detector ~1.7M
+frames at ~20 frames/s on one GPU ≈ 24 GPU-hours, the largest single cost in the pilot.
+Flow: Farneback ~50 pairs/s on CPU ≈ 10 h; RAFT-small ~10× faster on GPU.
 **Gate:** H1. If duty cycle is not stable across the two sources within 0.05 mean absolute
 difference, the probe cannot carry the corpus. The method does not scale a known-biased
 labeller to 30M frames; it takes **Arm B** of the pre-registered two-arm draw — judge-only,
 200 clips (≈150,000 frames, ≈$65 at `vernier`'s measured rate), with H4 and H5 reported
-`UNTESTED` (`docs/DECISIONS.md` D018).
+`UNTESTED` (`docs/DECISIONS.md` D018). And H2c: detector coverage ≥60%, flow-null ≤10%.
 
 ## E4 — Duty cycle
 
@@ -63,54 +78,67 @@ Mean of the manipulation series over scored frames, per clip. No smoothing.
 **Cost:** negligible.
 **Gate:** H1's sampling-rate arm — 4 Hz against 8 Hz on a subsample, within 0.02.
 
-## E5 — Exertion frequency
+## E5 — Frequency axis
 
-Spectral estimation over the manipulation series, primary. Transition-counting with the
-0.5 s debounce, as cross-check.
+**Primary: RMS hand speed** from E3. **Cross-check: spectral bout frequency** over the
+manipulation series, with transition-counting at the 0.5 s debounce as its own cross-check.
+Bout frequency is a lower bound on exertion frequency and every record says so
+(`docs/DECISIONS.md` D014).
 
 **Cost:** negligible.
-**Gate:** H2, both bounds — 20% relative agreement *and* ≥70% of clips resolvable. The
-second bound is the one that usually goes unreported and it is a stopping condition here.
+**Gate:** H2a and H2b on the spectral path — 20% relative agreement *and* ≥70% resolvable.
+The second bound is the one that usually goes unreported and it is a stopping condition for
+the cross-check, not for the project: the speed path does not depend on resolvability.
 
 ## E6 — Hand Activity Level
 
-Map (frequency, duty cycle) onto the published 0–10 scale.
+Map (speed, duty cycle) by `akkas-2015-speed-dc` and (bout frequency, duty cycle) by
+`radwin-2015-freq-dc`, each to one decimal, each with `scale_rev` set, each flagged when
+its inputs fall outside the fitted range. Both are peer-reviewed regression fits to the
+ACGIH 2001 table with published residuals (`docs/SURVEY.md` S3). No approximation of this
+project's own is ever used; `make hal` refuses any mapping not in the enum.
 
-**Blocked.** The exact mapping and its edition are an open question with a resolving trigger
-in `docs/RUBRIC.md`: the ACGIH TLV documentation must be obtained and transcribed. `make hal`
-fails loudly rather than approximating, because an approximate mapping would produce numbers
-that look like HAL, compare against published HAL in E8, and be wrong by an offset E8 could
-not detect.
-
-**Cost:** the standard's purchase price, plus an afternoon.
+**Cost:** negligible.
+**Gate:** golden tests against the papers' Table 3 cells pass within the residual.
 
 ## E7 — Negative control
 
-The same pipeline on a non-repetitive egocentric corpus — Ego4D and EPIC-KITCHENS-100.
+The same pipeline on two non-factory egocentric corpora, each testing a different axis
+because their manipulation prevalences differ (`docs/DECISIONS.md` D016).
+
+**Ego4D — duty-cycle control:** factory − Ego4D duty-cycle gap ≥0.25 and HAL gap ≥1.0.
+**EPIC-KITCHENS-100 — frequency control:** factory − EPIC speed-path HAL gap ≥0.5, spectral
+gap reported beside it. This is the test of `docs/RED-TEAM.md` A4 and A11: kitchens have
+head motion too.
 
 **Cost:** small; both are already accessible to the sibling project, subject to
 EPIC-KITCHENS' institutional-email requirement, which `../vernier/docs/COVERAGE.md` records
-as unmet. If it stays unmet, Ego4D alone carries the control and that is a weaker control,
-reported as such.
-**Gate:** median HAL separates by ≥1.0 on the 0–10 scale. **This runs before E8.** A
-pipeline that cannot distinguish factory work from kitchen work has not measured repetition,
-and its distribution is not worth comparing to anything.
+as unmet. If it stays unmet, the frequency control is `UNTESTED` in those words and A4/A11
+stay OPEN.
+**Gate:** every pre-committed gap. **This runs before E8.** A pipeline that cannot
+distinguish factory work from kitchen work has not measured repetition, and its
+distribution is not worth comparing to anything.
 
-## E8 — Aggregation and the design effect
+## E8 — Aggregation, strata and the design effect
 
-Cluster bootstrap over `worker_id`, B = 10,000, with the iid interval beside it for
-contrast. Variance decomposition for H4. Comparison against published HAL distributions for
-H3.
+Cluster bootstrap over `factory_id/worker_id`, B = 10,000, seeded, with the iid interval
+beside it for contrast and both design-effect readings printed. Variance decomposition for
+H4. Comparison against [2.4, 6.2] for H3. Size-tercile strata computed and published only
+above the D019 floor, suppressed rows printed as suppressed. Sensitivity table for hand
+breadth, ego-motion subtraction and the A14 translation floor.
 
 **Cost:** minutes.
-**Gate:** H3, H4, H5. H3 is labelled a plausibility check in every place it appears.
+**Gate:** H3, H4, H5. H3 is labelled a plausibility check in every place it appears. H4 and
+H5 read `UNTESTED` under Arm B.
 
 ## E9 — The card
 
 `make card` regenerates `MEASUREMENT_CARD.json` from `results/`. Verdict is `NOT_VERIFIED`
-while any gap in `docs/COVERAGE.md` is open, which in v1 is by construction.
+while any gap in `docs/COVERAGE.md` is open, which in v1 is by construction. No pilot value
+and no identifier reaches it; `scripts/validate.py` checks the second.
 
 ## What is not in the protocol
 
-No rendering, no synthetic data, no pose estimation, no per-cycle metric, no force, no
-per-worker or per-factory number, and no full-corpus decode.
+No rendering, no synthetic data beyond the A14 golden sequences, no body-pose estimation
+(hand *detection* yes, pose no), no per-cycle metric, no force, no per-worker or
+per-factory number, no pilot value, no site self-run tool, and no full-corpus decode.

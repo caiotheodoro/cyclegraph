@@ -123,7 +123,90 @@ the freeze is hashed. Containment is structural rather than dispositional. Its l
 choice of *which* hypotheses to pre-register is itself a judgement made in advance of, and
 in anticipation of, publication — pre-registration bounds analytic flexibility, not framing.
 
+## A10. "Your frequency is bout frequency, not exertion frequency." · MITIGATED · fatal to the spectral axis
+
+The manipulation series goes `true` when hands are working on a workpiece and stays `true`
+across consecutive exertions. Ten screw turns are one bout and ten TLV exertions. A spectral
+peak over that series recovers bouts, and HAL from bout frequency is a systematic
+under-statement — in the direction that flatters the corpus.
+
+**Response.** Conceded before any data. `docs/DECISIONS.md` D014 demotes the spectral path
+to a cross-check reported as a lower bound and makes the speed–duty-cycle path primary,
+which is the input the ACGIH table's own authors chose when they automated HAL. Every
+`FrequencyEstimate` says what `hz` is. What the mitigation does not do is make bout
+frequency into exertion frequency; nothing can, without exertion-level labels.
+
+*Landed if* the speed path fails its pre-registered coverage or control (D014) and the
+spectral path becomes primary — at which point every HAL is a lower bound and is published
+as one.
+
+## A11. "Hand speed in image space is camera speed." · OPEN · major
+
+A head-mounted camera moves. Flow inside the hand box is hand motion plus camera motion.
+
+**Response.** Ego-motion is estimated from the complement of the hand mask and subtracted
+(`CONTRACTS.md` `HandSpeedEstimate.ego_motion`). The EPIC-KITCHENS frequency control (D016)
+is the test: kitchens have head motion too, and if the speed path cannot separate factory
+from kitchen by 0.5 HAL, it is measuring the head.
+
+*Landed if* the frequency control fails on the speed path.
+
+## A12. "A 92%-saturated binary series has no spectral peak; H2b fails by construction." · OPEN · major
+
+At ~0.92 manipulation prevalence the series is almost all ones with short gaps. Its
+spectrum is dominated by low-frequency content and the `6×` peak floor may rarely clear.
+
+**Response.** That is what H2b measures, and it is why the speed path does not depend on
+resolvability at all (D014). If H2b fails, the spectral cross-check is reported as failed
+and the speed path carries HAL alone, with A10's lower-bound cross-check unavailable — a
+real loss, stated.
+
+*Landed if* spectral resolvability is below 70% on the pilot.
+
+## A13. "A stratum with five factories re-identifies a site." · MITIGATED · major
+
+**Response.** D019: ≥ 5 factories, ≥ 50 workers, no factory above 40% of the stratum's
+workers or clips, worker-weighted estimates, one `corpus_rev` per release with prior strata
+withdrawn on re-pin so no two published aggregates differ by fewer than the floor, and
+pilot values never published because the pilot factory is nameable. Only size terciles are
+defined; sector strata were dropped because the metadata carries no sector and a sector of
+five public clients names five companies. What the mitigation cannot do: anyone with the
+corpus can compute the per-factory number themselves. That is A8, restated.
+
+*Landed if* any published aggregate can be shown to bound a single factory's value to
+within the corpus interquartile range.
+
+## A14. "Parallax and radial rotational flow on a fisheye leave residual where the hands sit." · OPEN · major
+
+Camera rotation on a wide lens produces flow that is not uniform across the image; camera
+translation produces more flow on near objects — the hands — than on the background the
+ego-motion estimate is taken from. A scalar subtraction leaves a residual that reads as
+hand speed. Rolling shutter adds to it.
+
+**Response.** The synthetic golden test in `docs/WAVES.md`'s checklist: a rotation-only
+sequence with a static hand must produce zero residual speed within tolerance, and a
+translation-only sequence with a static hand at typical working distance is measured and
+its residual published as the floor of the speed path. If the floor is a material fraction
+of observed factory speeds, the speed path is reported with that floor subtracted and the
+subtraction disclosed.
+
+*Landed if* the translation floor exceeds 20% of the corpus median RMS speed.
+
+## A15. "Flow failure reads as zero speed — the flattering direction." · MITIGATED · major
+
+Motion blur, low light and rolling shutter make dense flow fail quietly toward zero.
+
+**Response.** A flow failure is `null` with a reason, never zero; the null rate is a
+reported quantity on every `HandSpeedEstimate`, and above 10% the clip is
+`status: "flow_failed"` and contributes no speed (`CONTRACTS.md`). H2c pre-registers the
+10% bound.
+
+*Landed if* the corpus null rate exceeds 10%, in which case the speed path is conditional on
+flow success and every statement of it must carry that.
+
 ## Tally
 
-Attacks recorded: 9. Landed: 3 (A2, A6, A8 — all by construction, all disclosed in the
-README). Open: 5. Mitigated: 1.
+Attacks recorded: 15. Landed: 3 (A2, A6, A8 — all by construction, all disclosed in the
+README). Open: 7 (A3, A4, A5, A7, A11, A12, A14). Mitigated: 5 (A9, A10, A13, A15, and A3
+partially — the TLV's own definition of exertion is "handling an object", which is the
+vendor's construct; A3 stays OPEN until the pilot's labels are read against that sentence).

@@ -28,10 +28,12 @@ deviation unrecorded is misconduct.
 **2. No transcribed numbers.** Every figure in prose cites the file that produces it. This
 applies to `MEASUREMENT_CARD.json` and to any generated card equally.
 
-**3. Nothing is reported at an identifiable unit.** Worker and factory are variance units,
-never reporting units. This is not a preference — `docs/ETHICS.md` is the reason, and
-`docs/ARCHITECTURE.md` names the seam where it would leak. A module that can emit a
-per-worker or per-factory number is a defect regardless of whether anything calls it.
+**3. Nothing is reported at an identifiable unit or below the floor.** Worker and factory
+are variance units, never reporting units; the only unit between corpus and nothing is a
+factory-size tercile that clears the D019 k-anonymity floor. This is not a preference —
+`docs/ETHICS.md` is the reason, and `docs/ARCHITECTURE.md` names the seam where it would
+leak. A module that can emit a per-worker, per-factory or sub-floor number is a defect
+regardless of whether anything calls it. Pilot values never leave `results/`.
 
 **4. Unobservable inputs are reported absent, never estimated.** Peak force cannot be read
 from video. A plausible-looking imputation would convert a stated gap into a hidden error,
@@ -50,16 +52,16 @@ recorded a claim that dissolved on contact with the paper; the tag is what caugh
 - **Peak force absent**, so the full TLV is never computed — only its HAL axis.
 - **Plausibility is not agreement.** Comparison against published HAL distributions is
   directional evidence and is labelled as such wherever it appears.
+- **Both frequency-axis inputs are proxies.** Spectral frequency is bout frequency, a lower
+  bound on exertion frequency; hand speed is optical flow after ego-motion subtraction, with
+  the failure modes `docs/RED-TEAM.md` A11/A14/A15 name.
 - **One vendor, one corpus, one modality.**
 
 ## Order of work
 
-`docs/SURVEY.md` gates everything. If automated hand-activity assessment from egocentric
-video is already published, stop and re-scope — a redundant result is worth less than the
-honesty of noticing.
-
-Then: freeze `docs/PRE-REGISTRATION.md` → `make manifest` → `make signal` → `make cycles`
-→ `make hal` → `make estimate` → `make card`.
+`docs/SURVEY.md` gated everything and cleared on 2026-09-05. `docs/PRE-REGISTRATION.md` is
+at v1.1.0. Next: W2 (`CONTRACTS.md` in code, three isolated commits) → `make manifest` →
+`make signal` → `make cycles` → `make hal` → `make estimate` → `make card`.
 
 `docs/WAVES.md` carries the ordering constraints that are not negotiable.
 
