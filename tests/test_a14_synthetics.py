@@ -50,7 +50,7 @@ CORPUS_NONUNIFORMITY_CV = 0.10
 
 
 def _corpus_scene(**kw: float) -> Scene:
-    return Scene(camera=CORPUS_CAMERA, hand_box=hand_box_for(CORPUS_CAMERA), **kw)  # type: ignore[arg-type]
+    return Scene(camera=CORPUS_CAMERA, hand_box=hand_box_for(CORPUS_CAMERA), **kw)
 
 
 def test_projection_inverts_inside_the_image_circle() -> None:

@@ -25,7 +25,7 @@ class _FakeReader(ShardReader):
         super().__init__("repo", "shard.tar", None, window=window)
         self._payload = payload
 
-    def _fetch(self, start: int, end: int) -> bytes:  # type: ignore[override]
+    def _fetch(self, start: int, end: int) -> bytes:
         self.requests += 1
         chunk = self._payload[start : end + 1]
         self.bytes_fetched += len(chunk)

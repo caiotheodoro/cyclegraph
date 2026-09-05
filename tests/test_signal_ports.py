@@ -12,10 +12,13 @@ import re
 from pathlib import Path
 
 import numpy as np
+import numpy.typing as npt
 import pytest
 
 from cyclegraph.signal.ports import (
     Detection,
+    Flow,
+    FlowEstimator,
     FrameLabel,
     HandBox,
     LabelProvenance,
@@ -111,11 +114,20 @@ def test_flow_estimator_failure_is_none_not_zeros() -> None:
     """A15, at the port. A zero field is a measurement of zero speed; None is a failure."""
 
     class DeadFlow:
-        flow_method = "dead"
+        @property
+        def flow_method(self) -> str:
+            return "dead"
 
-        def flow(self, first: object, second: object) -> None:
+        def flow(self, first: npt.NDArray[np.uint8],
+                 second: npt.NDArray[np.uint8]) -> Flow | None:
             return None
 
-    assert DeadFlow().flow(None, None) is None
-    zeros = np.zeros((4, 4, 2), dtype=np.float32)
-    assert zeros is not None  # a zero field is a value, and must not be used to signal failure
+    estimator: FlowEstimator = DeadFlow()  # must satisfy the Protocol, not merely resemble it
+    frame = np.zeros((4, 4), dtype=np.uint8)
+    assert estimator.flow(frame, frame) is None
+
+    # A zero field is a *measurement* of no motion and is a legal return; only None is a
+    # failure. The two must never be conflated, which is why the Protocol's return is
+    # `Flow | None` rather than `Flow` with a zero-field convention.
+    zeros: Flow = np.zeros((4, 4, 2), dtype=np.float32)
+    assert zeros.shape == (4, 4, 2)
