@@ -10,12 +10,8 @@ scripts/run_detector.py
 # W5 -- cycles
 
 # W7 -- exposure
-scripts/score_hal.py
 
 # W7/W8 -- estimation and the card
-src/cyclegraph/card/
-scripts/refresh_card.py
-MEASUREMENT_CARD.json
 results/bootstrap_replicates.json
 
 # W9 -- release

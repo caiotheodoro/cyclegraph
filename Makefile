@@ -80,10 +80,10 @@ cycles:  ## Frequency axis: hand speed primary, spectral bout frequency and tran
 	python3 scripts/estimate_frequency.py --labels results/pilot/labels.jsonl
 
 hal:  ## Duty cycle and the Hand Activity Level axis, by the published equations (docs/DECISIONS.md D013).
-	$(NOT_YET)
+	python3 scripts/score_hal.py --labels results/pilot/labels.jsonl
 
 estimate:  ## Cluster bootstrap over factory_id/worker_id, with the design effect beside it.
-	$(NOT_YET)
+	python3 scripts/score_hal.py --labels results/pilot/labels.jsonl --aggregate
 
-card:  ## Regenerate MEASUREMENT_CARD.json. Exits nonzero unless the verdict is VERIFIED.
-	$(NOT_YET)
+card:  ## Regenerate MEASUREMENT_CARD.json. Exits nonzero unless the verdict is VERIFIED -- which in v1 is the stage working, not a failure.
+	python3 scripts/refresh_card.py
