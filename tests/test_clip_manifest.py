@@ -17,6 +17,7 @@ import pytest
 
 from cyclegraph.corpus.manifest import (
     MetadataRow,
+    ShardReadError,
     PublishedCounts,
     clip_id,
     clip_records_from_shard,
@@ -92,8 +93,10 @@ def test_the_walk_reads_only_headers_not_payloads(tmp_path: Path) -> None:
 
 def test_clip_records_pair_sidecars_with_their_media(tmp_path: Path) -> None:
     path = _shard(tmp_path, clips=3)
-    rows = clip_records_from_shard("factory_001/workers/worker_001/part00.tar", _reader(path))
+    contents = clip_records_from_shard("factory_001/workers/worker_001/part00.tar", _reader(path))
+    rows = contents.rows
     assert len(rows) == 3
+    assert contents.dropped == 0
     assert [r.clip_index for r in sorted(rows, key=lambda r: r.clip_index)] == [0, 1, 2]
     row = sorted(rows, key=lambda r: r.clip_index)[1]
     assert row.byte_end - row.byte_start == 1001  # the mp4's real payload size
@@ -168,3 +171,54 @@ def test_the_module_does_not_retype_the_frozen_threshold() -> None:
             / "src" / "cyclegraph" / "corpus" / "manifest.py").read_text()
     assert "MIN_CLIP_S" in body
     assert "60.0" not in body and "60 " not in body
+
+
+def test_a_sidecar_with_no_media_is_counted_not_dropped(tmp_path: Path) -> None:
+    """`CONTRACTS.md`'s rule that absence is explicit applies to manifest rows too. A repacked
+    shard, or one whose media uses another container, must be visible as a number rather than
+    as a slightly short manifest that looks complete."""
+    members = {
+        "factory001_worker001_00000.mp4": b"\x00" * 500,
+        "factory001_worker001_00000.json": _sidecar("factory_001", "worker_001", 0, 180.0),
+        "factory001_worker001_00001.json": _sidecar("factory_001", "worker_001", 1, 200.0),
+    }
+    path = tmp_path / "orphan.tar"
+    _build_tar(path, members)
+    contents = clip_records_from_shard("s.tar", _reader(path))
+    assert len(contents.rows) == 1
+    assert contents.orphan_sidecars == 1
+    assert contents.dropped == 1
+
+
+def test_an_oversized_sidecar_is_counted_not_dropped(tmp_path: Path) -> None:
+    members = {
+        "factory001_worker001_00000.mp4": b"\x00" * 500,
+        "factory001_worker001_00000.json": b"{" + b" " * 20_000 + b"}",
+    }
+    path = tmp_path / "big.tar"
+    _build_tar(path, members)
+    contents = clip_records_from_shard("s.tar", _reader(path))
+    assert contents.rows == []
+    assert contents.oversized_sidecars == 1
+
+
+def test_a_truncated_shard_raises_rather_than_returning_a_short_list(tmp_path: Path) -> None:
+    """A truncated walk and a complete one are otherwise indistinguishable: the caller gets a
+    plausible list and no signal. Eleven shards failed this way on the first corpus pass and
+    the run reported itself not authoritative (`docs/DECISIONS.md` D027)."""
+    path = _shard(tmp_path, clips=3)
+    full = path.read_bytes()
+    truncated = tmp_path / "cut.tar"
+    truncated.write_bytes(full[: len(full) // 2 + 100])  # mid-member, not on a block boundary
+    with pytest.raises(ShardReadError):
+        clip_records_from_shard("s.tar", _reader(truncated))
+
+
+def test_an_unparseable_size_field_raises(tmp_path: Path) -> None:
+    path = _shard(tmp_path, clips=2)
+    raw = bytearray(path.read_bytes())
+    raw[124:136] = b"NOTOCTAL\x00\x00\x00\x00"
+    corrupt = tmp_path / "corrupt.tar"
+    corrupt.write_bytes(bytes(raw))
+    with pytest.raises(ShardReadError):
+        clip_records_from_shard("s.tar", _reader(corrupt))

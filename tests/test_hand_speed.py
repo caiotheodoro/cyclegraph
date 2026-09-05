@@ -33,12 +33,15 @@ from cyclegraph.signal.synthetic import (
 from tests import fixtures
 
 # A long lens makes rotational flow nearly uniform, so the rubric's scalar ego-motion estimate
-# cancels it and the residual is a rounding artefact. One percent of the raw flow is the
-# geometric bound from sec^2 over a 26-degree field, not a tuned number.
+# cancels it and the residual is small. Geometry bounds this from ABOVE only: sec^2 - 1 over
+# NARROW_CAMERA's ~13 deg half-angle is 5.3%, which does not yield 1%. The measured residual
+# fraction is 0.0021, and this bound sits ~5x above it. A separation bound, not a derivation.
 ROTATION_NULL_FRACTION = 0.01
 
-# Under the corpus lens the same rotation leaves an order of magnitude more. The measured
-# fraction is ~13%; 5% is the floor a near-uniform field could not clear.
+# Under the corpus lens the same rotation leaves an order of magnitude more: measured 0.1266,
+# against 0.0021 for the long lens. Like its counterpart above this is a one-sided separation
+# bound at roughly half the observation, ~24x above the long lens's value, and it is stated as
+# a bound rather than dressed up as a derivation.
 CORPUS_ROTATION_FRACTION = 0.05
 
 DT_S = 0.25  # the 4 Hz pair interval
@@ -208,3 +211,68 @@ def test_rotation_only_leaves_real_residual_under_the_corpus_lens() -> None:
 
 def test_the_hand_breadth_scale_is_the_rubric_value() -> None:
     assert HAND_BREADTH_MM == 85.0
+
+
+def test_the_clip_estimate_is_the_rms_scaled_by_the_median_box_width() -> None:
+    """The golden case for `rms_speed_mm_s` itself, which is the number the record exists to
+    carry. Three samples make every operation in the rubric's sentence discriminating: RMS is
+    not the mean and not the max, and the median box width is not the first or the largest.
+
+        RMS  = sqrt((300^2 + 400^2 + 1200^2) / 3) = 750.5553... px/s
+        width= median(100, 209, 400)              = 209 px
+        mm/s = 750.5553... * 85 / 209             = 305.2498...
+
+    A constant-valued fixture cannot check any of this: with one repeated speed the RMS, the
+    mean and the max coincide, and with one repeated width the median is trivial.
+    """
+    samples = [
+        SpeedSample(t_s=0.00, px_per_s=300.0, box_width_px=100.0, null_reason=None),
+        SpeedSample(t_s=0.25, px_per_s=400.0, box_width_px=209.0, null_reason=None),
+        SpeedSample(t_s=0.50, px_per_s=1200.0, box_width_px=400.0, null_reason=None),
+    ]
+    est = hand_speed_estimate(_clip(), samples, mask_source="100doh", flow_method="farneback")
+    assert est.status == "ok"
+    assert est.median_box_width_px == pytest.approx(209.0)
+    assert est.rms_speed_mm_s == pytest.approx(305.2498, abs=1e-3)
+
+    # The scaling is not optional: dropping it would report pixels in a field labelled mm/s.
+    assert est.rms_speed_mm_s is not None
+    assert est.rms_speed_mm_s != pytest.approx(750.5553, abs=1e-3)
+
+
+def test_the_rms_is_an_rms_and_not_a_mean() -> None:
+    """RMS over (300, 400, 1200) is 750.56; their mean is 633.33. A fixture with one repeated
+    speed cannot tell those apart, and the difference is the whole point of an RMS."""
+    samples = [
+        SpeedSample(t_s=i * 0.25, px_per_s=v, box_width_px=209.0, null_reason=None)
+        for i, v in enumerate((300.0, 400.0, 1200.0))
+    ]
+    est = hand_speed_estimate(_clip(), samples, mask_source="100doh", flow_method="f")
+    assert est.rms_speed_mm_s is not None
+    rms_mm = 750.5553 * HAND_BREADTH_MM / 209.0
+    mean_mm = (300.0 + 400.0 + 1200.0) / 3 * HAND_BREADTH_MM / 209.0
+    assert est.rms_speed_mm_s == pytest.approx(rms_mm, abs=1e-3)
+    assert est.rms_speed_mm_s != pytest.approx(mean_mm, abs=1.0)
+
+
+def test_ego_motion_is_a_median_and_not_a_mean() -> None:
+    """The rubric says median over the mask complement, and the reason is a skewed background
+    — which is exactly the fisheye case A14 describes. A constant background cannot check it,
+    because there the median and the mean coincide."""
+    flow = np.zeros((20, 20, 2), dtype=np.float32)
+    flow[..., 0] = 1.0
+    flow[0:3, :, 0] = 100.0  # a bright, fast-moving edge of the background
+    mask = np.zeros((20, 20), dtype=np.bool_)
+    mask[10:12, 10:12] = True
+    ex, _ = ego_motion(flow, mask)
+    assert ex == pytest.approx(1.0)  # the median ignores the outlier rows
+    assert ex != pytest.approx(float(flow[~mask][..., 0].mean()), abs=1.0)
+
+
+def test_the_median_box_width_is_a_median_and_not_the_first_or_largest() -> None:
+    samples = [
+        SpeedSample(t_s=i * 0.25, px_per_s=500.0, box_width_px=w, null_reason=None)
+        for i, w in enumerate((100.0, 209.0, 400.0))
+    ]
+    est = hand_speed_estimate(_clip(), samples, mask_source="100doh", flow_method="f")
+    assert est.median_box_width_px == pytest.approx(209.0)
