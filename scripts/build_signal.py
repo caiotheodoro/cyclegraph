@@ -31,13 +31,13 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from cyclegraph.corpus.decode import decode_gray_frames, ffmpeg_clip_argv  # noqa: E402
 from cyclegraph.corpus.manifest import MetadataRow, clip_refs  # noqa: E402
-from cyclegraph.corpus.sampling import ANALYSIS_HZ, sample_times  # noqa: E402
+from cyclegraph.corpus.sampling import ANALYSIS_HZ, n_samples, sample_times  # noqa: E402
 from cyclegraph.corpus.shards import REPO_ID, ShardReader  # noqa: E402
-from cyclegraph.models import ClipRef  # noqa: E402
+from cyclegraph.models import ClipRef, FrameSignal, HandSpeedEstimate  # noqa: E402
 from cyclegraph.signal.flow_farneback import FarnebackFlow  # noqa: E402
 from cyclegraph.signal.frames import FrameSample, build_frame_signal, resolve_conflicts  # noqa: E402
 from cyclegraph.signal.ports import HandBox, largest_box  # noqa: E402
-from cyclegraph.signal.speed import hand_speed_estimate, speed_sample  # noqa: E402
+from cyclegraph.signal.speed import HAND_BREADTH_MM, hand_speed_estimate, speed_sample  # noqa: E402
 from cyclegraph.signal.stores import JsonlDetectionStore, JsonlLabelStore  # noqa: E402
 
 WIDTH, HEIGHT = 480, 270
@@ -59,6 +59,54 @@ def _scaled(box: HandBox, sx: float, sy: float) -> HandBox:
                    height=box.height * sy, score=box.score)
 
 
+def _record_not_attempted(args: argparse.Namespace) -> int:
+    """Write what is true of a pilot whose signal stage has not run.
+
+    Every field is either measured from the manifest or explicitly null. `not_attempted` is
+    the status `CONTRACTS.md` v1.3 added for exactly this, because the alternative was to
+    assert that labelling ran and failed, or that decoding failed, neither of which happened
+    (`docs/DECISIONS.md` D031). Nothing is decoded and no exposure value is produced.
+
+    `too_short` is deliberately not used here even where the duration would justify it: it is
+    a determination the signal stage makes when it runs, and this stage has not run.
+    """
+    rows = [MetadataRow(**json.loads(line))
+            for line in (ROOT / args.manifest).read_text().splitlines() if line.strip()]
+    refs = clip_refs(rows, corpus_rev=args.corpus_rev)
+    out_dir = ROOT / args.out_dir
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    written = 0
+    with (out_dir / "frame_signal.jsonl").open("w") as signals, \
+         (out_dir / "hand_speed.jsonl").open("w") as speeds:
+        for clip in refs:
+            planned = n_samples(clip.duration_s)
+            signal = FrameSignal(
+                clip_id=clip.clip_id, corpus_rev=clip.corpus_rev, fps_sampled=ANALYSIS_HZ,
+                n_frames=planned, manipulation=[None] * planned,
+                hands_visible=[None] * planned, hand_box_width_px=[None] * planned,
+                hand_mask_source="none", flow_method="none",
+                label_source=None, label_rev=None, prompt_variant=None,
+                status="not_attempted", n_unreadable=planned,
+            )
+            speed = HandSpeedEstimate(
+                clip_id=clip.clip_id, corpus_rev=clip.corpus_rev, rms_speed_mm_s=None,
+                n_samples=planned, n_with_box=0, n_flow_null=0, coverage=0.0,
+                flow_null_rate=0.0, hand_breadth_mm=HAND_BREADTH_MM,
+                median_box_width_px=None, mask_source=None, flow_method="none",
+                ego_motion="mask_complement_median", status="no_detector",
+                status_reason="no detector ran on this clip",
+            )
+            signals.write(signal.model_dump_json() + "\n")
+            speeds.write(speed.model_dump_json() + "\n")
+            written += 1
+
+    print(f"pilot gates (values stay in {args.out_dir}, D018):")
+    print(f"  {'PASS' if written == len(refs) else 'FAIL'}  both records written for every clip")
+    print("  PASS  every record states the stage has not run; none carries an exposure value")
+    return 0 if written == len(refs) else 1
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", default="results/pilot/clips_factory_001.jsonl")
@@ -67,7 +115,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out-dir", default="results/pilot")
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--corpus-rev", default="3e5f87c88c54ce8343865d8e2a8c171f18385a05")
+    parser.add_argument(
+        "--record-not-attempted", action="store_true",
+        help="write truthful records for a pilot whose signal stage has not run: "
+             "FrameSignal at not_attempted, HandSpeedEstimate at no_detector. Decodes "
+             "nothing and claims nothing (CONTRACTS v1.3, docs/DECISIONS.md D031).",
+    )
     args = parser.parse_args(argv)
+
+    if args.record_not_attempted:
+        return _record_not_attempted(args)
 
     detections_path = ROOT / args.detections
     labels_path = ROOT / args.labels
