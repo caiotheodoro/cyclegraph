@@ -69,6 +69,23 @@ FRAME_SIGNAL: Fixture = {
     "n_unreadable": 1,
 }
 
+FRAME_SIGNAL_NOT_ATTEMPTED: Fixture = {
+    "clip_id": "factory_001/worker_001/000123",
+    "corpus_rev": REV,
+    "fps_sampled": 4.0,
+    "n_frames": 4,
+    "manipulation": [None, None, None, None],
+    "hands_visible": [None, None, None, None],
+    "hand_box_width_px": [None, None, None, None],
+    "hand_mask_source": "none",
+    "flow_method": "none",
+    "label_source": None,
+    "label_rev": None,
+    "prompt_variant": None,
+    "status": "not_attempted",
+    "n_unreadable": 4,
+}
+
 FRAME_SIGNAL_BROKEN: list[Broken] = [
     ("n_unreadable does not count the nulls", _with(FRAME_SIGNAL, n_unreadable=0)),
     ("series lengths disagree", _with(FRAME_SIGNAL, hands_visible=FRAME_SIGNAL["hands_visible"][:-1])),
@@ -80,6 +97,14 @@ FRAME_SIGNAL_BROKEN: list[Broken] = [
      _with(FRAME_SIGNAL, hand_box_width_px=[212.0, 208.5, None, None, 210.0, 211.0, 205.0, 200.0, 209.0, 208.0, 207.0, 206.0])),
     ("mask source none with a box width", _with(FRAME_SIGNAL, hand_mask_source="none")),
     ("label_source defaulted to an unknown value", _with(FRAME_SIGNAL, label_source="default")),
+    ("not_attempted carrying label provenance",
+     _with(FRAME_SIGNAL_NOT_ATTEMPTED, label_source="judge", label_rev="r", prompt_variant="p")),
+    ("not_attempted with a scored instant",
+     _with(FRAME_SIGNAL_NOT_ATTEMPTED, manipulation=[True, None, None, None],
+           hands_visible=[2, None, None, None], n_unreadable=3)),
+    ("not_attempted naming a detector", _with(FRAME_SIGNAL_NOT_ATTEMPTED, hand_mask_source="100doh")),
+    ("null provenance without not_attempted",
+     _with(FRAME_SIGNAL, label_source=None, label_rev=None, prompt_variant=None)),
     ("ok with more than 10% unreadable",
      _with(FRAME_SIGNAL, manipulation=[None, None, False, None, True, True, True, False, True, True, True, True],
            hands_visible=[None, None, 1, None, 2, 2, 1, 0, 2, 2, 2, 1],
@@ -353,7 +378,7 @@ CARD_BROKEN: list[Broken] = [
 
 VALID: dict[str, list[Fixture]] = {
     "ClipRef": [CLIP_REF],
-    "FrameSignal": [FRAME_SIGNAL],
+    "FrameSignal": [FRAME_SIGNAL, FRAME_SIGNAL_NOT_ATTEMPTED],
     "ExertionSegment": [EXERTION_SEGMENT],
     "DutyCycleEstimate": [DUTY_CYCLE, _with(DUTY_CYCLE, duty_cycle=None, status="too_short")],
     "FrequencyEstimate": [FREQUENCY, FREQUENCY_NO_PEAK],

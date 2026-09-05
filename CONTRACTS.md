@@ -1,6 +1,6 @@
 # Contracts
 
-`contracts/v1.2`, frozen 2026-09-05, before any clip is decoded. Schemas are the seam between the
+`contracts/v1.3`, frozen 2026-09-05, before any clip is decoded. Schemas are the seam between the
 modules described in `docs/ARCHITECTURE.md`; changing one is a decision and belongs in
 `docs/DECISIONS.md`. The changelog at the end records what v1.1 changed and why.
 
@@ -61,6 +61,8 @@ Three rules apply to all of them.
   "status": "ok", "n_unreadable": 1 }
 ```
 
+`status` ∈ {`ok`, `too_short`, `no_labels`, `decode_failed`, `not_attempted`}.
+
 - `manipulation[i] = null` means that frame could not be labelled. `n_unreadable` counts
   them and they are excluded from every denominator downstream. More than 10% unreadable is
   `status: "no_labels"` (`docs/RUBRIC.md`). `manipulation[i] = true` requires
@@ -72,6 +74,16 @@ Three rules apply to all of them.
   `hand_box_width_px` is then `null` and the speed path cannot produce a value.
 - `flow_method` names the optical-flow estimator used for the speed samples.
 - `label_source` ∈ {`judge`, `probe`, `human`}. Never pooled across sources in one estimate.
+- `status: "not_attempted"` means the signal stage has not been run for this clip: the
+  manifest knows the clip exists and how many instants it plans, and nothing has scored them.
+  Every series entry is `null`, `n_unreadable` equals `n_frames`, `hand_mask_source` and
+  `flow_method` are `"none"`, and **`label_source`, `label_rev` and `prompt_variant` are
+  `null`** — they are null exactly when the status is `not_attempted` and non-null otherwise.
+  That is not a relaxation of the rule that provenance is carried and never defaulted: a
+  record claiming any label still carries full provenance, and this is the one shape that
+  claims none. Without it, an un-run stage could only be recorded by asserting that labelling
+  ran and failed (`no_labels`), or that decoding failed (`decode_failed`), both of which are
+  false. `docs/DECISIONS.md` D031.
 - `fps_sampled` is the analysis rate, not the clip's native `fps`. It bounds the highest
   exertion frequency recoverable on the spectral path — see `docs/RUBRIC.md` on the Nyquist
   limit, which is a real constraint on H2 and is stated in `docs/PRE-REGISTRATION.md`
@@ -253,3 +265,4 @@ Three rules apply to all of them.
 | `contracts/v1` | 2026-09-05 | Initial freeze, before `src/` exists. | D001 |
 | `contracts/v1.1` | 2026-09-05 | `FrameSignal` gains hand-box width, mask source, flow method. New `HandSpeedEstimate`. `FrequencyEstimate.hz` documented as bout frequency. `HALScore` gains `mapping` and `rms_speed_mm_s` with mapping-conditional null rules. `ExposureAggregate` gains `stratum`, k-floor fields, `weighting`, `seed`, width-ratio, identifier-pattern rejection; `cluster_unit` is the composite. `MeasurementCard` gains `arm`, `FAILED`, `UNTESTED_ARM_B`. Still before `src/` exists. | D013–D019 |
 | `contracts/v1.2` | 2026-09-05 | After the fresh-context review. `corpus_rev` on every record; `label_source` up to the aggregate. `HALScore` recomputes `hal`, binds `scale_rev`, derives `out_of_range`, adds `zero_duty_cycle`. `ExposureAggregate` drops `k_*`, splits the dominance share, binds the design effect to its own intervals, fixes `bootstrap_b`, requires UTC. `MeasurementClaim.pilot_gate`. Identifier pattern covers shard naming and keys. Rubric thresholds enforced. | D020 |
+| `contracts/v1.3` | 2026-09-05 | `FrameSignal` gains `status: "not_attempted"` for a clip whose signal stage has not run, and makes `label_source`, `label_rev` and `prompt_variant` null exactly under that status. Recording an un-run stage previously required asserting that labelling ran and failed, or that decoding failed. | D031 |

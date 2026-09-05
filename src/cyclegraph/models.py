@@ -25,7 +25,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from cyclegraph.exposure.hal import SCALE_REV, hal_akkas_2015, hal_radwin_2015, in_fitted_range
 
-CONTRACTS_REV = "contracts/v1.2"
+CONTRACTS_REV = "contracts/v1.3"
 
 # The corpus's own naming for the two things that must never reach a published number.
 # Matches `factory_001`, `factory001` (shard file names), `Factory-07`; not `factory_id`.
@@ -137,15 +137,33 @@ class FrameSignal(Record):
     hand_box_width_px: list[float | None]
     hand_mask_source: Literal["100doh", "egohos", "none"]
     flow_method: str = Field(min_length=1)
-    label_source: LabelSource
-    label_rev: str = Field(min_length=1)
-    prompt_variant: str = Field(min_length=1)
-    status: Literal["ok", "too_short", "no_labels", "decode_failed"]
+    label_source: LabelSource | None
+    label_rev: str | None
+    prompt_variant: str | None
+    status: Literal["ok", "too_short", "no_labels", "decode_failed", "not_attempted"]
     n_unreadable: int = Field(ge=0)
 
     @model_validator(mode="after")
     def _series_are_aligned_and_absence_is_counted(self) -> FrameSignal:
         n = self.n_frames
+        # Provenance is null exactly when nothing produced a label. A record that claims any
+        # label still carries all three fields; this is the one shape that claims none (D031).
+        provenance = (self.label_source, self.label_rev, self.prompt_variant)
+        if self.status == "not_attempted":
+            if any(p is not None for p in provenance):
+                raise ValueError("status 'not_attempted' carries no label provenance")
+            if any(m is not None for m in self.manipulation) or self.n_unreadable != n:
+                raise ValueError("status 'not_attempted' means no instant was scored")
+            if self.hand_mask_source != "none" or self.flow_method != "none":
+                raise ValueError("status 'not_attempted' means no detector and no flow ran")
+        else:
+            if any(p is None for p in provenance):
+                raise ValueError(
+                    "label provenance is null only under status 'not_attempted'; it is "
+                    "carried, never defaulted (docs/ARCHITECTURE.md, seam 2)"
+                )
+            if not self.label_rev or not self.prompt_variant:
+                raise ValueError("label_rev and prompt_variant are non-empty when present")
         if not (len(self.manipulation) == len(self.hands_visible) == len(self.hand_box_width_px) == n):
             raise ValueError("every series must have exactly n_frames entries")
         for m, h, w in zip(self.manipulation, self.hands_visible, self.hand_box_width_px, strict=True):

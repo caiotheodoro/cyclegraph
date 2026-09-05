@@ -843,3 +843,42 @@ speculatively at the end of a wave to make an unmet condition look met.
 **Reverses if:** the labeller and detector run, at which point the pilot's records carry real
 statuses and this entry describes a gap that no longer blocks anything — though the missing
 status remains a real defect for any future stage that has not yet run.
+
+## D032 — `not_attempted` lands after all, and the pilot's records are written
+
+**Supersedes D031's decision not to change the contract.** D031 identified that `FrameSignal`
+could not express "this stage has not run" and declined to add the status, on the grounds that
+widening a schema at a wave boundary to make an unmet condition look met is the move this
+project exists to argue against. That reasoning was about doing it unilaterally to clear a
+gate. Asked directly, with the gap and its cost stated, the author of the project decided the
+status should land. Recorded here because the reversal is a decision, not a drift.
+
+**What changed.** `CONTRACTS.md` is at `contracts/v1.3`. `FrameSignal.status` gains
+`not_attempted`, and `label_source`, `label_rev` and `prompt_variant` become null **exactly**
+under that status — a second gap D031 did not name, since an un-run stage has no true value
+for any of the three either. The validator enforces the biconditional in both directions, so
+seam 2 is preserved rather than relaxed: a record claiming any label still carries full
+provenance, and this is the one shape that claims none. Under `not_attempted` every series
+entry is null, `n_unreadable` equals `n_frames`, and `hand_mask_source` and `flow_method` are
+`"none"`.
+
+**What was written.** `scripts/build_signal.py --record-not-attempted` writes both records for
+every clip in the pilot manifest, from the manifest alone. It decodes nothing, runs no model,
+and produces no exposure value. `FrameSignal` carries `not_attempted`; `HandSpeedEstimate`
+carries `no_detector`, which the contract already had. `n_frames` and `n_samples` are the
+instant counts `corpus/sampling.py` plans, which are facts about the clip's duration rather
+than measurements of it.
+
+**One judgement inside it.** `too_short` is *not* used for short clips in this mode, even
+though the duration alone would justify it. `too_short` is a determination the signal stage
+makes when it runs; this stage has not run, and asserting a determination nobody made is the
+error D031 was about. Every un-run clip is `not_attempted` regardless of duration.
+
+**What this does not do.** It produces no hand box, no label, no duty cycle, no speed and no
+HAL. The detector and the labeller remain W3's blocking dependencies and `make signal` without
+the flag still exits 2 rather than substituting anything. The records say the pipeline has been
+built and pointed at the pilot, and nothing more than that.
+
+**Reverses if:** the status is ever used to carry a value — a record at `not_attempted` with
+anything non-null beyond its identity and counts — at which point the validator's biconditional
+has been weakened and the entry that weakens it supersedes this one.
