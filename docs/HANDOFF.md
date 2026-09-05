@@ -6,8 +6,10 @@ re-deriving anything.
 **Last updated: 2026-09-05 — pre-registration v1.3.0; contracts v1.2; W2 landed and
 reviewed (D020). W3's code is landed and its corpus gates pass: the manifest reconciles
 three ways (D027), the decode gate passes (D023, `results/decode_probe.json`), and the A14
-floor is measured and published (D026). W3 is not closed: it has two external dependencies,
-the hand detector and the manipulation labeller, and neither has run.**
+floor is measured and published (D026), and the fresh-context review is complete with all five
+findings addressed (D030, superseding D029). W3 is not closed: it has two external
+dependencies, the hand detector and the manipulation labeller, and neither has run. No
+exposure number exists.**
 
 ## Do not do
 
@@ -44,7 +46,7 @@ the hand detector and the manipulation labeller, and neither has run.**
 | Compute | GPU stages on AWS via the CLI, `g5.xlarge` spot; `docs/REPRODUCTION.md` "Compute". The author is not the builder; the stages are specified for whoever runs them |
 | HAL scale | **Resolved.** Radwin 2015 and Akkas 2015, open access, residuals published |
 | Expert anchor | **None, and none expected.** `docs/DECISIONS.md` D009 |
-| Reviews | Every wave ends with a fresh-context review; findings land as a DECISIONS entry |
+| Reviews | Every wave ends with a fresh-context review; findings land as a DECISIONS entry. W3's stalled twice before returning a report; what worked was a narrow scope and a hard tool-call budget (D030) |
 
 ## The next three things
 
