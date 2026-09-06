@@ -25,6 +25,8 @@ import os
 import sys
 import time
 from typing import Iterator
+
+import numpy as np
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -263,6 +265,16 @@ def main(argv: list[str] | None = None) -> int:
         built_samples: list[FrameSample | None] = [None] * len(times)
         built_speeds: list[SpeedSample | None] = [None] * len(times)
         for k, t_s, first, second in stream_pairs(clip, token, width=WIDTH, height=HEIGHT):
+            if np.array_equal(first, second):
+                # The same frame twice. `docs/RED-TEAM.md` A15 and D023 make a dead flow a null
+                # with a reason and never a zero, but the exact-zero rule they rely on does not
+                # fire here: Farneback on identical frames returns a *tiny non-zero* field, so
+                # the residual is ~1e-07 rather than 0.0 and passes through as a real
+                # measurement of almost no motion -- the flattering direction. Frame equality
+                # is exact, needs no threshold, and catches the case D023 names (D051).
+                built_samples[k], built_speeds[k] = _sample(
+                    k, t_s, None, "the two frames of this pair are identical")
+                continue
             built_samples[k], built_speeds[k] = _sample(
                 k, t_s, flow_estimator.flow(first, second), None)
         for k, t_s in enumerate(times):
