@@ -53,6 +53,19 @@ class SignalConflicts:
         return self.box_without_visible_hand + self.box_on_unreadable_frame
 
 
+def box_is_contradicted(label: FrameLabel) -> bool:
+    """Whether the labeller contradicts a detector box on this frame. D022.
+
+    One definition, because two consumers need it: `resolve_conflicts` nulls the box width on
+    the `FrameSignal`, and the speed path must not measure a residual inside a box the labeller
+    says holds no hand. The speed path was reading the *unresolved* boxes, so a box dropped from
+    one record was still counted in the other's `n_with_box` -- inflating H2c's coverage with
+    boxes the contract had already discarded, and taking an RMS inside them
+    (`docs/DECISIONS.md` D056).
+    """
+    return label.hands_visible is None or label.hands_visible == 0
+
+
 def resolve_conflicts(samples: Sequence[FrameSample]) -> tuple[list[FrameSample], SignalConflicts]:
     """Drop detector boxes the labeller contradicts, and count them. D022."""
     out: list[FrameSample] = []
@@ -65,7 +78,7 @@ def resolve_conflicts(samples: Sequence[FrameSample]) -> tuple[list[FrameSample]
         if sample.label.hands_visible is None:
             unreadable += 1
             out.append(FrameSample(sample.t_s, sample.label, None, sample.decode_reason))
-        elif sample.label.hands_visible == 0:
+        elif box_is_contradicted(sample.label):
             no_hand += 1
             out.append(FrameSample(sample.t_s, sample.label, None, sample.decode_reason))
         else:
