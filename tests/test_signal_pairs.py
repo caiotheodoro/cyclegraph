@@ -68,7 +68,7 @@ def test_the_two_frames_are_consecutive_frames_of_the_source(
     assert seen["fps_sampled"] == FPS  # decoded at the clip's rate, not the analysis rate
     assert len(pairs) == len(times)
     for k, t_s, first, second in pairs:
-        expected = int(round(t_s * FPS))
+        expected = int(t_s * FPS + 0.5)   # half-up, not banker's rounding
         assert int(first[0, 0]) == expected % 251
         assert int(second[0, 0]) == (expected + 1) % 251
         assert t_s == times[k]
@@ -105,3 +105,16 @@ def test_a_clip_that_plans_no_instants_streams_nothing(
     _install_stub(monkeypatch)
     tiny = ClipRef.model_validate({**fixtures.CLIP_REF, "duration_s": 60.0, "fps": FPS})
     assert isinstance(list(build_signal.stream_pairs(tiny, None, width=2, height=2)), list)
+
+
+def test_the_frame_an_instant_means_does_not_depend_on_its_parity(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    """At 4 Hz over a 30 fps source every odd instant lands on a half-integer frame index, and
+    `round` then alternates between the frame before and the frame after by the instant's
+    parity: k=1 to frame 8, k=3 to frame 22, k=5 to frame 38. Half-up is monotone in k."""
+    _install_stub(monkeypatch)
+    pairs = list(build_signal.stream_pairs(_clip(), None, width=2, height=2))
+    indices = [int(first[0, 0]) for _, _, first, _ in pairs[:6]]
+    assert indices == [0, 8, 15, 23, 30, 38]
+    assert indices != [0, 8, 15, 22, 30, 38]   # what banker's rounding gave
+    assert all(b > a for a, b in zip(indices, indices[1:]))
