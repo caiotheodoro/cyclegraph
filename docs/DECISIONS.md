@@ -1455,6 +1455,30 @@ large-displacement matching, is the other half of D024 and is still unmeasured. 
 and are not being settled by the author's preference after seeing this curve.** The options and
 their costs go to the record and to the project's owner, not into a quiet edit.
 
-**Reverses if:** RAFT-small measures a flat gain over this range, in which case this is a
-Farneback property and D024's A14 column decides the estimator rather than the rubric; or the
-pair interval is re-specified, in which case the curve is re-measured at the new baseline.
+**Resolved, same day, on the GPU already running: RAFT-small does not rescue it.**
+`results/flow_gain_raft.json`, measured with `--estimator raft` on an A10G, the identical
+synthetics and seed. RAFT is the better estimator over the middle of the range -- at 960x540 it
+holds gain 0.97 out to 34 px where Farneback has already broken -- and it is *worse* at the
+smallest displacements, where a 2.8 px field returns gain 0.30. But above the knee the two are
+indistinguishable:
+
+| Estimator | Gain at 320 mm/s | Gain at 570 mm/s | Plateau (mean of last three) |
+|---|---|---|---|
+| farneback-cv2 | 0.19 | 0.18 | 0.176 (480x270) |
+| raft-small | 0.17 | 0.18 | 0.180 (960x540) |
+
+Both land on `hand_distance / background_distance`. **So the collapse is not a property of
+Farneback and no estimator choice fixes it** -- an estimator that cannot separate the hand
+plane from the background at that displacement reports the background, and the rubric then
+subtracts the background. D024's A14 column now separates the two arms, but it separates them
+over a range the pilot's hand speeds do not sit in.
+
+**What does move it is the baseline.** At 570 mm/s over a ~0.033 s pair -- the reading of
+"(t, t + 1/fps)" in which `fps` is the clip's own frame rate, which the corpus ships per clip --
+the displacement is about 21 px at 960x540, where Farneback measures 0.99 and RAFT 0.99. The
+question D044 declined to settle is therefore the only one left, and it is a question about
+what the pre-registration's sentence means, not about tooling.
+
+**Reverses if:** the pair interval is re-specified, in which case the curve is re-measured at
+the new baseline; or a hand-only mask (rather than a box) is used for the residual, which would
+change what "smoothing across the discontinuity" costs and is not tested here.

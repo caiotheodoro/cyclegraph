@@ -1,0 +1,179 @@
+{
+  "what_this_is": "Median recovered flow magnitude over median true magnitude, inside the hand box, against hand displacement. Gain 1.0 recovers the motion; gain 0.2 reports a fifth of it. Rendered synthetics under the corpus lens; no corpus access.",
+  "estimator": "raft-small",
+  "estimator_parameters": {
+    "weights": "Raft_Small_Weights.DEFAULT"
+  },
+  "seed": 11,
+  "deterministic": true,
+  "pair_interval_s": 0.25,
+  "pair_interval_note": "docs/RUBRIC.md's pair is (t, t + 1/fps) and src/cyclegraph/corpus/sampling.py reads fps as the 4 Hz analysis rate. The interval is the independent variable this measurement is about.",
+  "scales": [
+    {
+      "frame_size": [
+        480,
+        270
+      ],
+      "hand_box_width_px": 48.281,
+      "mm_per_px": 1.76054,
+      "pair_interval_s": 0.25,
+      "rows": [
+        {
+          "translation_m_per_pair": 0.005,
+          "hand_displacement_px": 2.849,
+          "true_speed_mm_s": 20.1,
+          "recovered_px": 0.86,
+          "gain": 0.3019,
+          "flow_returned_none": false
+        },
+        {
+          "translation_m_per_pair": 0.01,
+          "hand_displacement_px": 5.698,
+          "true_speed_mm_s": 40.1,
+          "recovered_px": 4.003,
+          "gain": 0.7025,
+          "flow_returned_none": false
+        },
+        {
+          "translation_m_per_pair": 0.02,
+          "hand_displacement_px": 11.395,
+          "true_speed_mm_s": 80.2,
+          "recovered_px": 8.526,
+          "gain": 0.7483,
+          "flow_returned_none": false
+        },
+        {
+          "translation_m_per_pair": 0.03,
+          "hand_displacement_px": 17.086,
+          "true_speed_mm_s": 120.3,
+          "recovered_px": 13.237,
+          "gain": 0.7747,
+          "flow_returned_none": false
+        },
+        {
+          "translation_m_per_pair": 0.04,
+          "hand_displacement_px": 22.759,
+          "true_speed_mm_s": 160.3,
+          "recovered_px": 3.796,
+          "gain": 0.1668,
+          "flow_returned_none": false
+        },
+        {
+          "translation_m_per_pair": 0.06,
+          "hand_displacement_px": 33.981,
+          "true_speed_mm_s": 239.3,
+          "recovered_px": 5.884,
+          "gain": 0.1732,
+          "flow_returned_none": false
+        },
+        {
+          "translation_m_per_pair": 0.08,
+          "hand_displacement_px": 45.009,
+          "true_speed_mm_s": 317.0,
+          "recovered_px": 7.696,
+          "gain": 0.171,
+          "flow_returned_none": false
+        },
+        {
+          "translation_m_per_pair": 0.12,
+          "hand_displacement_px": 66.327,
+          "true_speed_mm_s": 467.1,
+          "recovered_px": 11.587,
+          "gain": 0.1747,
+          "flow_returned_none": false
+        },
+        {
+          "translation_m_per_pair": 0.15,
+          "hand_displacement_px": 81.495,
+          "true_speed_mm_s": 573.9,
+          "recovered_px": 14.841,
+          "gain": 0.1821,
+          "flow_returned_none": false
+        }
+      ]
+    },
+    {
+      "frame_size": [
+        960,
+        540
+      ],
+      "hand_box_width_px": 96.561,
+      "mm_per_px": 0.88027,
+      "pair_interval_s": 0.25,
+      "rows": [
+        {
+          "translation_m_per_pair": 0.005,
+          "hand_displacement_px": 5.7,
+          "true_speed_mm_s": 20.1,
+          "recovered_px": 5.672,
+          "gain": 0.9953,
+          "flow_returned_none": false
+        },
+        {
+          "translation_m_per_pair": 0.01,
+          "hand_displacement_px": 11.399,
+          "true_speed_mm_s": 40.1,
+          "recovered_px": 11.207,
+          "gain": 0.9832,
+          "flow_returned_none": false
+        },
+        {
+          "translation_m_per_pair": 0.02,
+          "hand_displacement_px": 22.794,
+          "true_speed_mm_s": 80.3,
+          "recovered_px": 22.672,
+          "gain": 0.9946,
+          "flow_returned_none": false
+        },
+        {
+          "translation_m_per_pair": 0.03,
+          "hand_displacement_px": 34.181,
+          "true_speed_mm_s": 120.4,
+          "recovered_px": 33.284,
+          "gain": 0.9738,
+          "flow_returned_none": false
+        },
+        {
+          "translation_m_per_pair": 0.04,
+          "hand_displacement_px": 45.539,
+          "true_speed_mm_s": 160.3,
+          "recovered_px": 14.572,
+          "gain": 0.32,
+          "flow_returned_none": false
+        },
+        {
+          "translation_m_per_pair": 0.06,
+          "hand_displacement_px": 68.025,
+          "true_speed_mm_s": 239.5,
+          "recovered_px": 11.729,
+          "gain": 0.1724,
+          "flow_returned_none": false
+        },
+        {
+          "translation_m_per_pair": 0.08,
+          "hand_displacement_px": 90.136,
+          "true_speed_mm_s": 317.4,
+          "recovered_px": 15.911,
+          "gain": 0.1765,
+          "flow_returned_none": false
+        },
+        {
+          "translation_m_per_pair": 0.12,
+          "hand_displacement_px": 132.883,
+          "true_speed_mm_s": 467.9,
+          "recovered_px": 23.933,
+          "gain": 0.1801,
+          "flow_returned_none": false
+        },
+        {
+          "translation_m_per_pair": 0.15,
+          "hand_displacement_px": 163.312,
+          "true_speed_mm_s": 575.0,
+          "recovered_px": 30.043,
+          "gain": 0.184,
+          "flow_returned_none": false
+        }
+      ]
+    }
+  ]
+}

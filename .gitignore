@@ -16,6 +16,7 @@ results/*
 !results/.gitkeep
 !results/a14_translation_floor.json
 !results/flow_displacement_gain.json
+!results/flow_gain_raft.json
 !results/flow_benchmark.json
 !results/decode_probe.json
 !results/probe_fidelity.json

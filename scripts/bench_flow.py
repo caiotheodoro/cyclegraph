@@ -105,7 +105,7 @@ def _a14_residuals(estimator: FlowEstimator | None) -> tuple[float, float | None
     return geometry, residual_rms_px(field, box, ego_motion(field, mask))
 
 
-class _RaftFlow:
+class RaftFlow:
     """RAFT-small behind the `FlowEstimator` port, with torch imported lazily.
 
     It lives in a script and not in `src/cyclegraph/signal/` on purpose: `pyproject.toml`'s
@@ -156,23 +156,31 @@ class _RaftFlow:
         return field
 
 
+def load_raft() -> tuple[RaftFlow | None, str]:
+    """`(estimator, why_not)`. The one place RAFT-small is constructed, so the benchmark and
+    `scripts/measure_flow_gain.py` measure the same weights and the same preprocessing."""
+    try:
+        import torch
+        from torchvision.models.optical_flow import Raft_Small_Weights, raft_small
+    except ImportError as exc:
+        return None, f"torch/torchvision not importable: {exc}"
+    if not torch.cuda.is_available():
+        return None, ("no CUDA device. A CPU throughput number for RAFT would decide D024's "
+                      "cost rule on a configuration nobody would run.")
+    model = raft_small(weights=Raft_Small_Weights.DEFAULT).to("cuda").eval()
+    return RaftFlow(model, "cuda", torch), ""
+
+
 def _raft_arm(frames: list[tuple[np.ndarray, np.ndarray]]) -> dict[str, Any]:
     """Measure RAFT-small on the same pairs, or say precisely why it was not measured."""
     unmeasured = {
         "measured": False,
         "declared_dependency_cost": "torch, undeclared in pyproject.toml (D024 tiebreaker)",
     }
-    try:
-        import torch
-        from torchvision.models.optical_flow import Raft_Small_Weights, raft_small
-    except ImportError as exc:
-        return {**unmeasured, "why_not": f"torch/torchvision not importable: {exc}"}
-    if not torch.cuda.is_available():
-        return {**unmeasured, "why_not": (
-            "no CUDA device. A CPU throughput number for RAFT would decide D024's cost rule "
-            "on a configuration nobody would run.")}
-    model = raft_small(weights=Raft_Small_Weights.DEFAULT).to("cuda").eval()
-    estimator = _RaftFlow(model, "cuda", torch)
+    estimator, why_not = load_raft()
+    if estimator is None:
+        return {**unmeasured, "why_not": why_not}
+    import torch
     geometry, estimated = _a14_residuals(estimator)
 
     firsts = [a for a, _ in frames]
