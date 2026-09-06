@@ -330,6 +330,12 @@ def main(argv: list[str] | None = None) -> int:
         )
         signals.write(signal.model_dump_json() + "\n")
         speeds.write(speed.model_dump_json() + "\n")
+        # Per clip, like the labeller and the detector. Without it a clip's records sit in the
+        # stdio buffer until the process exits, so a worker killed after two hours has written
+        # nothing and there is nothing to resume from -- the shape `docs/DECISIONS.md` D043
+        # records, in the one stage that had neither a flush nor a resume.
+        signals.flush()
+        speeds.flush()
         estimates.append(speed)
         built += 1
         print(f"  {built}/{len(refs)} clips  ({time.time() - started:.1f}s)", flush=True)
