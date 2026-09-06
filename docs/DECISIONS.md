@@ -1099,6 +1099,16 @@ it, so the two differ by a factor that depends on hand pose. Adopting EgoHOS the
 requires deciding what `hand_box_width_px` means for a mask and saying so in the rubric, not
 just changing an enum value.
 
+**Correction, 2026-09-06.** The table above calls
+`1DEJBeQ3cR1q7cjjzwDUIQVSoptT-y9U7` a folder. It is a **file** id -- EgoHOS's
+`download_checkpoints.sh` passes it to `gdown` as `drive.google.com/file/d/<id>`, and it is a
+single `work_dirs.zip`. Probed as a folder it returns 404, which is a property of the URL form
+and not of the artifact; a later reader re-checking availability that way would wrongly
+conclude EgoHOS had gone the same way as 100DOH. Re-probed 2026-09-06 in the file form, with
+the 100DOH ids as a control on the identical probe: EgoHOS returns Drive's large-file
+confirmation page, both 100DOH ids return **404**. The entry's finding is unchanged; only the
+link's description was wrong.
+
 **Reverses if:** the authors restore the files, a mirror surfaces, or the weights arrive by
 another route, at which point 100DOH is used as `docs/METHOD.md` specifies and this entry
 records an outage rather than a redirection.
