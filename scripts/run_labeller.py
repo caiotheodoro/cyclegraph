@@ -47,7 +47,7 @@ from cyclegraph.corpus.decode import Gray, decode_gray_frames, ffmpeg_clip_argv 
 from cyclegraph.corpus.manifest import MetadataRow, clip_refs  # noqa: E402
 from cyclegraph.corpus.sampling import ANALYSIS_HZ, sample_times  # noqa: E402
 from cyclegraph.corpus.shards import REPO_ID, ShardReader  # noqa: E402
-from cyclegraph.models import ClipRef  # noqa: E402
+from cyclegraph.models import DECODE_FAILURE_CEILING, ClipRef  # noqa: E402
 from labellers.probe import (  # noqa: E402
     BACKBONE,
     CROP_SIZE,
@@ -252,6 +252,12 @@ def main(argv: list[str] | None = None) -> int:
     started = time.time()
     total = 0
     conflicts_total = 0
+    planned_total = 0
+    # A clip whose decode stops early is written short and looks complete: the rows are real
+    # labels at real instants, the clip id is right, and only the count is wrong. ffmpeg exits
+    # 0 when an HTTPS read ends mid-stream, so nothing upstream raises. Recorded here as a
+    # value with a reason (`docs/RUBRIC.md`), gated against E2's ceiling, and never silent.
+    shortfalls: list[dict[str, object]] = []
     with out.open("a") as handle:
         for i, clip in enumerate(clips, 1):
             url = ShardReader(REPO_ID, clip.shard, token)._resolve()
@@ -287,6 +293,14 @@ def main(argv: list[str] | None = None) -> int:
                 if len(batch) == args.batch:
                     flush_batch()
             flush_batch()
+            planned = len(times)
+            planned_total += planned
+            if len(predictions) < planned:
+                shortfalls.append({
+                    "clip_id": clip.clip_id, "corpus_rev": clip.corpus_rev,
+                    "planned": planned, "decoded": len(predictions),
+                    "missing": planned - len(predictions), "duration_s": clip.duration_s,
+                })
             times = times[: len(predictions)]
             rows, conflicts = label_rows(clip, times, predictions, counts,
                                          label_rev=label_rev, prompt_variant="none")
@@ -298,7 +312,18 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  {i}/{len(clips)} clips, {total} frames, "
                   f"{total / (time.time() - started):.1f} frames/s", flush=True)
 
+    if shortfalls:
+        short_path = out.parent / "decode_shortfall.jsonl"
+        with short_path.open("a") as handle:
+            for row in shortfalls:
+                handle.write(json.dumps(row) + "\n")
+        print(f"\n{len(shortfalls)} clips decoded short; recorded in {short_path}")
+
+    missing = planned_total - total
+    rate = missing / planned_total if planned_total else 0.0
     print(f"\npilot gates (values stay in {out.parent}, D018):")
+    print(f"  {'PASS' if rate <= DECODE_FAILURE_CEILING else 'FAIL'}  "
+          f"decode shortfall within E2's {DECODE_FAILURE_CEILING:.0%} ceiling")
     print(f"  {'PASS' if total or not clips else 'FAIL'}  labels written for every clip")
     print(f"  {'PASS' if total == 0 or conflicts_total / max(total, 1) < 0.10 else 'FAIL'}  "
           f"the two heads contradict each other on under 10% of frames")
