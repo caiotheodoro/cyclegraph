@@ -117,12 +117,36 @@ def detections_for_clip(clip_frames: ClipFrames, detector: FrameDetector) -> lis
     return rows
 
 
-def completed_clips(path: Path) -> set[str]:
-    """Clip ids already written, so a preempted run resumes instead of restarting."""
+def rows_per_clip(path: Path) -> dict[str, int]:
+    """How many rows each clip already has, so a preempted run resumes without a hole.
+
+    Not a set of seen clip ids. `docs/DECISIONS.md` D043 records why, for the labeller: a
+    worker killed mid-clip leaves rows behind, and a done-set calls that clip finished and
+    resumes past the part that was never written. D049 says a defect record that names a
+    mechanism has said something about every place the mechanism lives -- and then carried only
+    the memory half of D043 across to this file, leaving the half D043 called "the one that
+    matters". Rows are flushed per clip *and* by the stdio buffer inside a 4,799-row clip, so a
+    preempted spot instance produces exactly the partial clip this now detects.
+    """
     if not path.exists():
-        return set()
-    return {json.loads(line)["clip_id"]
-            for line in path.read_text().splitlines() if line.strip()}
+        return {}
+    counts: dict[str, int] = {}
+    for line in path.read_text().splitlines():
+        if line.strip():
+            cid = json.loads(line)["clip_id"]
+            counts[cid] = counts.get(cid, 0) + 1
+    return counts
+
+
+def drop_partial_clips(path: Path, partial: set[str]) -> int:
+    """Remove every row of a clip short of its sample plan, so the re-run appends a whole clip
+    rather than duplicating the part that survived."""
+    if not partial or not path.exists():
+        return 0
+    kept = [line for line in path.read_text().splitlines()
+            if line.strip() and json.loads(line)["clip_id"] not in partial]
+    path.write_text("".join(line + "\n" for line in kept))
+    return len(kept)
 
 
 def _token() -> str | None:
@@ -253,8 +277,15 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     out = ROOT / args.out
     out.parent.mkdir(parents=True, exist_ok=True)
-    done = completed_clips(out)
-    todo = [c for c in clips if c.clip_id not in done]
+    have = rows_per_clip(out)
+    expected = {c.clip_id: len(sample_times(c.duration_s)) for c in clips}
+    complete = {cid for cid, n in have.items() if n == expected.get(cid)}
+    partial = set(have) - complete
+    if partial:
+        kept = drop_partial_clips(out, partial)
+        print(f"dropped {len(partial)} partly-written clips, {kept} rows kept", flush=True)
+    done = complete
+    todo = [c for c in clips if c.clip_id not in complete]
     print(f"{len(clips)} clips, {len(done)} already detected, {len(todo)} to go", flush=True)
 
     started = time.time()
