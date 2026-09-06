@@ -298,6 +298,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         signals.write(signal.model_dump_json() + "\n")
         speeds.write(speed.model_dump_json() + "\n")
+        estimates.append(speed)
         built += 1
         print(f"  {built}/{len(refs)} clips  ({time.time() - started:.1f}s)", flush=True)
 

@@ -82,18 +82,26 @@ def debounce(series: Sequence[Label], *, fps: float,
     current = list(series)
     while True:
         blocks = runs(current)
-        victim = next(
-            (i for i, r in enumerate(blocks)
-             if r.value is not None and r.seconds(fps) < min_duration_s
-             and (i > 0 or len(blocks) > 1)),
-            None,
-        )
-        if victim is None:
+        # Every short run, not just the first. A run whose neighbours are both unreadable
+        # cannot be absorbed into anything -- there is nothing to absorb it into -- but that is
+        # a fact about *that* run and not a reason to stop debouncing the rest of the clip.
+        # Returning at the first such run left every later flicker in place, and did so only on
+        # series that contain nulls, which is a data-dependent segment count on exactly the
+        # pattern `docs/DECISIONS.md` D042 says is pervasive.
+        chosen: tuple[int, list[Run]] | None = None
+        for i, r in enumerate(blocks):
+            if r.value is None or r.seconds(fps) >= min_duration_s:
+                continue
+            if i == 0 and len(blocks) == 1:
+                continue
+            neighbours = [blocks[j] for j in (i - 1, i + 1)
+                          if 0 <= j < len(blocks) and blocks[j].value is not None]
+            if neighbours:
+                chosen = (i, neighbours)
+                break
+        if chosen is None:
             return current
-        neighbours = [blocks[j] for j in (victim - 1, victim + 1)
-                      if 0 <= j < len(blocks) and blocks[j].value is not None]
-        if not neighbours:
-            return current
+        victim, neighbours = chosen
         into = max(neighbours, key=lambda r: r.length)
         block = blocks[victim]
         for i in range(block.start, block.end):
