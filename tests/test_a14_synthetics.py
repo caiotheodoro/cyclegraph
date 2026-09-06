@@ -226,3 +226,22 @@ def test_translation_moves_the_near_hand_more_than_the_far_background() -> None:
     inside = float(changed[mask].mean())
     background = float(changed[(~mask) & valid_mask(CORPUS_CAMERA)].mean())
     assert inside > background
+
+
+def test_the_hand_breadth_has_one_home() -> None:
+    """85 mm scales every speed the project reports, and it had three copies: the constant in
+    `signal/speed.py`, a literal default here, and a private one in `scripts/measure_flow_gain.py`.
+    The sensitivity table re-runs HAL at 79.5 and 90.4 against it, so a copy that did not move
+    would have made the synthetic geometry disagree with the pipeline it is a model of (D057)."""
+    from pathlib import Path
+
+    from cyclegraph.signal.speed import HAND_BREADTH_MM
+
+    assert hand_box_for(CORPUS_CAMERA).width == hand_box_for(
+        CORPUS_CAMERA, hand_breadth_mm=HAND_BREADTH_MM).width
+
+    source = (Path(__file__).resolve().parent.parent
+              / "src" / "cyclegraph" / "signal" / "synthetic.py").read_text()
+    body = "\n".join(line for line in source.splitlines()
+                     if not line.lstrip().startswith("#") and '"""' not in line)
+    assert "85.0" not in body, "the hand breadth is imported, not retyped"
