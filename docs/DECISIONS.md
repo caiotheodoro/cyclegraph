@@ -2027,3 +2027,45 @@ clips of D043 happen. `verify_labels.py` now reports that absence plainly instea
 as agreement.
 
 **Reverses if:** nothing. This is a defect record.
+
+## D059 — The flow estimator is Farneback, decided by the rule D024 fixed beforehand
+
+2026-09-06. `results/flow_benchmark.json`, both arms, 200 real pilot pairs from 20 clips,
+seed 777, at the pair D045 defines and the resolution D050 chose.
+
+| | pairs/s | flow-null | clears ceiling | A14 residual, px | declared cost |
+|---|---|---|---|---|---|
+| farneback-cv2 (CPU) | 7.57 | 0.000 | yes | **1.217** | none; cv2 is in the `signal` extra |
+| raft-small (A10G) | 21.5 | 0.000 | yes | **1.014** | torch, undeclared |
+| *geometry alone* | — | — | — | *1.146* | — |
+
+**Rule 2, the primary one, does not separate them.** Both return a field on every pair.
+
+**Rule 3 decides it: lower total pilot cost.** RAFT is 2.8x faster per pair and needs a GPU to
+be so. Farneback needs no GPU and parallelises across processes — measured on this box, eight
+workers reach about 20 pairs/s against one worker's 7.6, and cv2 does not thread a single call.
+Pricing the pilot's ~388,000 flow calls: RAFT on the `g5.2xlarge` is ~5.0 h at $1.212, about
+**$6**; Farneback on a CPU instance of the same generation is ~1.3 h at $1.428, about **$2**.
+Rule 5's tiebreaker, written before any rate was seen, points the same way: RAFT costs a
+declared torch dependency and Farneback costs nothing.
+
+**The A14 column favours Farneback for a reason that is not speed.** It reports the residual an
+estimator leaves on the rotation synthetic, against a geometry-only floor of 1.146 px — the
+error the rubric's scalar ego-motion leaves when the field is *exact*. Farneback lands at 1.217,
+above the floor: its own error adds to the geometry's, which is what an estimator's error does.
+RAFT lands at **1.014, below the floor** — and a residual smaller than exact geometry allows can
+only come from under-recovering the field. That is D044's mechanism in miniature and it points
+the flattering way: an estimator that makes A14 look smaller than the geometry says it is has
+not mitigated A14, it has hidden a little of it.
+
+Had rule 3 gone the other way this column would have been the argument against taking it, which
+is why D025's plan put it in the table.
+
+**What this does not claim.** Farneback is not good here — D044 and D050 measure it recovering
+0.18 of a working hand's motion above ~900 mm/s, and RAFT is no better there. The choice is
+between two estimators that share a ceiling, on cost and on which of them is honest about the
+residual below it.
+
+**Reverses if:** the speed path moves to an estimator that does not smooth across the
+hand/background boundary, in which case the comparison is re-run rather than inherited — the
+rates here are for a 960x540 pair one source frame apart and nothing else.
