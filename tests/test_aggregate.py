@@ -158,3 +158,41 @@ def test_an_aggregate_carries_no_identifier_anywhere() -> None:
     assert agg is not None
     dumped = agg.model_dump_json()
     assert "factory_0" not in dumped and "worker_0" not in dumped
+
+
+def test_h4_is_not_confirmed_by_a_corpus_with_no_within_factory_information() -> None:
+    """H4 asks whether exposure is set by the site or the individual. Answering it needs both
+    variances, and a corpus where no factory contributed two workers has measured only one.
+
+    `within` is then empty, its mean defaults to 0.0, `ratio` short-circuits to infinity and
+    `holds` was True -- the hypothesis confirmed by data that cannot bear on it, which is the
+    defect `docs/DECISIONS.md` D034 corrected for H2b, one hypothesis over (D053)."""
+    singletons = [ClipObservation(f"factory_{i}", f"worker_{i}", 4.0 + i) for i in range(3)]
+    components = variance_components(singletons)
+    assert components.n_factories_with_two_workers == 0
+    assert components.between_worker_within_factory == 0.0
+    assert components.ratio == float("inf")
+    assert not components.evaluable
+    assert not components.holds
+
+
+def test_a_corpus_with_no_variance_at_all_does_not_confirm_h4_either() -> None:
+    """Identical HAL everywhere: nothing varies between sites or within them. An infinite ratio
+    out of 0/0 is not evidence of anything."""
+    flat = [ClipObservation(f"factory_{i}", f"worker_{j}", 4.0)
+            for i in range(3) for j in range(2)]
+    components = variance_components(flat)
+    assert components.n_factories_with_two_workers == 3   # the data exists
+    assert components.between_factory == 0.0              # but nothing varies
+    assert not components.evaluable
+    assert not components.holds
+
+
+def test_h4_still_evaluates_when_the_data_can_answer_it() -> None:
+    """The guard must not swallow the real case."""
+    real = [ClipObservation("factory_1", "worker_1", 3.0),
+            ClipObservation("factory_1", "worker_2", 3.1),
+            ClipObservation("factory_2", "worker_3", 7.0),
+            ClipObservation("factory_2", "worker_4", 7.1)]
+    components = variance_components(real)
+    assert components.evaluable and components.holds and components.ratio > 1.0

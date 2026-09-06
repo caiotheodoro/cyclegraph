@@ -1801,3 +1801,61 @@ validate` failure as success because the absent line was the signal.
 gates can *pass* on a fixture where they should, which no test did before.
 
 **Reverses if:** nothing. This is a defect record.
+
+## D053 — H4 was confirmed by a corpus that carried no evidence about it
+
+2026-09-06. Review finding 4.
+
+H4 asks whether exposure is set by the site or by the individual, and compares between-factory
+variance against between-worker-within-factory variance. The second is computed only over
+factories that contributed **two or more workers**. Where none did, the list is empty, its mean
+defaults to `0.0`, `ratio` short-circuits to infinity, and `holds` — defined as `ratio > 1` —
+returned **True**.
+
+Reproduced: three factories, one worker each, every HAL identical. Nothing varies anywhere.
+`between_factory` 0.0, `within` 0.0, ratio infinity, **HOLDS**. `scripts/score_hal.py` printed
+`H4 variance ratio: HOLDS` from it.
+
+**This is D034's defect, one hypothesis over.** That entry corrected H2b because "H2b was
+satisfiable by a corpus with no repetition in it" — a hypothesis confirmable by data that cannot
+bear on it. The same shape sat in H4 and the correction was not carried across, exactly as D049
+failed to carry D043's resume fix to the sibling script. Both times the general form of the
+finding was available in the entry that recorded it, and both times only the instance was fixed.
+
+**Now:** `VarianceComponents.evaluable` requires at least one factory with two workers **and**
+non-zero between-factory variance, and `holds` requires `evaluable`. `score_hal` prints
+`NOT EVALUABLE` rather than a verdict. An unevaluated hypothesis is neither confirmed nor
+falsified, and saying so is not a failure of the pipeline — reporting HOLDS was.
+
+**Reverses if:** nothing. This is a defect record.
+
+## D054 — Two published fields could not say "not measured", so they said zero
+
+2026-09-06. Contracts **v1.4 → v1.5**. Review findings 7 and 8.
+
+`docs/ARCHITECTURE.md`'s seam is that absence is a value with a reason and never zero. Two
+schema fields had no way to express absence, so the code supplied a number:
+
+- **`HALScore.duty_cycle`** was non-nullable, and the caller wrote `duty.duty_cycle or 0.0`. A
+  clip whose duty cycle could not be computed was published with the same `0.0` as a clip whose
+  hands never engaged. The record has two statuses — `no_input` and `zero_duty_cycle` — that
+  exist precisely to keep those apart, and the fabricated zero put them back together in the one
+  field a reader averages. Now null, and null exactly under `no_input`.
+
+- **`FrequencyEstimate.resolvability_floor`** was required whenever `method == "spectral"`, and
+  `cycles/spectral.py` wrote **1.0** for clips it never transformed. 1.0 is below the smallest
+  value the formula can produce — **5.30**, at the two-bin minimum — so it was a floor no clip
+  could ever have had, on a field `docs/RUBRIC.md` v1.2.0 made load-bearing precisely so a
+  reader could check `resolvable` against it.
+
+  The rule is now that the floor accompanies a **judgement**: it is present exactly when
+  `peak_power_ratio` is, because a floor without a ratio judged nothing and a ratio without a
+  floor cannot be read. A constant series, whose periodogram *was* computed, now records a real
+  ratio of 0.0 against a real floor instead of being lumped in with the unmeasured.
+
+**Both were forced by the schema, which is the part worth keeping.** Neither was a careless
+line: a non-nullable field leaves a caller no way to be honest, so the fix belongs in the
+contract and not in a convention about what to write. The seven seams say absence must be
+sayable; these are two places where it was not.
+
+**Reverses if:** nothing. This is a defect record.

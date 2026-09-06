@@ -153,7 +153,14 @@ def main(argv: list[str] | None = None) -> int:
     components = variance_components(observations)
     print(f"\ncorpus: {aggregate.n_clips} clips, {aggregate.n_workers} workers, "
           f"{aggregate.n_factories} factories")
-    print(f"  H4 variance ratio: {'HOLDS' if components.holds else 'FAILED'}")
+    if not components.evaluable:
+        # Not a failure and not a pass. H4 compares two variances and one of them was never
+        # measured; reporting HOLDS here would confirm the hypothesis from a corpus with no
+        # evidence about it (D053).
+        h4 = "NOT EVALUABLE (no factory contributed two workers, or no between-factory variance)"
+    else:
+        h4 = "HOLDS" if components.holds else "FAILED"
+    print(f"  H4 variance ratio: {h4}")
     print(f"  H5 design effect:  {aggregate.design_effect:.3f} "
           f"(width ratio {aggregate.design_effect_width_ratio:.3f})")
     return 0

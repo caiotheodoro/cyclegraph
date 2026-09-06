@@ -25,7 +25,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from cyclegraph.exposure.hal import SCALE_REV, hal_akkas_2015, hal_radwin_2015, in_fitted_range
 
-CONTRACTS_REV = "contracts/v1.4"
+CONTRACTS_REV = "contracts/v1.5"
 
 # The corpus's own naming for the two things that must never reach a published number.
 # Matches `factory_001`, `factory001` (shard file names), `Factory-07`; not `factory_id`.
@@ -301,10 +301,27 @@ class FrequencyEstimate(Record):
         # The floor is a property of the clip's length, so it is recorded rather than
         # assumed -- the same rule `ExertionSegment.min_duration_s` follows, and for the
         # same reason: `resolvable` is a function of it and a reader must be able to see it.
-        if (self.resolvability_floor is None) != (self.method == "transitions"):
+        #
+        # The floor accompanies a **judgement**, so it is present exactly when there is a peak
+        # ratio to judge. The transition-counting path never has one. A spectral estimate for a
+        # clip whose series was never transformed -- too short, or too few scored samples to
+        # form two frequency bins -- has no ratio and therefore no floor either.
+        #
+        # The rule was "null iff method is transitions", which left no way to say "no spectrum
+        # was computed" and forced `cycles/spectral.py` to invent a floor of **1.0** for those
+        # clips. 1.0 is below the smallest value the formula can produce -- 5.30, at the
+        # two-bin minimum -- so it was a floor no clip could ever have had
+        # (`docs/DECISIONS.md` D054).
+        if self.method == "transitions":
+            if self.resolvability_floor is not None:
+                raise ValueError(
+                    "transition-counting is not judged against a spectral floor; it has none"
+                )
+        elif (self.resolvability_floor is None) != (self.peak_power_ratio is None):
             raise ValueError(
-                "a spectral estimate records the floor it was judged against; the "
-                "transition-counting path has none"
+                "a spectral estimate carries its peak ratio and the floor it was judged "
+                "against, or neither: a floor without a ratio judged nothing, and a ratio "
+                "without a floor cannot be read"
             )
         if self.resolvability_floor is not None and self.resolvability_floor <= 0:
             raise ValueError("a resolvability floor is positive")
@@ -372,7 +389,7 @@ class HALScore(Record):
     hal: float | None
     mapping: Mapping
     scale_rev: str = Field(min_length=1)
-    duty_cycle: float = Field(ge=0, le=1)
+    duty_cycle: float | None = Field(ge=0, le=1)
     hz: float | None
     rms_speed_mm_s: float | None
     out_of_range: bool
@@ -393,9 +410,18 @@ class HALScore(Record):
             raise ValueError("hal is null exactly when status is not 'ok'")
         if self.status == "zero_duty_cycle" and self.duty_cycle != 0:
             raise ValueError("status 'zero_duty_cycle' requires duty_cycle 0")
+        # A clip whose duty cycle could not be computed and a clip whose hands never engaged
+        # are different facts, and this field was carrying the same 0.0 for both: the caller
+        # wrote `duty.duty_cycle or 0.0`. `zero_duty_cycle` exists precisely to keep them
+        # apart, and a fabricated zero put them back together in the one place a reader
+        # averages (`docs/DECISIONS.md` D054). Null is now sayable, and only where it is true.
+        if self.duty_cycle is None and self.status != "no_input":
+            raise ValueError("a null duty cycle is status 'no_input'; it was not measured")
         if self.status != "ok":
             return self
         assert self.hal is not None
+        if self.duty_cycle is None:
+            raise ValueError("status 'ok' requires a duty cycle")
         if self.duty_cycle == 0:
             raise ValueError("duty cycle 0 is status 'zero_duty_cycle'; the mappings take ln D")
         d_pct = 100.0 * self.duty_cycle

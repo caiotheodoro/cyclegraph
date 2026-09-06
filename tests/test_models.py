@@ -109,3 +109,39 @@ def test_identifier_pattern_matches_the_corpus_naming_and_not_the_cluster_unit()
     assert models.IDENTIFIER.search("factory_007") is not None
     assert models.IDENTIFIER.search("worker_001") is not None
     assert models.IDENTIFIER.search("factory_id/worker_id") is None
+
+
+def test_a_duty_cycle_that_was_not_measured_is_null_not_zero() -> None:
+    """`docs/ARCHITECTURE.md`'s seam: absence is a value with a reason, never zero. A clip whose
+    duty cycle could not be computed and one whose hands never engaged are different facts, and
+    `HALScore.duty_cycle` carried 0.0 for both -- the caller wrote `duty.duty_cycle or 0.0`.
+    `zero_duty_cycle` exists to keep them apart; the fabricated zero put them back together in
+    the one field a reader averages (`docs/DECISIONS.md` D054)."""
+    absent = {**fixtures.HAL_AKKAS, "hal": None, "duty_cycle": None, "hz": None,
+              "rms_speed_mm_s": None, "status": "no_input"}
+    assert models.HALScore.model_validate(absent).duty_cycle is None
+
+    # Null is only sayable where it is true.
+    with pytest.raises(ValidationError):
+        models.HALScore.model_validate({**absent, "status": "zero_duty_cycle"})
+    with pytest.raises(ValidationError):
+        models.HALScore.model_validate({**fixtures.HAL_AKKAS, "duty_cycle": None})
+
+
+def test_a_spectral_estimate_carries_its_ratio_and_floor_together_or_neither() -> None:
+    """The floor accompanies a judgement. A clip whose series was never transformed has no peak
+    ratio, so it has no floor either -- and the rule "null iff transitions" left no way to say
+    so, forcing `cycles/spectral.py` to invent 1.0. That is below the smallest value the
+    formula can produce (5.30 at two bins), so it was a floor no clip could have had (D054)."""
+    absent = {**fixtures.FREQUENCY, "hz": None, "peak_power_ratio": None,
+              "resolvability_floor": None, "resolvable": False, "hz_ci95": None,
+              "method": "spectral", "status": "too_short"}
+    assert models.FrequencyEstimate.model_validate(absent).resolvability_floor is None
+
+    with pytest.raises(ValidationError):   # a floor that judged nothing
+        models.FrequencyEstimate.model_validate({**absent, "resolvability_floor": 12.9})
+    with pytest.raises(ValidationError):   # a ratio nothing can be read against
+        models.FrequencyEstimate.model_validate({**absent, "peak_power_ratio": 3.0})
+    with pytest.raises(ValidationError):   # transitions never has one
+        models.FrequencyEstimate.model_validate({**absent, "method": "transitions",
+                                          "resolvability_floor": 12.9})
