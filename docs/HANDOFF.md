@@ -3,7 +3,7 @@
 The resume point. A fresh session should be able to continue from this file without
 re-deriving anything.
 
-**Last updated: 2026-09-05 — pre-registration v1.3.0; contracts v1.2; W2 landed and
+**Last updated: 2026-09-05 — pre-registration v1.4.0; contracts v1.2; W2 landed and
 reviewed (D020). W3's code is landed and its corpus gates pass: the manifest reconciles
 three ways (D027), the decode gate passes (D023, `results/decode_probe.json`), and the A14
 floor is measured and published (D026), and the fresh-context review is complete with all five

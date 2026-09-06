@@ -59,6 +59,7 @@ from labellers.probe import (  # noqa: E402
 )
 
 DECODE_WIDTH, DECODE_HEIGHT = 960, 540
+DECODE_PIX_FMT = "rgb24"
 """Chosen to match what the heads were fitted to, not to save bytes. Preprocessing resizes the
 shortest edge to 256, so a frame decoded at 270 arrives having barely been downscaled while the
 training frames came from 1080 and were downscaled fourfold. Decoding at 540 halves that gap,
@@ -128,10 +129,20 @@ class DinoFeatures:
 
     @staticmethod
     def preprocess(frame: np.ndarray) -> np.ndarray:
-        """One greyscale frame to a normalised (3, 224, 224) array."""
+        """One RGB frame to a normalised (3, 224, 224) array.
+
+        The frame must be colour. The head was fitted on colour JPEGs, and a greyscale frame
+        replicated across three channels is a different distribution, not a cheaper encoding
+        of the same one (D040).
+        """
         from PIL import Image
 
-        image = Image.fromarray(frame).convert("RGB")
+        if frame.ndim != 3 or frame.shape[2] != 3:
+            raise ValueError(
+                f"the labeller needs colour frames, got shape {frame.shape}; the head was "
+                f"fitted on colour and grey is a different feature distribution (D040)"
+            )
+        image = Image.fromarray(frame, mode="RGB")
         width, height = image.size
         scale = RESIZE_SHORTEST_EDGE / min(width, height)
         image = image.resize((round(width * scale), round(height * scale)), resample=3)
@@ -152,7 +163,13 @@ class DinoFeatures:
         tensor = torch.from_numpy(batch).to(self._device)
         with torch.no_grad():
             out = model(pixel_values=tensor)
-        pooled = out.last_hidden_state[:, 1:, :].mean(dim=1)  # patch tokens, CLS discarded
+        # Mean over **every** token, CLS included. This matches
+        # ../vernier/scripts/distill_rung1.py's `last_hidden_state.mean(dim=1)`, which is what
+        # the head was actually fitted to. Vernier's own docstring says "patch tokens" and its
+        # code does not; reproducing the docstring instead of the code shifted every inference
+        # feature by a fixed direction, which a linear head turns into a shifted decision
+        # boundary (`docs/DECISIONS.md` D040).
+        pooled = out.last_hidden_state.mean(dim=1)
         return [[float(v) for v in row] for row in pooled.cpu().numpy()]
 
 
@@ -212,8 +229,10 @@ def main(argv: list[str] | None = None) -> int:
         for i, clip in enumerate(clips, 1):
             url = ShardReader(REPO_ID, clip.shard, token)._resolve()
             argv_ff = ffmpeg_clip_argv(url, clip, fps_sampled=ANALYSIS_HZ,
-                                       width=DECODE_WIDTH, height=DECODE_HEIGHT)
-            frames = list(decode_gray_frames(argv_ff, DECODE_WIDTH, DECODE_HEIGHT))
+                                       width=DECODE_WIDTH, height=DECODE_HEIGHT,
+                                       pix_fmt=DECODE_PIX_FMT)
+            frames = list(decode_gray_frames(argv_ff, DECODE_WIDTH, DECODE_HEIGHT,
+                                             channels=3))
             # ffmpeg's `fps` filter emits a frame or two past the sample plan's last instant,
             # because the plan requires the *second* frame of each pair to fall strictly
             # inside the clip and the filter has no such rule. The plan decides which instants
