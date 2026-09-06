@@ -1,4 +1,5 @@
 {
+  "superseded": "Measured over a 0.25 s pair baseline, which docs/DECISIONS.md D045 replaced with the clip's own frame rate. The rates and the null rate below are for a pair the speed path no longer uses and are NOT comparable with a run carrying a `pair_baseline` field. The A14 column is also pre-D044: it was computed from the analytic field without running the estimator, so it reported the geometry for every arm. Kept rather than deleted because it is what D028 cites.",
   "rule": "docs/DECISIONS.md D024, fixed before any rate was measured",
   "seed": 777,
   "null_ceiling": 0.1,
