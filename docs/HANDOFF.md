@@ -39,15 +39,15 @@ records are written for the pilot and every one of them says so: `FrameSignal` a
 | | |
 |---|---|
 | Docs | 19 files under `docs/`, spine complete, tightened after W1 |
-| `PRE-REGISTRATION.md` | v1.5.0, D013–D045, hashed; the version gate walks the chain of prior versions |
-| `CONTRACTS.md` | v1.3: `FrameSignal.status` gains `not_attempted` with null provenance (D032); v1.2: provenance on every record, `HALScore` recomputed from its mapping, `pilot_gate`, split dominance shares |
-| Code | W2 and W3 landed: `models.py`, `exposure/hal.py`, `estimation/bootstrap.py`, `corpus/` (ports, manifest, sampling, shards, decode), `signal/` (ports, frames, speed, synthetic with a renderer, flow_farneback, stores), `cycles/`, `exposure/`; 432 tests; `mypy --strict` clean |
+| `PRE-REGISTRATION.md` | v1.5.0, D013–D055, hashed; the version gate walks the chain of prior versions |
+| `CONTRACTS.md` | v1.5: three fields that could not say "not measured" now can — `HALScore.duty_cycle`, `FrequencyEstimate.resolvability_floor`, `HandSpeedEstimate.flow_null_rate` (D054). v1.3: `FrameSignal.status` gains `not_attempted` with null provenance (D032); v1.2: provenance on every record, `HALScore` recomputed from its mapping, `pilot_gate`, split dominance shares |
+| Code | W2 and W3 landed: `models.py`, `exposure/hal.py`, `estimation/bootstrap.py`, `corpus/` (ports, manifest, sampling, shards, decode), `signal/` (ports, frames, speed, synthetic with a renderer, flow_farneback, stores), `cycles/`, `exposure/`, `estimation/`; 444 tests; `mypy --strict` clean |
 | Novelty gate | **Cleared 2026-09-05, narrowly.** `docs/SURVEY.md` S1–S6 answered |
 | Corpus access | HF token in `.env` on the author's machine (gitignored, `chmod 600`); rotate after use |
 | Compute | Measured, not estimated. The **labeller is not a GPU stage** — the A10G idled at 0% while the work was decode-bound, and a laptop's MPS matched four paid workers. The **detector is** — 10 frames/s per worker, 30 with three. `docs/METHOD.md` E3 |
 | HAL scale | **Resolved.** Radwin 2015 and Akkas 2015, open access, residuals published |
 | Expert anchor | **None, and none expected.** `docs/DECISIONS.md` D009 |
-| Reviews | Every wave ends with a fresh-context review; findings land as a DECISIONS entry. W3's stalled twice before returning a report; what worked was a narrow scope and a hard tool-call budget (D030) |
+| Reviews | Every wave ends with a fresh-context review; findings land as a DECISIONS entry. W3's stalled twice before returning a report; what worked was a narrow scope and a hard tool-call budget (D030). The 2026-09-06 review returned 14 findings, all closed (D052–D055) — including a gate that could not fail, a hypothesis confirmed by data that could not bear on it, and a debounce whose output depended on where the unreadable frames fell |
 
 ## The next three things
 
@@ -65,6 +65,18 @@ records are written for the pilot and every one of them says so: `FrameSignal` a
    separates the arms over a range the pilot's speeds do not sit in.
 3. **The negative control, before H3.** Ego4D and EPIC-KITCHENS-100, unchanged and still
    non-negotiable in that order.
+
+**The failure mode this project keeps producing, named so the next reader can look for it.**
+Three times a decision record identified a general mechanism and only the instance was fixed:
+D043's resume defect stayed in the detector (D049 claimed to have generalised it and had not),
+D034's "satisfiable by data that cannot bear on it" stayed in H4 (D053), and D054's
+absence-as-zero was fixed in two fields and left in a third. A fresh context found all three.
+When an entry names a mechanism, grep for it.
+
+The second recurring one is subtler: **reading an absent or constant signal as confirmation.**
+A `make validate` failure was read as success because the signal was a missing line; a
+permanently-failing H2c gate was read as "no detector has run" because no detector had. Both
+looked exactly like the expected state.
 
 **Read `docs/DECISIONS.md` D044 first if you touch the speed path.** At the baseline the
 pipeline used until 2026-09-06, both flow estimators recovered 0.18 of a working hand's motion
