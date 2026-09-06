@@ -1157,3 +1157,48 @@ and nothing here measures the gap. It is a disclosed assumption rather than a va
 
 **Reverses if:** H1a fails on the pilot, which selects Arm B and the judge-only draw (D018) —
 this probe is then reported as the biased labeller H1 was written to catch, not patched.
+
+## D039 — H2 is reported FAILED: the spectral path finds drift, not bouts
+
+**Result, on the pilot, with the probe as the label source.** H2a **FAILED** and H2b passed.
+The verdicts are the publishable part; the values stay in `results/pilot/` (D018).
+
+**What failed.** Spectral bout frequency and transition-counting disagree by far more than
+H2a's 20% relative bound, on almost every clip where both resolve, and in one direction:
+spectral is roughly a sixtieth of transition-counting. The spectral estimate is not a noisy
+version of the same quantity — it is a different quantity.
+
+**Why, diagnosed rather than guessed.** The great majority of resolved spectral peaks sit
+**below 0.05 Hz** — slower than the slowest cycle `docs/RUBRIC.md`'s own reasoning
+contemplates, since its 60 s clip floor is justified as "three cycles at 0.05 Hz, a 20 s
+period". Those peaks clear the resolvability floor comfortably. They are tall and they are in
+the wrong band: on a manipulation series that is mostly `true`, the dominant spectral content
+is the slow drift of gap density across the clip, not the rate of bouts.
+
+**This is `docs/RED-TEAM.md` A12's mechanism with a different symptom, and the difference
+matters.** A12 predicted that a saturated series would have *no* spectral peak and that H2b
+would fail by construction. What happened is worse: the saturated series has a perfectly good
+peak, H2b **passes**, and the number is meaningless. A12 anticipated a gate that would fail
+loudly; the real failure mode was a gate that succeeds quietly. **Resolvability tests whether
+a peak is tall, never whether it is where a bout could be.**
+
+**H2a is what caught it.** `docs/DECISIONS.md` D005 introduced transition-counting as the
+cross-check and D014 demoted the spectral path beneath it; H2a exists precisely to compare two
+estimators of one quantity. It did its job on the first real data it saw. A project that had
+run only the spectral path would have published a bout frequency two orders of magnitude too
+low, with a resolvability flag saying it was fine.
+
+**Not amended, deliberately.** The obvious fix — restrict the search grid to frequencies at or
+above the rubric's own 0.05 Hz, or three cycles per clip — follows the rubric's stated logic
+and would very likely rescue H2a. **It is not being applied, because the result has now been
+seen.** D021 and D034 changed thresholds while the quantities they bound were still unmeasured;
+this one is measured, and changing the method now to make a failed hypothesis pass is the exact
+move the pre-registration exists to prevent. H2 stands FAILED and the fix, if it is made, is a
+new pre-registration for a later version, applied to data this one did not decide.
+
+**What this does not touch.** The speed path. D014 makes hand speed primary and this concerns
+the cross-check; H2c is unmeasured because the detector's weights are gone (D037). The duty
+cycle these labels produce is unaffected — it does not depend on frequency at all.
+
+**Reverses if:** the search band is re-specified in a later pre-registration and the comparison
+re-run on data not used to choose it.
