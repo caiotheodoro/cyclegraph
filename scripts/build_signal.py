@@ -287,6 +287,16 @@ def main(argv: list[str] | None = None) -> int:
         built_samples: list[FrameSample | None] = [None] * len(times)
         built_speeds: list[SpeedSample | None] = [None] * len(times)
         for k, t_s, first, second in stream_pairs(clip, token, width=WIDTH, height=HEIGHT):
+            # Dense flow costs 0.13 s a pair at 960x540 and is 83% of this stage's wall-clock.
+            # A pair with no usable box produces a "no detected hand box" sample whatever the
+            # field is -- `speed_sample` tests the box before the flow -- so computing one is
+            # work whose result is discarded. Skipping it is not an approximation: the sample
+            # is identical either way, and on the pilot's coverage it is a sixth of the run.
+            usable = detections.detect(clip.clip_id, t_s).boxes and not box_is_contradicted(
+                labels.label(clip.clip_id, t_s))
+            if not usable:
+                built_samples[k], built_speeds[k] = _sample(k, t_s, None, None)
+                continue
             if np.array_equal(first, second):
                 # The same frame twice. `docs/RED-TEAM.md` A15 and D023 make a dead flow a null
                 # with a reason and never a zero, but the exact-zero rule they rely on does not

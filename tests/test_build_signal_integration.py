@@ -265,6 +265,10 @@ def test_a_box_the_labeller_contradicts_is_dropped_from_the_speed_path_too(
     # Only the half the labeller corroborated may count, so coverage is about a half and not 1.
     assert speed.n_with_box == pytest.approx(half, abs=1)
     assert speed.coverage < 0.55
+    # Skipping the flow on those pairs must not turn them into flow failures: they have no box,
+    # and "no box" and "flow returned nothing" are different rows in BENCHMARK's coverage table.
+    assert speed.n_flow_null == 0
+    assert speed.flow_null_rate == 0.0
 
     # And the FrameSignal still counts the conflict rather than hiding it.
     signal = FrameSignal.model_validate_json(
