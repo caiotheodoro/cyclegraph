@@ -39,36 +39,38 @@ records are written for the pilot and every one of them says so: `FrameSignal` a
 | | |
 |---|---|
 | Docs | 19 files under `docs/`, spine complete, tightened after W1 |
-| `PRE-REGISTRATION.md` | v1.3.0, D013–D021, hashed; the version gate walks the chain of prior versions |
+| `PRE-REGISTRATION.md` | v1.5.0, D013–D045, hashed; the version gate walks the chain of prior versions |
 | `CONTRACTS.md` | v1.3: `FrameSignal.status` gains `not_attempted` with null provenance (D032); v1.2: provenance on every record, `HALScore` recomputed from its mapping, `pilot_gate`, split dominance shares |
-| Code | W2 and W3 landed: `models.py`, `exposure/hal.py`, `estimation/bootstrap.py`, `corpus/` (ports, manifest, sampling, shards, decode), `signal/` (ports, frames, speed, synthetic, flow_farneback, stores); 282 tests; `mypy --strict` clean |
+| Code | W2 and W3 landed: `models.py`, `exposure/hal.py`, `estimation/bootstrap.py`, `corpus/` (ports, manifest, sampling, shards, decode), `signal/` (ports, frames, speed, synthetic with a renderer, flow_farneback, stores), `cycles/`, `exposure/`; 432 tests; `mypy --strict` clean |
 | Novelty gate | **Cleared 2026-09-05, narrowly.** `docs/SURVEY.md` S1–S6 answered |
 | Corpus access | HF token in `.env` on the author's machine (gitignored, `chmod 600`); rotate after use |
-| Compute | GPU stages on AWS via the CLI, `g5.xlarge` spot; `docs/REPRODUCTION.md` "Compute". The author is not the builder; the stages are specified for whoever runs them |
+| Compute | Measured, not estimated. The **labeller is not a GPU stage** — the A10G idled at 0% while the work was decode-bound, and a laptop's MPS matched four paid workers. The **detector is** — 10 frames/s per worker, 30 with three. `docs/METHOD.md` E3 |
 | HAL scale | **Resolved.** Radwin 2015 and Akkas 2015, open access, residuals published |
 | Expert anchor | **None, and none expected.** `docs/DECISIONS.md` D009 |
 | Reviews | Every wave ends with a fresh-context review; findings land as a DECISIONS entry. W3's stalled twice before returning a report; what worked was a narrow scope and a hard tool-call budget (D030) |
 
 ## The next three things
 
-1. **Decide the detector.** 100DOH's weights are gone -- both published checkpoints 404 and
-   no mirror exists (D037) -- while EgoHOS's download resolves. That is a decision, not an
-   errand: EgoHOS is segmentation and `docs/RUBRIC.md` scales speed by a detected **box**
-   width, so adopting it means deciding what that field means for a mask and amending the
-   rubric. **Superseded, for the record:** `faster_rcnn_1_8_132028.pth` is published only through
-   a Google Drive link that refuses automated download, and no mirror was found (D035). The
-   build itself is solved: the ops compile on a current AMI with
-   `scripts/detectors/patch_doh100.py`, measured on real hardware. **This file is now W3's
-   blocking dependency, and it is a distribution problem rather than a compute one** — a
-   browser download by a human, or a mirror, unblocks it. The GPU cost that follows is roughly
-   6 GPU-hours for the pilot, well under an hour of wall-clock at ~$0.50/h.
-2. **Run a manipulation labeller** on the same instants, writing `results/pilot/labels.jsonl`.
-   The judge is ~$9 for a calibration subset and needs an OpenAI-compatible endpoint; the
-   probe does not exist in this repository yet. Until one runs, H1 is `UNTESTED` — which is
-   W4's gate, not W3's.
-3. **Close the flow-estimator decision.** Farneback is measured at 116.9 pairs/s with a 0.000
-   null rate (D028); RAFT-small is unmeasured, so D024's comparison is incomplete and
-   `decision_taken` is `false`. One `g5.xlarge` run over the same 192 seeded pairs closes it.
+1. **Finish the speed path's first real run.** EgoHOS is adopted (D047) and its boxes are the
+   bounding box of a hand mask's largest connected component (D048); the adapter is written and
+   its box logic is tested offline. What remains is running it over the pilot, then
+   `scripts/build_signal.py` for real `FrameSignal` and `HandSpeedEstimate` records, then H2c.
+   Every `HandSpeedEstimate` written so far is `status: "no_detector"` and carries no
+   measurement.
+2. **Close the flow-estimator decision.** D024's rule is fixed and only the synthetic arm is
+   measured. Both real-pair arms must now be re-run, because D045 changed what a pair *is* —
+   any stored `flow_benchmark.json` without a `pair_baseline` field was measured over the
+   0.25 s baseline and is not comparable. RAFT's gain curve is measured
+   (`results/flow_gain_raft.json`) and does **not** rescue D044's collapse, so the A14 column
+   separates the arms over a range the pilot's speeds do not sit in.
+3. **The negative control, before H3.** Ego4D and EPIC-KITCHENS-100, unchanged and still
+   non-negotiable in that order.
+
+**Read `docs/DECISIONS.md` D044 first if you touch the speed path.** At the baseline the
+pipeline used until 2026-09-06, both flow estimators recovered 0.18 of a working hand's motion
+— the ratio of the two plane distances — because they report the background inside the hand box
+and the rubric then subtracts the background. D045 amended the pair; nothing has been run at the
+amended definition yet.
 
 ## Open questions, each with its resolving trigger
 
@@ -79,4 +81,5 @@ records are written for the pilot and every one of them says so: `FrameSignal` a
 | Whether the vendor's manipulation label and the TLV's duty cycle are the same construct | Largely answered by the TLV's own definition of exertion (`docs/SURVEY.md` S3); closed when the pilot's judge labels are read against that sentence. `docs/RED-TEAM.md` A3 |
 | Whether the A14 floor is within budget | **Half closed.** The floor is measured and published as a motion budget (D026): 23–37 °/s of rotation or 2.6–4.2 cm/s of translation consumes the whole 0.25 HAL bound. Whether the corpus's real ego-motion sits inside that is not knowable until frames are decoded with a real detector, and the bound is evaluated at W7 |
 | Who resolves S2's abstract-only rows | Anyone who opens the six Radwin-lab papers in full and re-tags them; nothing downstream needs it |
-| Whether 100DOH's box width is a usable hand-breadth proxy on fisheye | H2c coverage and the hand-breadth sensitivity row at W7 |
+| Whether a mask's box width is a usable hand-breadth proxy on fisheye | **Encouraging, not settled.** The smoke run's median box is 105 px at 960 wide against ~96 px predicted by the lens geometry for a hand at 0.45 m — two independent routes, 9% apart. Settled by H2c coverage and the hand-breadth sensitivity row at W7 |
+| How far a mask box sits from the detector box the rubric was written against | **Never, with these artifacts.** 100DOH cannot be run, so the offset cannot be measured. It is arithmetically a change in `hand_breadth_mm`, so the ±6% sensitivity rows bound it that far and no further. D047, `docs/COVERAGE.md` |
