@@ -14,6 +14,7 @@ import hashlib
 import re
 import subprocess
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -189,7 +190,29 @@ _SENTENCE = re.compile(r"(?<=[.!?])\s+")
 # What a removed quote or a list marker leaves at the front of a sentence: `**Label.**`,
 # `- `, `> `. Stripped so a bold section label or a bullet is not itself treated as a change.
 _LEADING_RESIDUE = re.compile(r"^(?:(?:[-*>]\s+)|(?:\*\*[^*]+\*\*\s*))+")
-_BODY_SKIP = ("**Version:**", "**Frozen:**", "**Amended:**", "# Pre-registration")
+
+# The version banner. These are *lines*, not paragraphs: an earlier version skipped whole
+# paragraphs beginning with these markers, and the `**Amended:**` paragraph runs on into
+# substantive prose about the amendment discipline, so everything after the marker on that
+# paragraph was unchecked. Strip the marker lines and check the rest.
+_BANNER_LINE = re.compile(r"^(?:\*\*(?:Version|Frozen|Amended):\*\*.*|# Pre-registration)$", re.M)
+
+# A floor exists because sentence splitting leaves fragments -- a stray `-`, a table pipe, a
+# heading remnant -- and a gate that fires on those gets switched off. It is 10 and not 25
+# because a real, load-bearing pre-registered sentence can be short: "Bootstrap B = 10,000."
+# is 21 characters and "Nothing else." -- the closure that stops any reporting unit below the
+# floor -- is 13. Both were silently editable while this was 25.
+_SENTENCE_MIN_CHARS = 10
+
+# The additions half of the chain check was added on 2026-09-06 (`docs/DECISIONS.md` D041)
+# after a review showed that inserting a sentence into the frozen body passed every gate.
+# Versions up to and including this one were written under the weaker rule and their blocks
+# paraphrase new text in `Now:` rather than quoting it, so they cannot satisfy the check.
+# They are exempt -- and the exemption is **pinned**: the exact number of unquoted additions
+# in that history is recorded below, and if it changes at all the gate fails. History is
+# therefore frozen rather than merely excused, and a new amendment carries its own additions.
+_ADDITIONS_RULE_FROM = (1, 5, 0)
+_GRANDFATHERED_ADDITIONS = 45
 
 
 _AMENDMENTS_HEADING = re.compile(r"^## Amendments\s*$", re.M)
@@ -201,20 +224,25 @@ def _body(text: str) -> str:
     return _AMENDMENTS_HEADING.split(text, maxsplit=1)[0]
 
 
-def _prior_sentences(prior_body: str, quotes: list[str]) -> list[str]:
-    """Sentences of a prior version that the amendment block does not claim to have replaced."""
+def _body_sentences(body: str, quotes: Sequence[str] = ()) -> list[str]:
+    """Every checkable sentence of a frozen body, with any quoted spans removed first."""
     out: list[str] = []
-    for para in re.split(r"\n\s*\n", prior_body):
+    for para in re.split(r"\n\s*\n", _BANNER_LINE.sub("", body)):
         squashed = _squash(para)
-        if not squashed or any(squashed.startswith(k) for k in _BODY_SKIP):
+        if not squashed:
             continue
         for q in quotes:
             squashed = squashed.replace(_squash(q), " ")
         for sent in _SENTENCE.split(_squash(squashed)):
             sent = _LEADING_RESIDUE.sub("", sent).strip()
-            if len(sent) >= 25 and not sent.startswith("|"):
+            if len(sent) >= _SENTENCE_MIN_CHARS and not sent.startswith("|"):
                 out.append(sent)
     return out
+
+
+def _prior_sentences(prior_body: str, quotes: list[str]) -> list[str]:
+    """Sentences of a prior version that the amendment block does not claim to have replaced."""
+    return _body_sentences(prior_body, quotes)
 
 
 def gate_prereg_version() -> list[str]:
@@ -253,6 +281,7 @@ def gate_prereg_version() -> list[str]:
         entries[h.group(1)] = decisions_text[h.start() : end]
     history = _historical_versions()
     chain: list[tuple[str, str, list[str]]] = []  # (label, prior text, quotes)
+    blocks_text: list[str] = []
     for j, b in enumerate(blocks):
         end = blocks[j + 1].start() if j + 1 < len(blocks) else len(text)
         body = text[b.start() : end]
@@ -276,16 +305,46 @@ def gate_prereg_version() -> list[str]:
             if _squash(q) not in _squash(prior):
                 failures.append(f"prereg-version: {label} quotes text not in its prior: {q[:60]!r}")
         chain.append((label, prior, quotes))
-    # (d) the chain. Each prior, minus what its block says it replaced, survives into the next.
+        blocks_text.append(body)
+    # (d) the chain, in both directions. A gate that only checked survival could be walked
+    # straight past by *adding* a sentence: nothing was removed, so nothing was missed. The
+    # frozen body is a closed set, and an insertion changes what was pre-registered exactly as
+    # much as a deletion does.
     versions = [c[1] for c in chain] + [text]
+    grandfathered = 0
     for i, (label, prior, quotes) in enumerate(chain):
-        nxt = _squash(_body(versions[i + 1]))
-        for sent in _prior_sentences(_body(prior), quotes):
+        prior_body, next_body = _body(prior), _body(versions[i + 1])
+        nxt = _squash(next_body)
+        for sent in _prior_sentences(prior_body, quotes):
             if sent not in nxt:
                 failures.append(
                     f"prereg-version: {label} changed or dropped a sentence its amendment "
                     f"block does not quote: {sent[:70]!r}"
                 )
+        # Additions: every sentence the next version has and the prior did not must appear
+        # somewhere in the amendment block that introduced it. Paraphrase in the `Now:` clause
+        # is not enough -- the block has to carry the words that entered the protocol.
+        block = _squash(blocks_text[i])
+        previous = _squash(prior_body)
+        version = tuple(int(v) for v in label.lstrip("v").split("."))
+        unquoted = [s for s in _body_sentences(next_body)
+                    if s not in previous and s not in block]
+        if version >= _ADDITIONS_RULE_FROM:
+            for sent in unquoted:
+                failures.append(
+                    f"prereg-version: {label} added a sentence its amendment block does not "
+                    f"carry: {sent[:70]!r}"
+                )
+        else:
+            grandfathered += len(unquoted)
+    if grandfathered != _GRANDFATHERED_ADDITIONS:
+        failures.append(
+            f"prereg-version: the pre-D041 history has {grandfathered} unquoted additions, "
+            f"pinned at {_GRANDFATHERED_ADDITIONS}. That history is exempt from the additions "
+            f"rule but frozen: any change to it, in either direction, is a change to what was "
+            f"pre-registered and is not covered by the exemption."
+        )
+
     commits = _git("log", "--format=%H", "--", PREREG).split()
     if commits:
         for commit in commits[:-1]:  # everything after the add commit

@@ -183,14 +183,17 @@ translation produces more flow on near objects — the hands — than on the bac
 ego-motion estimate is taken from. A scalar subtraction leaves a residual that reads as
 hand speed. Rolling shutter adds to it.
 
-**Response.** The synthetic golden test in `docs/WAVES.md`'s checklist: a rotation-only
-sequence with a static hand must produce zero residual speed within tolerance, and a
-translation-only sequence with a static hand at typical working distance is measured and
-its residual published as the floor of the speed path. If the floor is a material fraction
+**Response.** The synthetic golden test in `docs/WAVES.md`'s checklist, widened by D021 to
+both mechanisms: a rotation-only sequence under the corpus's own fisheye leaves residual that
+a scalar ego-motion estimate cannot cancel, and is measured; a translation-only sequence with
+a static hand at typical working distance is measured too. The floor is the pair, not the
+translation term alone. If the floor is a material fraction
 of observed factory speeds, the speed path is reported with that floor subtracted and the
 subtraction disclosed.
 
-*Landed if* the translation floor exceeds 20% of the corpus median RMS speed.
+*Landed if* the residual floor exceeds **0.25 HAL** at the corpus median RMS speed
+(`docs/PRE-REGISTRATION.md` v1.3.0, `docs/DECISIONS.md` D021; the earlier 20%-of-speed
+bound was ~5x looser and is superseded).
 
 ## A15. "Flow failure reads as zero speed — the flattering direction." · MITIGATED · major
 

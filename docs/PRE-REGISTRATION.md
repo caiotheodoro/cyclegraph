@@ -247,7 +247,12 @@ quotes the v1.1.0 sentence it replaced.
   sentence really was in the prior version." Now: the same, plus "and that every unquoted
   sentence of the prior version survives into the next". Prior: "**Amended:** 2026-09-05,
   v1.1.0, still before `src/` exists and before a single clip is decoded." Now: names both
-  versions.
+  versions. Prior: "The amendment block at the end quotes every prior sentence it replaced"
+  Now: the same in the plural, since there is now more than one block, plus the clause that
+  `scripts/validate.py` refuses any unquoted change to the frozen body. *(This quote was
+  added on 2026-09-06 by `docs/DECISIONS.md` D041: it is a real v1.2.0 change that the block
+  omitted, and it went undetected because the gate skipped the whole banner paragraph. The
+  same thing happened at v1.1.0 and D020 repaired it the same way.)*
 - **Frequency axis** (D020, review finding 22). Prior: "A switch is reported as a failure."
   Now: a switch is a failure of the speed path and makes the frequency control `FAILED` and
   H3 `UNTESTED` for v1. Added the A14 translation-floor pre-commitment at 20% of the corpus

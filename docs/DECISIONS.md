@@ -398,7 +398,7 @@ A14 pre-commitment D020 added.
 
 **Rationale.** The 20% bound was set without checking what it costs on the mapping it feeds.
 It costs a lot. On `akkas-2015-speed-dc` at a 68% duty cycle, a floor at exactly 20% of speed
-moves HAL by **0.85 at 400 mm/s, 1.22 at 612 mm/s and 1.22 at 800 mm/s** — recomputed from
+moves HAL by **0.85 at 400 mm/s and 1.08 at 1000 mm/s, peaking at 1.25 near 700 mm/s** — recomputed from
 `src/cyclegraph/exposure/hal.py`, not transcribed. `docs/EVALS_CARD.md` names 0.74 HAL, the
 best published third-person system's cross-domain RMSE against observers, as "the honest
 prior for how far this port could be off". A pre-committed systematic floor larger than the
@@ -1250,5 +1250,54 @@ feature distribution is not a schema. `zip(strict=True)` caught a timestamp misa
 earlier in the same file, and nothing analogous exists for "these features are not the ones the
 model was fitted to". The fresh-context review caught it. That is the argument for the review
 step, made concrete.
+
+**Reverses if:** nothing. This is a defect record.
+
+## D041 — The pre-registration gate did not check what it claimed; three exploits, now closed
+
+**Found by the fresh-context review of the amendments.** `scripts/validate.py`'s docstring and
+`docs/PRE-REGISTRATION.md`'s own banner both claimed that no sentence of the frozen body could
+change without an amendment block quoting it. The reviewer defeated that claim three ways, each
+run against the real gate with the hash recomputed, each returning exit 0.
+
+| Exploit | Why it worked |
+|---|---|
+| Rewrite "Bootstrap B = 10,000." to `B = 200` | 21 characters; the gate skipped sentences under 25 |
+| Delete "Nothing else." | 13 characters — and it is the closure that stops any reporting unit below the D019 floor |
+| Insert a new sentence into the frozen Clustering paragraph | **additions were never checked at all** |
+
+The third is the serious one. The gate tested only that prior sentences *survived*, so an
+insertion passed by construction: nothing was removed, so nothing was missed. The frozen body
+is a closed set, and adding to it changes what was pre-registered exactly as much as deleting
+from it. A hypothesis could have been added, or a bound loosened by appending an exception, and
+every gate would have gone green.
+
+**Three fixes.** The sentence floor is 10 rather than 25, chosen because real pre-registered
+sentences are short — the two exploited above are 21 and 13 characters. The version banner is
+skipped by *line* rather than by paragraph: the `**Amended:**` paragraph runs on into
+substantive prose about the amendment discipline, and skipping the whole paragraph left that
+prose unchecked. And the chain check now runs in both directions.
+
+**Turning it on immediately found a real historical violation.** v1.2.0 changed the banner
+sentence "The amendment block at the end quotes every prior sentence it replaced" into the
+plural and added a clause, without quoting it — in exactly the region the paragraph-skip had
+hidden. The quote is added to the v1.2.0 block now, marked with the date and this entry.
+D020 did the same thing at v1.1.0 when it strengthened the gate; that this keeps happening is
+the argument for strengthening it rather than against.
+
+**The additions rule starts at v1.5.0, and the history behind it is pinned, not excused.**
+Versions 1.1.0 through 1.4.0 were written under the weaker rule and their blocks paraphrase new
+text in `Now:` rather than quoting it, so they cannot satisfy the check — there are **45** such
+additions, 38 of them in v1.1.0. Rewriting those blocks to carry all 45 verbatim would roughly
+double the amendments section and would misrepresent what they said at the time. So they are
+exempt, and the exemption is **bounded by a pinned count**: if the number of unquoted additions
+in that history changes in either direction, the gate fails. The history is frozen rather than
+merely forgiven, and every amendment from v1.5.0 on must carry its own additions.
+
+**What this says about the gates generally.** This is the second defect this week found in a
+check that was passing (`make typecheck` was the first, D030). Both were invisible for the same
+reason: a green gate is evidence only about what it tests, and neither the author nor the gate
+can tell you what it does not test. That is the whole argument for an independent context, and
+it is the second time it has paid for itself.
 
 **Reverses if:** nothing. This is a defect record.

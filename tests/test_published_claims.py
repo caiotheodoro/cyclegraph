@@ -75,3 +75,37 @@ def test_a_silent_body_edit_is_caught_even_after_a_rehash() -> None:
     survivors = validate._prior_sentences(validate._body(prior), quotes)
     missing = [s for s in survivors if s not in validate._squash(validate._body(tampered))]
     assert missing, "a changed H3 sentence must be detected as unquoted"
+
+
+def test_a_short_sentence_cannot_be_silently_rewritten(tmp_path: Path) -> None:
+    """`docs/DECISIONS.md` D041, exploit 1. "Bootstrap B = 10,000." is 21 characters and was
+    editable while the gate's floor was 25. It is a live estimation parameter."""
+    body = validate._body((validate.ROOT / validate.PREREG).read_text())
+    sentences = validate._body_sentences(body)
+    assert any("Bootstrap B = 10,000." in s for s in sentences), (
+        "a 21-character pre-registered parameter must be a checked sentence")
+
+
+def test_the_reporting_floor_closure_is_a_checked_sentence() -> None:
+    """D041, exploit 2. "Nothing else." is 13 characters and is what stops any reporting unit
+    below the D019 floor from being published."""
+    body = validate._body((validate.ROOT / validate.PREREG).read_text())
+    assert "Nothing else." in validate._body_sentences(body)
+
+
+def test_the_banner_paragraph_prose_is_checked_not_skipped() -> None:
+    """D041's third mechanism. The `**Amended:**` paragraph runs on into substantive prose
+    about the amendment discipline; skipping the whole paragraph left that prose editable, and
+    a real v1.2.0 change hid there for two versions."""
+    body = validate._body((validate.ROOT / validate.PREREG).read_text())
+    sentences = validate._body_sentences(body)
+    assert any("refuses any change to the frozen body" in s for s in sentences)
+    assert not any(s.startswith("**Version:**") for s in sentences)
+
+
+def test_the_grandfathered_addition_count_is_pinned() -> None:
+    """D041. Pre-v1.5.0 history is exempt from the additions rule but frozen: the gate carries
+    the exact count so that history cannot be edited under cover of the exemption."""
+    assert validate._GRANDFATHERED_ADDITIONS == 45
+    assert validate._ADDITIONS_RULE_FROM == (1, 5, 0)
+    assert validate.gate_prereg_version() == []
