@@ -78,6 +78,23 @@ The `flow_null_rate` above is a **lower bound on flow failure** (D023): an exact
 residual is caught, but motion blur and low light decay flow toward small non-zero values
 that pass through as real speed.
 
+## Where the bout count came from, split by boundary
+
+The same argument as the row above, for the frequency axis. `docs/RUBRIC.md` ends an exertion
+at every unreadable frame and `docs/DECISIONS.md` D042 declines to repair that, because joining
+two bouts across an interval nobody scored is gap-filling and moves the count in the flattering
+direction. A null landing inside a bout therefore counts it twice, and the inflation is a
+property of where the labels ran out rather than of the work. It is published here rather than
+subtracted, so H2a can be read as a statement about the two estimators and not about the null
+pattern.
+
+| Figure | Value |
+|---|---|
+| Exertion segments counted | — |
+| ...of which a boundary is an unreadable frame | — |
+| Scored seconds (the frequency denominator, D042) | — |
+| Clip seconds (**not** the denominator; shown for the difference) | — |
+
 ## Sensitivity
 
 | Choice | Alternatives run | Effect on HAL median |

@@ -14,6 +14,20 @@
 so it ends whatever run it interrupts and starts nothing. Absorbing it would be gap-filling
 by another name: it would join two bouts across an interval nobody scored, and the join would
 lower the count in the flattering direction.
+
+That rule has a consequence the count alone does not show: a null run lands *inside* bouts as
+well as between them, and every one it lands inside splits one bout into two. Part of the
+segment count is therefore a property of where the unreadable frames fell rather than of the
+work. It is not repaired here -- repairing it is the gap-filling the rule forbids -- it is
+**counted**, by `null_bounded_segments`, and reported beside the frequency so a reader can see
+how much of the count the boundaries are responsible for (`docs/DECISIONS.md` D042).
+
+**The denominator is scored time, not the clip's duration.** `docs/RUBRIC.md` fixes duty
+cycle's denominator as scored frames and says nothing about this one; dividing a count of
+exertions found only in scored frames by the whole clip's wall-clock would put a restricted
+numerator over an unrestricted denominator and impute *no exertion* to every unreadable
+stretch. Both conventions assume something about unscored time; this one assumes what the
+rubric already blessed, and the 10% unreadable ceiling bounds the difference either way.
 """
 
 from __future__ import annotations
@@ -86,6 +100,13 @@ def debounce(series: Sequence[Label], *, fps: float,
             current[i] = into.value
 
 
+def scored_seconds(series: Sequence[Label], *, fps: float) -> float:
+    """Seconds a label was actually assigned to. The frequency denominator."""
+    if fps <= 0:
+        raise ValueError("fps is positive")
+    return sum(1 for value in series if value is not None) / fps
+
+
 def exertion_segments(
     clip: ClipRef, series: Sequence[Label], *, fps: float, label_source: LabelSource,
     min_duration_s: float = DEBOUNCE_S,
@@ -107,10 +128,31 @@ def exertion_segments(
     return out
 
 
+def null_bounded_segments(
+    series: Sequence[Label], *, fps: float, min_duration_s: float = DEBOUNCE_S,
+) -> int:
+    """How many exertion segments have an unreadable frame against a boundary.
+
+    A disclosure, not a correction. A segment counted here ends where the labels ran out
+    rather than where the exertion did, so it is evidence about the null pattern and not about
+    the work. Reported beside the segment count; never subtracted from it.
+    """
+    debounced = debounce(series, fps=fps, min_duration_s=min_duration_s)
+    n = 0
+    for run in runs(debounced):
+        if run.value is not True or run.length / fps < min_duration_s:
+            continue
+        before_is_null = run.start > 0 and debounced[run.start - 1] is None
+        after_is_null = run.end < len(debounced) and debounced[run.end] is None
+        if before_is_null or after_is_null:
+            n += 1
+    return n
+
+
 def transition_frequency(
     clip: ClipRef, series: Sequence[Label], *, fps: float, label_source: LabelSource,
 ) -> FrequencyEstimate:
-    """Bout frequency by counting exertions over the clip's duration.
+    """Bout frequency by counting exertions over the time that was scored.
 
     A clip with no exertion at all is `no_peak` with `hz: null`, not a frequency of zero:
     "no detectable cycle" and "no repetition" are different claims and conflating them is the
@@ -118,14 +160,15 @@ def transition_frequency(
     """
     segments = exertion_segments(clip, series, fps=fps, label_source=label_source)
     nyquist = fps / 2.0
-    if not segments:
+    scored_s = scored_seconds(series, fps=fps)
+    if not segments or scored_s <= 0.0:
         return FrequencyEstimate(
             clip_id=clip.clip_id, corpus_rev=clip.corpus_rev, label_source=label_source,
             hz=None, method="transitions", peak_power_ratio=None,
             resolvability_floor=None, resolvable=False,
             hz_ci95=None, nyquist_hz=nyquist, status="no_peak",
         )
-    hz = len(segments) / clip.duration_s
+    hz = len(segments) / scored_s
     if hz >= nyquist:
         return FrequencyEstimate(
             clip_id=clip.clip_id, corpus_rev=clip.corpus_rev, label_source=label_source,
