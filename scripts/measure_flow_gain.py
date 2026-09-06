@@ -32,7 +32,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from cyclegraph.corpus.sampling import ANALYSIS_HZ, pair_offset_s  # noqa: E402
+from cyclegraph.corpus.sampling import ANALYSIS_HZ  # noqa: E402
 from cyclegraph.signal.flow_farneback import FarnebackFlow  # noqa: E402
 from cyclegraph.signal.ports import FlowEstimator, box_mask  # noqa: E402
 from cyclegraph.signal.synthetic import (  # noqa: E402
@@ -61,12 +61,12 @@ def _scaled_camera(width: int) -> Camera:
                   cx=c.cx * s, cy=c.cy * s, k=c.k)
 
 
-def measure(width: int, estimator: FlowEstimator) -> dict[str, Any]:
+def measure(width: int, estimator: FlowEstimator, pair_interval_s: float) -> dict[str, Any]:
     cam = _scaled_camera(width)
     scene = Scene(camera=cam, hand_box=hand_box_for(cam))
     mask = box_mask((cam.height, cam.width), [scene.hand_box])
     mm_per_px = HAND_BREADTH_MM / scene.hand_box.width
-    dt = pair_offset_s(ANALYSIS_HZ)
+    dt = pair_interval_s
     rows = []
     for metres in TRANSLATIONS_M:
         truth = analytic_flow(scene, translation_m=(metres, 0.0, 0.0))
@@ -95,6 +95,11 @@ def measure(width: int, estimator: FlowEstimator) -> dict[str, Any]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", default="results/flow_displacement_gain.json")
+    parser.add_argument("--pair-interval-s", type=float, default=1.0 / ANALYSIS_HZ,
+                        help="seconds between the two frames of a speed pair. The default is "
+                             "the 4 Hz reading D045 replaced; it stays the default so this "
+                             "curve remains comparable with the one D044 published. Pass "
+                             "1/30 for the amended reading.")
     parser.add_argument("--estimator", choices=("farneback", "raft"), default="farneback",
                         help="raft needs a CUDA device and torchvision; it is the arm that "
                              "decides whether D044's collapse is a property of Farneback or "
@@ -115,7 +120,8 @@ def main(argv: list[str] | None = None) -> int:
         farneback = FarnebackFlow()
         estimator, parameters = farneback, asdict(farneback)
 
-    scales = [measure(480, estimator), measure(960, estimator)]
+    scales = [measure(480, estimator, args.pair_interval_s),
+              measure(960, estimator, args.pair_interval_s)]
     payload: dict[str, Any] = {
         "what_this_is": (
             "Median recovered flow magnitude over median true magnitude, inside the hand box, "
@@ -125,11 +131,11 @@ def main(argv: list[str] | None = None) -> int:
         "estimator_parameters": parameters,
         "seed": SEED,
         "deterministic": True,
-        "pair_interval_s": pair_offset_s(ANALYSIS_HZ),
+        "pair_interval_s": args.pair_interval_s,
         "pair_interval_note": (
-            "docs/RUBRIC.md's pair is (t, t + 1/fps) and src/cyclegraph/corpus/sampling.py "
-            "reads fps as the 4 Hz analysis rate. The interval is the independent variable "
-            "this measurement is about."),
+            "The interval is the independent variable this measurement is about. The 4 Hz "
+            "reading of docs/RUBRIC.md's (t, t + 1/fps) gives 0.25 s; docs/DECISIONS.md D045 "
+            "replaced it with the clip's own frame rate, about 0.033 s."),
         "scales": scales,
     }
     out = ROOT / args.out

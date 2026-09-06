@@ -1,6 +1,6 @@
 # Rubric
 
-**Version:** 1.2.0. Frozen with `docs/PRE-REGISTRATION.md`; amended with it, with the
+**Version:** 1.3.0. Frozen with `docs/PRE-REGISTRATION.md`; amended with it, with the
 replaced text quoted at the end.
 
 The operational definitions the standards leave open. Every one of these is a choice; the
@@ -76,10 +76,11 @@ pipeline could understate exposure.
 The primary frequency-axis input (`docs/DECISIONS.md` D014). Defined so that a reader can
 disagree with a rule rather than with a number.
 
-- **A speed sample** is taken at each 4 Hz instant from the frame pair (t, t + 1/fps):
-  dense optical flow, the **median flow over the complement of the hand mask** taken as the
-  camera's ego-motion and subtracted, then the **RMS residual flow magnitude inside the
-  largest detected hand box**. Pixels per second.
+- **A speed sample** is taken at each 4 Hz instant from the frame pair
+  (t, t + 1/fps_clip), where `fps_clip` is the clip's own frame rate and not the analysis
+  rate (`docs/DECISIONS.md` D045): dense optical flow, the **median flow over the complement
+  of the hand mask** taken as the camera's ego-motion and subtracted, then the **RMS residual
+  flow magnitude inside the largest detected hand box**. Pixels per second.
 - **Scale.** Pixel speed is converted to mm/s by `hand_breadth_mm / median_box_width_px`,
   the clip's median detected box width standing in for hand breadth as Akkas 2015 requires.
   `hand_breadth_mm = 85`, the mean of the paper's male and female population means, because
@@ -155,3 +156,15 @@ the resulting agreement would be reported whatever it said.
   analysis rate can resolve, and a duty cycle over fewer than three cycles is dominated by
   where the clip happened to start." Now: the clip length bounds the slowest cycle and the
   analysis rate the fastest; the sentence had conflated them.
+
+### v1.3.0 — D045
+
+- **Hand speed** (D045). Prior: "A speed sample is taken at each 4 Hz instant from the frame
+  pair (t, t + 1/fps)". Now: the same, with `fps` named as the clip's own frame rate and
+  explicitly not the analysis rate. `fps` was undefined in that sentence and
+  `src/cyclegraph/corpus/sampling.py` read it as the analysis rate, giving a 0.25 s flow
+  baseline. At that baseline both Farneback and RAFT-small recover 0.18 of a working hand's
+  motion — the ratio of the hand and background plane distances — because they report the
+  background inside the hand box and this rubric then subtracts the background (D044). Amended
+  while no `HandSpeedEstimate` has ever carried a measurement: 100DOH's weights are
+  unobtainable (D037) and every such record so far is `status: "no_detector"`.

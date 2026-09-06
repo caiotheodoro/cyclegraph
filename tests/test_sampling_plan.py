@@ -21,6 +21,11 @@ from tests import fixtures
 CONTRACT_EXAMPLE_DURATION_S = 187.4
 CONTRACT_EXAMPLE_N_SAMPLES = 749
 
+# The margin `n_samples` reserves at the end of a clip. Since D045 the speed pair spans one
+# frame of the source video, not one analysis period, so this is deliberately larger than the
+# pair needs -- see `n_samples`'s docstring for why it was not shrunk.
+PLAN_MARGIN_S = 1.0 / ANALYSIS_HZ
+
 
 def test_it_reproduces_the_contract_example() -> None:
     assert n_samples(CONTRACT_EXAMPLE_DURATION_S) == CONTRACT_EXAMPLE_N_SAMPLES
@@ -36,19 +41,19 @@ def test_the_contract_example_does_not_discriminate_so_a_boundary_case_is_pinned
     duration = 10.0
     assert n_samples(duration) == 39
     assert int(duration * ANALYSIS_HZ) == 40
-    assert int((duration - pair_offset_s()) * ANALYSIS_HZ) + 1 == 40
+    assert int((duration - PLAN_MARGIN_S) * ANALYSIS_HZ) + 1 == 40
 
     times = sample_times(duration)
-    assert times[-1] + pair_offset_s() < duration
-    assert times[-1] + 2 * pair_offset_s() >= duration  # no further pair fits
+    assert times[-1] + PLAN_MARGIN_S < duration
+    assert times[-1] + 2 * PLAN_MARGIN_S >= duration  # no further sample fits
 
 
 def test_the_last_pair_always_ends_strictly_inside_the_clip() -> None:
     for duration in (60.0, 60.25, 61.0, 100.0, 187.4, 433.4, 1200.0):
         times = sample_times(duration)
         assert times, duration
-        assert times[-1] + pair_offset_s() < duration, duration
-        assert times[-1] + 2 * pair_offset_s() >= duration - 1e-9, duration
+        assert times[-1] + PLAN_MARGIN_S < duration, duration
+        assert times[-1] + 2 * PLAN_MARGIN_S >= duration - 1e-9, duration
 
 
 def test_a_clip_shorter_than_one_pair_plans_nothing() -> None:
@@ -65,11 +70,30 @@ def test_a_clip_below_the_rubric_floor_plans_no_pairs() -> None:
     assert plan_pairs(long)
 
 
-def test_pairs_are_offset_by_exactly_one_analysis_interval() -> None:
-    clip = ClipRef.model_validate({**fixtures.CLIP_REF, "duration_s": 100.0})
+def test_pairs_are_offset_by_one_frame_of_the_clip_not_one_analysis_interval() -> None:
+    """D045, and the regression that catches a revert to the 4 Hz reading. At that reading the
+    two frames were 0.25 s apart, and neither flow estimator recovers a working hand's motion
+    over that baseline (D044). The offset must come from the clip's own frame rate."""
+    clip = ClipRef.model_validate({**fixtures.CLIP_REF, "duration_s": 100.0, "fps": 30.0})
     pairs = plan_pairs(clip)
-    assert all(math.isclose(b - a, pair_offset_s()) for a, b in pairs)
+    assert all(math.isclose(b - a, 1.0 / 30.0) for a, b in pairs)
+    assert not math.isclose(1.0 / 30.0, PLAN_MARGIN_S)  # the two readings really do differ
     assert pairs[0][0] == 0.0
+    # The instants themselves stay on the analysis grid; only the second frame moved.
+    assert all(math.isclose(b - a, 1.0 / 60.0)
+               for a, b in plan_pairs(ClipRef.model_validate(
+                   {**fixtures.CLIP_REF, "duration_s": 100.0, "fps": 60.0})))
+    assert [a for a, _ in pairs] == sample_times(100.0)
+
+
+def test_the_pair_offset_refuses_to_default_to_the_analysis_rate() -> None:
+    """The defaulted argument is how a 0.25 s flow baseline entered the pipeline without
+    anyone choosing it. A caller has to name the rate now."""
+    with pytest.raises(TypeError):
+        pair_offset_s()  # type: ignore[call-arg]
+    assert pair_offset_s(30.0) == pytest.approx(1.0 / 30.0)
+    with pytest.raises(ValueError):
+        pair_offset_s(0.0)
 
 
 def test_nyquist_is_two_hertz_at_the_pre_registered_rate() -> None:
