@@ -95,6 +95,10 @@ def measure(width: int, estimator: FlowEstimator, pair_interval_s: float) -> dic
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", default="results/flow_displacement_gain.json")
+    parser.add_argument("--widths", default="480,960",
+                        help="decode widths to sweep. The knee is not monotone in resolution: "
+                             "a dense estimator's search range is in pixels, so a higher "
+                             "resolution spends the same physical motion on more of them.")
     parser.add_argument("--pair-interval-s", type=float, default=1.0 / ANALYSIS_HZ,
                         help="seconds between the two frames of a speed pair. The default is "
                              "the 4 Hz reading D045 replaced; it stays the default so this "
@@ -120,8 +124,8 @@ def main(argv: list[str] | None = None) -> int:
         farneback = FarnebackFlow()
         estimator, parameters = farneback, asdict(farneback)
 
-    scales = [measure(480, estimator, args.pair_interval_s),
-              measure(960, estimator, args.pair_interval_s)]
+    widths = [int(w) for w in args.widths.split(",") if w.strip()]
+    scales = [measure(w, estimator, args.pair_interval_s) for w in widths]
     payload: dict[str, Any] = {
         "what_this_is": (
             "Median recovered flow magnitude over median true magnitude, inside the hand box, "
