@@ -1721,3 +1721,41 @@ No hypothesis is decided by it and no pilot number has ever been produced on thi
 **Reverses if:** a sparse or hand-masked estimator is measured on the same synthetics and holds
 gain above 900 mm/s, in which case the resolution sweep is re-run for it and this optimum is
 that estimator's, not the pipeline's.
+
+## D051 — The exactly-zero flow rule does not fire on the case it was written for
+
+2026-09-06.
+
+`docs/RED-TEAM.md` A15 requires a flow failure to be a null with a reason and never a zero, and
+D023 implements that at the sample level: an exactly-zero residual inside the box is the A15
+signature, so it becomes a null. `== 0.0` exactly, deliberately — D023 argued that nulling
+*small* residuals would bias the corpus upward, which is right.
+
+**Measured, it does not fire.** Running the stage over pairs built from one frame twice — the
+degenerate case D023 names — the record comes back `status: "ok"`, `n_flow_null: 0`, and
+`rms_speed_mm_s: 3.5e-07`. Farneback on two identical frames returns a **tiny non-zero** field,
+not a zero one, so neither the estimator's own `field.any()` guard nor D023's exact-zero rule
+sees it. The sample is counted as a real measurement of almost no motion.
+
+**The direction is the usual one.** A clip of such samples reports a speed near zero, which
+maps to a low HAL. Flattering.
+
+**The rule is not loosened.** A threshold would null real slow motion and bias upward, which is
+exactly what D023 refused and still refuses. What is added instead is an **exact** check that
+costs nothing and needs no threshold: if the two frames of a pair are byte-identical, that is
+the same frame twice — a decode fact, not a measurement — and the sample is a null with that
+reason. Real sensor noise means genuinely still footage never produces byte-identical frames;
+duplicated frames from a decoder do.
+
+**What this corrects in D023.** That entry says the exact-zero rule catches "identical or
+degenerate frames". It catches neither, in floating point. The `flow_null_rate` is therefore an
+even weaker lower bound on flow failure than D023 already warned it was, and the entry's
+statement of what it does catch was wrong rather than merely incomplete.
+
+**How it was found.** A mutation test. An integration test asserting `rms_speed_mm_s > 0`
+passed when the pair was built from one frame twice, because 3.5e-07 is greater than zero. The
+assertion was replaced with one that checks the value is the *right size* against a known hand
+motion, and the mutation then failed as it should. An assertion that only checks a sign will
+accept any bug that leaves the sign alone.
+
+**Reverses if:** nothing. This is a defect record.
