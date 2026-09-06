@@ -1301,3 +1301,88 @@ can tell you what it does not test. That is the whole argument for an independen
 it is the second time it has paid for itself.
 
 **Reverses if:** nothing. This is a defect record.
+
+## D042 — The transition count's denominator was wall-clock; its numerator is fragmented by nulls
+
+2026-09-06.
+
+The H2 review's first finding: unreadable frames do not only sit *between* exertions, they sit
+*inside* them, and `docs/RUBRIC.md`'s boundary rule ends a run at every one. A bout interrupted
+by a null is counted twice. On the withdrawn pilot labels the reviewer put the inflation at
+**2.4–3.7x**, which makes D039's "roughly a sixtieth" closer to a twenty-fifth.
+
+Reading the module against that finding turned up a second thing the reviewer did not name: the
+**denominator**. `exertion_segments` finds exertions only where frames were scored, and
+`transition_frequency` divided that count by `clip.duration_s` -- the whole clip, unreadable
+stretches included. A restricted numerator over an unrestricted denominator imputes *no
+exertion* to every span nobody scored. `docs/RUBRIC.md` already fixes duty cycle's denominator
+as scored frames and is silent on this one, so the two halves of the same pipeline were using
+two conventions on the same series.
+
+**The denominator is changed to scored time. The fragmentation is not repaired.** They are
+different kinds of problem and get different answers:
+
+- The denominator is an implementation choice the pre-registration never constrained, and one
+  convention is already blessed for the neighbouring quantity. Changing it is consistency, and
+  it moves H2a's disagreement **in the unflattering direction** -- scored time is shorter than
+  the clip, so transition-counting gets *faster* and the gap to the spectral estimate *widens*.
+  A change that makes a failed hypothesis fail harder is not one this project needs to be
+  suspicious of, but the direction is stated so nobody has to take that on trust.
+- The fragmentation cannot be repaired without joining two bouts across an interval nobody
+  scored, which is the gap-filling `docs/RUBRIC.md` forbids and which would move the count in
+  the flattering direction. So it is **counted instead**: `null_bounded_segments` reports how
+  many segments have an unreadable frame against a boundary, and that number is published
+  beside the segment count in `docs/BENCHMARK.md`. A reader can then see how much of the count
+  is the work and how much is where the labels ran out. It is never subtracted.
+
+**What this does to D039.** D039's H2 verdict was already provisional under D040, because the
+labels it rests on are withdrawn. This entry adds a second reason to re-derive rather than
+re-quote it: the *magnitude* it reports is confounded by fragmentation the entry did not
+measure, and the recomputation must carry the null-bounded count beside it. The FAILED verdict
+itself is not disturbed here -- both effects identified so far move the disagreement the same
+way or leave it far outside H2a's 20% bound -- but "not disturbed" is a prediction until the
+re-scored labels are in, and it is recorded as one.
+
+Neither change is a pre-registration amendment. H2a bounds the relative difference between two
+estimators; it does not define either estimator's denominator, and `docs/RUBRIC.md`'s boundary
+rule is untouched.
+
+**Reverses if:** a later pre-registration re-specifies the transition estimator's support, in
+which case the denominator follows that specification instead of duty cycle's.
+
+## D043 — The colour re-run held whole clips in memory, and its resume trusted a row's existence
+
+2026-09-06.
+
+D040's fix moved the labeller from grey to colour frames. Nothing else changed, and the run
+fell over: two of four workers were OOM-killed, the survivors dropped to 4.8 frames/s against
+the ~44 the grey path managed on one stream, and the GPU sat at **0%** while `kswapd` burned a
+core. The cause is arithmetic that the change made load-bearing without anyone noticing it was
+there: `run_labeller.py` materialised a clip's frames with `list(...)`, and a 1200 s clip at
+4 Hz and 960x540 is 4,799 frames -- 2.5 GB in grey, **7.5 GB in colour**. Four workers of that
+do not fit in 30 GB, so the box went to swap and stopped being a GPU machine at all.
+
+Three things follow, and the third is the one that matters.
+
+1. **Frames are streamed in batches**, never accumulated. The decoder was already a generator;
+   only the consumer was wrong. The decode is capped at the sample plan's length with ffmpeg's
+   own `-frames:v` rather than by breaking out of the generator, because closing the pipe early
+   makes ffmpeg exit non-zero and the reader raises on it.
+2. **ffmpeg's decoder thread pool is capped.** Uncapped it sizes itself to the host and two
+   concurrent colour decodes took 6.6 of 8 vCPUs between them, starving the Python side that
+   consumes their output. Capping changes no pixel; H.264 slice threading is deterministic.
+3. **Resume no longer treats a clip as finished because rows exist for it.** It compares the
+   row count against the clip's sample plan, and rewrites the file without any clip that falls
+   short before appending. The old set-of-seen-`clip_id`s would have resumed *past* the clip a
+   worker was killed in the middle of, leaving a hole that nothing downstream could see -- a
+   clip with a plausible duty cycle computed over the fraction of it that happened to be
+   written before the kill. Two workers were killed mid-clip, so this is not hypothetical.
+
+The third is the reason this is a decision and not a commit message. The first two are a
+performance bug; the third is a **silent data defect that the performance bug exposed**, of
+exactly the shape `docs/ARCHITECTURE.md` calls a seam that does not fail loudly. A resume that
+cannot distinguish "finished" from "interrupted" produces short clips indistinguishable from
+real ones, and the pilot's own gates -- which check that labels exist for every clip -- would
+have passed on them.
+
+**Reverses if:** nothing. This is a defect record.

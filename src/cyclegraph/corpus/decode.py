@@ -47,7 +47,8 @@ def subfile_url(url: str, byte_start: int, byte_end: int) -> str:
 
 def ffmpeg_clip_argv(url: str, clip: ClipRef, *, fps_sampled: float,
                      width: int, height: int, start_s: float = 0.0,
-                     max_frames: int | None = None, pix_fmt: str = "gray") -> list[str]:
+                     max_frames: int | None = None, pix_fmt: str = "gray",
+                     threads: int | None = None) -> list[str]:
     """Decode one clip to raw 8-bit frames on stdout, at the analysis rate.
 
     `pix_fmt` defaults to grey because the flow path and the box-width scale are luminance
@@ -62,6 +63,10 @@ def ffmpeg_clip_argv(url: str, clip: ClipRef, *, fps_sampled: float,
         FFMPEG, "-hide_banner", "-loglevel", "error",
         "-protocol_whitelist", PROTOCOL_WHITELIST,
     ]
+    if threads is not None:
+        if threads < 1:
+            raise ValueError("threads must be positive")
+        argv += ["-threads", str(threads)]
     if start_s > 0:
         argv += ["-ss", f"{start_s:.3f}"]  # before -i: an input seek
     argv += [

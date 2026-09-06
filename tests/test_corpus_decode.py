@@ -89,3 +89,18 @@ def test_a_failed_decode_carries_its_reason() -> None:
                             status="decode_failed", reason="moov atom not found", seconds=0.4)
     assert outcome.pair_failures == 748
     assert outcome.reason
+
+
+def test_the_thread_cap_is_an_input_option_and_absent_unless_asked() -> None:
+    """`-threads` before `-i` caps the *decoder* pool; after `-i` it would size the encoder
+    instead and leave the decode uncapped. The pilot box starved on that difference."""
+    assert "-threads" not in ffmpeg_clip_argv(URL, _clip(), fps_sampled=4.0,
+                                              width=480, height=270)
+    argv = ffmpeg_clip_argv(URL, _clip(), fps_sampled=4.0, width=480, height=270, threads=2)
+    assert argv[argv.index("-threads") + 1] == "2"
+    assert argv.index("-threads") < argv.index("-i")
+
+
+def test_a_non_positive_thread_cap_is_refused() -> None:
+    with pytest.raises(ValueError):
+        ffmpeg_clip_argv(URL, _clip(), fps_sampled=4.0, width=480, height=270, threads=0)

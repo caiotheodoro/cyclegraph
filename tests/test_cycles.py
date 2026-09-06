@@ -21,8 +21,10 @@ from cyclegraph.cycles.transitions import (
     H2A_RELATIVE_DIFFERENCE,
     debounce,
     exertion_segments,
+    null_bounded_segments,
     relative_difference,
     runs,
+    scored_seconds,
     transition_frequency,
 )
 from cyclegraph.models import (
@@ -231,3 +233,67 @@ def test_the_false_alarm_rate_is_the_pre_registered_one() -> None:
         resolvability_floor(1)
     with pytest.raises(ValueError):
         resolvability_floor(100, false_alarm=0.0)
+
+
+# One 10 s block at 4 Hz, laid out so every run clears the 0.5 s debounce and nothing is
+# absorbed. Four exertions, and a 2-frame unreadable gap sitting *inside* what would otherwise
+# be one 14-frame exertion -- which is the case the frequency denominator and the null-boundary
+# count exist for.
+#   0-3   True    exertion 1
+#   4-7   False
+#   8-11  True    exertion 2, ends against the nulls
+#   12-13 None
+#   14-17 True    exertion 3, begins against the nulls
+#   18-21 False
+#   22-25 True    exertion 4
+#   26-39 False
+_BLOCK: list[Label] = (
+    [True] * 4 + [False] * 4 + [True] * 4 + [None] * 2
+    + [True] * 4 + [False] * 4 + [True] * 4 + [False] * 14
+)
+_BLOCKS = 10
+_GAPPY: list[Label] = _BLOCK * _BLOCKS
+_GAPPY_DURATION_S = 100.0          # 400 frames at 4 Hz
+_GAPPY_SEGMENTS = 4 * _BLOCKS      # 40
+_GAPPY_SCORED_S = 95.0             # 380 of 400 frames scored, at 4 Hz
+
+
+def test_the_frequency_denominator_is_scored_time_not_the_clip_duration() -> None:
+    """A count of exertions found only in scored frames, over the whole clip's wall-clock,
+    would impute *no exertion* to every unreadable stretch. `docs/RUBRIC.md` already fixes duty
+    cycle's denominator as scored frames; this is the same convention, and D042 records that
+    it moves H2a's disagreement in the unflattering direction rather than the flattering one."""
+    assert len(_GAPPY) == 400
+    assert scored_seconds(_GAPPY, fps=FPS) == pytest.approx(_GAPPY_SCORED_S)
+    estimate = transition_frequency(_clip(_GAPPY_DURATION_S), _GAPPY, fps=FPS,
+                                    label_source="probe")
+    assert estimate.status == "ok"
+    assert estimate.hz is not None
+    # 40 / 95.0, not 40 / 100.0 -- the two differ by the 5% that was unreadable.
+    assert estimate.hz == pytest.approx(_GAPPY_SEGMENTS / _GAPPY_SCORED_S)
+    assert estimate.hz != pytest.approx(_GAPPY_SEGMENTS / _GAPPY_DURATION_S)
+
+
+def test_the_two_denominators_agree_exactly_when_nothing_is_unreadable() -> None:
+    """The change is confined to clips with nulls; a fully scored clip is untouched."""
+    series: list[Label] = [*(([True] * 4 + [False] * 4) * 50)]  # 400 frames, 50 exertions
+    estimate = transition_frequency(_clip(100.0), series, fps=FPS, label_source="probe")
+    assert estimate.hz is not None
+    assert estimate.hz == pytest.approx(50 / 100.0)
+    assert scored_seconds(series, fps=FPS) == pytest.approx(100.0)
+
+
+def test_segments_whose_boundary_is_an_unreadable_frame_are_counted_not_repaired() -> None:
+    """The disclosure D042 adds. Two of the four exertions per block end or begin against the
+    nulls; the count says so, and the segment count is left alone."""
+    assert null_bounded_segments(_GAPPY, fps=FPS) == 2 * _BLOCKS
+    assert len(exertion_segments(_clip(_GAPPY_DURATION_S), _GAPPY, fps=FPS,
+                                 label_source="probe")) == _GAPPY_SEGMENTS
+    # A series with no nulls has no null-bounded segment, whatever its shape.
+    assert null_bounded_segments(([True] * 4 + [False] * 4) * 50, fps=FPS) == 0
+
+
+def test_a_wholly_unreadable_series_is_no_peak_rather_than_a_division_by_zero() -> None:
+    estimate = transition_frequency(_clip(100.0), [None] * 400, fps=FPS, label_source="probe")
+    assert estimate.status == "no_peak" and estimate.hz is None
+    assert scored_seconds([None] * 400, fps=FPS) == 0.0

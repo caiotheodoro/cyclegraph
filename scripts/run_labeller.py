@@ -43,7 +43,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from cyclegraph.corpus.decode import decode_gray_frames, ffmpeg_clip_argv  # noqa: E402
+from cyclegraph.corpus.decode import Gray, decode_gray_frames, ffmpeg_clip_argv  # noqa: E402
 from cyclegraph.corpus.manifest import MetadataRow, clip_refs  # noqa: E402
 from cyclegraph.corpus.sampling import ANALYSIS_HZ, sample_times  # noqa: E402
 from cyclegraph.corpus.shards import REPO_ID, ShardReader  # noqa: E402
@@ -179,11 +179,29 @@ def iter_clips(manifest: Path, corpus_rev: str) -> Iterator[ClipRef]:
     yield from clip_refs(rows, corpus_rev=corpus_rev)
 
 
-def completed_clips(path: Path) -> set[str]:
+def rows_per_clip(path: Path) -> dict[str, int]:
+    """How many rows each clip already has. Not a done-set: a worker killed mid-clip leaves a
+    partial clip behind, and a done-set would call it finished and resume past a hole. One of
+    the four pilot workers was OOM-killed exactly this way."""
     if not path.exists():
-        return set()
-    return {json.loads(line)["clip_id"]
-            for line in path.read_text().splitlines() if line.strip()}
+        return {}
+    counts: dict[str, int] = {}
+    for line in path.read_text().splitlines():
+        if line.strip():
+            cid = json.loads(line)["clip_id"]
+            counts[cid] = counts.get(cid, 0) + 1
+    return counts
+
+
+def drop_partial_clips(path: Path, partial: set[str]) -> int:
+    """Remove every row belonging to a clip that is short of its sample plan, so the re-run
+    appends a whole clip rather than duplicating the part that survived."""
+    if not partial or not path.exists():
+        return 0
+    kept = [line for line in path.read_text().splitlines()
+            if line.strip() and json.loads(line)["clip_id"] not in partial]
+    path.write_text("".join(line + "\n" for line in kept))
+    return len(kept)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -196,6 +214,9 @@ def main(argv: list[str] | None = None) -> int:
                         default="../vernier/data/rung1_probe.joblib")
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--batch", type=int, default=64)
+    parser.add_argument("--ffmpeg-threads", type=int, default=2,
+                        help="decoder threads per clip; uncapped, one decode takes most of "
+                             "the box and starves the workers beside it")
     args = parser.parse_args(argv)
 
     probe_path = ROOT / args.probe
@@ -216,10 +237,16 @@ def main(argv: list[str] | None = None) -> int:
 
     out = ROOT / args.out
     out.parent.mkdir(parents=True, exist_ok=True)
-    done = completed_clips(out)
-    clips = [c for c in iter_clips(ROOT / args.manifest, args.corpus_rev)
-             if c.clip_id not in done]
-    print(f"{len(clips)} clips to label ({len(done)} already done)", flush=True)
+    have = rows_per_clip(out)
+    every = list(iter_clips(ROOT / args.manifest, args.corpus_rev))
+    expected = {c.clip_id: len(sample_times(c.duration_s)) for c in every}
+    complete = {cid for cid, n in have.items() if n == expected.get(cid)}
+    partial = set(have) - complete
+    if partial:
+        kept = drop_partial_clips(out, partial)
+        print(f"dropped {len(partial)} partly-written clips, {kept} rows kept", flush=True)
+    clips = [c for c in every if c.clip_id not in complete]
+    print(f"{len(clips)} clips to label ({len(complete)} already complete)", flush=True)
 
     token = _token()
     started = time.time()
@@ -228,26 +255,39 @@ def main(argv: list[str] | None = None) -> int:
     with out.open("a") as handle:
         for i, clip in enumerate(clips, 1):
             url = ShardReader(REPO_ID, clip.shard, token)._resolve()
-            argv_ff = ffmpeg_clip_argv(url, clip, fps_sampled=ANALYSIS_HZ,
-                                       width=DECODE_WIDTH, height=DECODE_HEIGHT,
-                                       pix_fmt=DECODE_PIX_FMT)
-            frames = list(decode_gray_frames(argv_ff, DECODE_WIDTH, DECODE_HEIGHT,
-                                             channels=3))
             # ffmpeg's `fps` filter emits a frame or two past the sample plan's last instant,
             # because the plan requires the *second* frame of each pair to fall strictly
-            # inside the clip and the filter has no such rule. The plan decides which instants
-            # are analysed, so the surplus is dropped rather than labelled at a timestamp that
-            # does not exist.
+            # inside the clip and the filter has no such rule. Capping the decode at the plan
+            # length drops the surplus at the source, so no frame is labelled at a timestamp
+            # that does not exist and ffmpeg still reaches a clean exit.
             times = sample_times(clip.duration_s)
-            if len(frames) > len(times):
-                frames = frames[: len(times)]
-            times = times[: len(frames)]
+            argv_ff = ffmpeg_clip_argv(url, clip, fps_sampled=ANALYSIS_HZ,
+                                       width=DECODE_WIDTH, height=DECODE_HEIGHT,
+                                       pix_fmt=DECODE_PIX_FMT, max_frames=len(times),
+                                       threads=args.ffmpeg_threads)
+            # Streamed in batches rather than materialised. A 1200 s clip is 4,799 colour
+            # frames at 960x540, which is 7.5 GB held at once -- three times what the grey
+            # path held, and past what four workers fit in the box's 30 GB. The list() this
+            # replaces is what drove the machine into swap and got a worker OOM-killed.
             predictions: list[bool] = []
             counts: list[int] = []
-            for start in range(0, len(frames), args.batch):
-                chunk = features.extract(frames[start : start + args.batch])
+            batch: list[Gray] = []
+
+            def flush_batch() -> None:
+                if not batch:
+                    return
+                chunk = features.extract(batch)
                 predictions.extend(probe.predict(chunk))
                 counts.extend(hands.predict(chunk))
+                batch.clear()
+
+            for frame in decode_gray_frames(argv_ff, DECODE_WIDTH, DECODE_HEIGHT,
+                                            channels=3):
+                batch.append(frame)
+                if len(batch) == args.batch:
+                    flush_batch()
+            flush_batch()
+            times = times[: len(predictions)]
             rows, conflicts = label_rows(clip, times, predictions, counts,
                                          label_rev=label_rev, prompt_variant="none")
             for row in rows:
