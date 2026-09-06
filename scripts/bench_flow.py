@@ -238,11 +238,17 @@ def main(argv: list[str] | None = None) -> int:
     frames: list[tuple[np.ndarray, np.ndarray]] = []
     for clip in clips:
         url = ShardReader(REPO_ID, clip.shard, token)._resolve()
-        argv_ff = ffmpeg_clip_argv(url, clip, fps_sampled=4.0, width=WIDTH, height=HEIGHT,
+        # Decoded at the clip's **own** frame rate, so consecutive frames are one pair apart
+        # as `docs/DECISIONS.md` D045 defines a pair. Decoding at 4 Hz, as this did, measured
+        # every estimator over a 0.25 s baseline the speed path no longer uses. The pairs are
+        # a contiguous burst per clip rather than spread across it, which is right for a
+        # throughput and null-rate measurement and is not a sample of the clip's content.
+        argv_ff = ffmpeg_clip_argv(url, clip, fps_sampled=clip.fps, width=WIDTH, height=HEIGHT,
                                    max_frames=per_clip + 1)
         decoded = list(decode_gray_frames(argv_ff, WIDTH, HEIGHT))
         frames.extend(zip(decoded, decoded[1:], strict=False))
-    print(f"{len(frames)} real pairs from {len(clips)} clips, seed {args.seed}", flush=True)
+    print(f"{len(frames)} real pairs from {len(clips)} clips at their own frame rate, "
+          f"seed {args.seed}", flush=True)
 
     results: dict[str, Any] = {}
     estimator = FarnebackFlow()
@@ -271,6 +277,10 @@ def main(argv: list[str] | None = None) -> int:
     decided = all(results[a].get("measured") for a in ARMS)
     payload = {
         "rule": "docs/DECISIONS.md D024, fixed before any rate was measured",
+        "pair_baseline": (
+            "the clip's own frame rate (docs/DECISIONS.md D045). Any stored result whose "
+            "pair_baseline field is absent was measured over the 0.25 s baseline D045 "
+            "replaced and is not comparable."),
         "seed": args.seed,
         "null_ceiling": FLOW_NULL_CEILING,
         "arms": results,
