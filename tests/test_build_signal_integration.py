@@ -230,3 +230,44 @@ def test_a_measured_speed_reaches_a_hal_score(
     assert 0.0 <= score.hal <= 10.0
     assert score.mapping == "akkas-2015-speed-dc"  # the speed path's equation, not frequency
     assert score.duty_cycle is not None
+
+
+def test_a_box_the_labeller_contradicts_is_dropped_from_the_speed_path_too(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """D022 drops a detector box on a frame the labeller called `hands_visible: 0`. That drop
+    reached `FrameSignal` through `resolve_conflicts` and **not** the speed path, which was
+    handed the unresolved boxes -- so a box the contract had discarded was still counted in
+    `n_with_box` and an RMS was taken inside it (D056).
+
+    Coverage is H2c's pre-registered gate, so the inflation was in the direction that makes the
+    gate easier to pass, on a number that decides whether the speed path is reported at all."""
+    manifest, detections, labels = _write_inputs(tmp_path)
+    times = sample_times(DURATION_S)
+    half = len(times) // 2
+    # The detector finds a hand at every instant; the labeller says there is none in the
+    # second half. Every box there is contradicted.
+    labels.write_text("".join(json.dumps({
+        "clip_id": CLIP_ID, "t_s": t, "label_source": "probe", "label_rev": "stub@1",
+        "prompt_variant": "none",
+        "manipulation": i < half, "hands_visible": 2 if i < half else 0,
+    }) + "\n" for i, t in enumerate(times)))
+
+    _stub_decode(monkeypatch)
+    out = tmp_path / "out"
+    assert build_signal.main([
+        "--manifest", str(manifest), "--detections", str(detections),
+        "--labels", str(labels), "--out-dir", str(out), "--corpus-rev", REV,
+    ]) == 0
+
+    speed = HandSpeedEstimate.model_validate_json(
+        (out / "hand_speed.jsonl").read_text().splitlines()[0])
+    assert speed.n_samples == len(times)
+    # Only the half the labeller corroborated may count, so coverage is about a half and not 1.
+    assert speed.n_with_box == pytest.approx(half, abs=1)
+    assert speed.coverage < 0.55
+
+    # And the FrameSignal still counts the conflict rather than hiding it.
+    signal = FrameSignal.model_validate_json(
+        (out / "frame_signal.jsonl").read_text().splitlines()[0])
+    assert sum(1 for w in signal.hand_box_width_px if w is not None) == pytest.approx(
+        half, abs=1)

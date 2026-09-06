@@ -1924,3 +1924,38 @@ D050 said, not smaller. The correction is applied in place in D044, D050 and
 **Reverses if:** the Table 1 figures in `exposure/hal.py` are themselves wrong, which
 `docs/SURVEY.md` S3's golden cells would show, since they are checked against the paper's own
 table rows.
+
+## D056 — D022's drop reached one record and not the other, and it inflated H2c
+
+2026-09-06. Found while checking, before the speed path's first real run, that the rule the
+original plan called "the highest-cost mistake available in W3" was actually implemented.
+
+D022 makes `hands_visible` label-sourced and `hand_box_width_px` detector-sourced, and requires
+that **a detector box on a frame the labeller called `hands_visible: 0` is dropped and counted**.
+`signal/frames.py:resolve_conflicts` does exactly that — and it is applied only to the
+`FrameSignal`. `scripts/build_signal.py` built the speed samples from the **unresolved** boxes,
+so a box discarded from one record was still counted in the other's `n_with_box`, and an RMS
+residual was taken inside it.
+
+**What that costs.** `coverage = n_with_box / n_samples` is H2c's pre-registered gate, and the
+inflation is in the direction that makes the gate **easier to pass** — on the number that decides
+whether the speed path is reported at all, or whether D014's switch to spectral-primary fires.
+It also puts a residual inside a box on a frame with no visible hand, which is background motion
+scored as hand speed.
+
+**Neither the fresh-context review nor any test caught it.** The review read the diff and the
+contracts; this rule is satisfied in the file it looked at, and the omission is in a different
+file's *use* of that file. Every test exercised a fixture where the labeller and the detector
+agreed, so no test could tell the two paths apart. The fixture that finds it has the detector
+seeing a hand at every instant and the labeller denying it in half of them.
+
+**One definition, two call sites.** `box_is_contradicted(label)` is now the rule, used by
+`resolve_conflicts` and by the speed path. The raw box width still reaches `FrameSignal` so the
+conflict is counted where `docs/BENCHMARK.md` reports it — dropping it earlier would have made
+the published "box dropped: labeller reported no visible hand" row read zero.
+
+**Timing.** Caught before the detections were consumed, so nothing has to be withdrawn. Had the
+signal pass run first, H2c would have been evaluated on an inflated coverage and the result
+published as a pre-registered gate outcome.
+
+**Reverses if:** nothing. This is a defect record.

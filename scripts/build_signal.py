@@ -53,7 +53,12 @@ from cyclegraph.models import (  # noqa: E402
     HandSpeedEstimate,
 )
 from cyclegraph.signal.flow_farneback import FarnebackFlow  # noqa: E402
-from cyclegraph.signal.frames import FrameSample, build_frame_signal, resolve_conflicts  # noqa: E402
+from cyclegraph.signal.frames import (  # noqa: E402
+    FrameSample,
+    box_is_contradicted,
+    build_frame_signal,
+    resolve_conflicts,
+)
 from cyclegraph.signal.ports import Flow, HandBox, largest_box  # noqa: E402
 from cyclegraph.signal.speed import (  # noqa: E402
     HAND_BREADTH_MM,
@@ -264,12 +269,19 @@ def main(argv: list[str] | None = None) -> int:
             detection = detections.detect(clip.clip_id, t_s)
             boxes = [_scaled(b, sx, sy) for b in detection.boxes]
             biggest = largest_box(boxes)
+            label = labels.label(clip.clip_id, t_s)
             frame_sample = FrameSample(
-                t_s=t_s, label=labels.label(clip.clip_id, t_s),
+                t_s=t_s, label=label,
                 hand_box_width_px=None if biggest is None else biggest.width / sx,
                 decode_reason=reason,
             )
-            return frame_sample, speed_sample(field, boxes, t_s=t_s, dt_s=dt_s,
+            # D022's drop applies to *both* records. `resolve_conflicts` below nulls the box on
+            # the FrameSignal and counts it; the speed path was still handed the unresolved
+            # boxes, so a box the contract had discarded was counted in `n_with_box` and an RMS
+            # was taken inside it (D056). The raw width stays on `frame_sample` so the conflict
+            # is still counted where it is reported.
+            for_speed = [] if box_is_contradicted(label) else boxes
+            return frame_sample, speed_sample(field, for_speed, t_s=t_s, dt_s=dt_s,
                                               flow_reason=reason)
 
         built_samples: list[FrameSample | None] = [None] * len(times)
