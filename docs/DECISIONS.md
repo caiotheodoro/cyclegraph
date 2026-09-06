@@ -2069,3 +2069,34 @@ residual below it.
 **Reverses if:** the speed path moves to an estimator that does not smooth across the
 hand/background boundary, in which case the comparison is re-run rather than inherited — the
 rates here are for a 960x540 pair one source frame apart and nothing else.
+
+## D060 — Two uncaught exceptions cost six clips of the pilot, and both had a rule already
+
+2026-09-06. The signal pass wrote **91 of 97 clips**. The six missing were not skipped by any
+rule; two workers raised and died, and every clip still queued behind them was never attempted.
+
+**The two exceptions, and why both were right to refuse and wrong to raise.**
+
+- `ego_motion` rejects a hand mask with no complement: *"a full-frame hand mask is a failure,
+  not a zero ego-motion."* That is correct — with no background there is no camera motion to
+  subtract, and returning zero would report the camera's motion as the hand's. It is D048's
+  segmentation leak at its limit, where the box reaches the whole frame.
+- `decode_gray_frames` raises `RuntimeError` on ffmpeg's non-zero exit, which is right too: a
+  decode that dies mid-stream is not a short clip, it is a failure.
+
+**Both are refusals the rubric already has an answer for**, and it is not `raise`: absence is a
+value with a reason. A null sample carries the reason; a stack trace carries it out of the
+process and takes the shard's remaining clips with it. All six lost clips are 1200 s — the
+longest, so the most pairs and the most chances to meet either condition.
+
+**Fixed at both levels.** `speed_sample` catches the ego-motion refusal and returns a null with
+the reason attached, so a full-frame mask costs one sample rather than a run. `build_signal`
+wraps the decode loop, so a clip that dies mid-stream keeps what it decoded, has the rest marked
+absent-with-reason by the gap loop that already existed, and lets the shard continue. Failed
+clips are written to `signal_failures.jsonl` rather than only printed.
+
+**The gates on 91 clips are not the pilot's answer**, and were not read as one. H2c is
+pre-registered "on the pilot", and a gate computed over 94% of it is the partial-denominator
+mistake D052 corrected in a different file. The six were re-run before any verdict was recorded.
+
+**Reverses if:** nothing. This is a defect record.

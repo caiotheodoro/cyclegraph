@@ -254,6 +254,7 @@ def main(argv: list[str] | None = None) -> int:
     built = 0
     estimates: list[HandSpeedEstimate] = []
 
+    failed_clips: list[dict[str, object]] = []
     for clip in refs:
         started = time.time()
         times = sample_times(clip.duration_s)
@@ -286,29 +287,39 @@ def main(argv: list[str] | None = None) -> int:
 
         built_samples: list[FrameSample | None] = [None] * len(times)
         built_speeds: list[SpeedSample | None] = [None] * len(times)
-        for k, t_s, first, second in stream_pairs(clip, token, width=WIDTH, height=HEIGHT):
-            # Dense flow costs 0.13 s a pair at 960x540 and is 83% of this stage's wall-clock.
-            # A pair with no usable box produces a "no detected hand box" sample whatever the
-            # field is -- `speed_sample` tests the box before the flow -- so computing one is
-            # work whose result is discarded. Skipping it is not an approximation: the sample
-            # is identical either way, and on the pilot's coverage it is a sixth of the run.
-            usable = detections.detect(clip.clip_id, t_s).boxes and not box_is_contradicted(
-                labels.label(clip.clip_id, t_s))
-            if not usable:
-                built_samples[k], built_speeds[k] = _sample(k, t_s, None, None)
-                continue
-            if np.array_equal(first, second):
-                # The same frame twice. `docs/RED-TEAM.md` A15 and D023 make a dead flow a null
-                # with a reason and never a zero, but the exact-zero rule they rely on does not
-                # fire here: Farneback on identical frames returns a *tiny non-zero* field, so
-                # the residual is ~1e-07 rather than 0.0 and passes through as a real
-                # measurement of almost no motion -- the flattering direction. Frame equality
-                # is exact, needs no threshold, and catches the case D023 names (D051).
+        try:
+            for k, t_s, first, second in stream_pairs(clip, token, width=WIDTH, height=HEIGHT):
+                # Dense flow costs 0.13 s a pair at 960x540 and is 83% of this stage's wall-clock.
+                # A pair with no usable box produces a "no detected hand box" sample whatever the
+                # field is -- `speed_sample` tests the box before the flow -- so computing one is
+                # work whose result is discarded. Skipping it is not an approximation: the sample
+                # is identical either way, and on the pilot's coverage it is a sixth of the run.
+                usable = detections.detect(clip.clip_id, t_s).boxes and not box_is_contradicted(
+                    labels.label(clip.clip_id, t_s))
+                if not usable:
+                    built_samples[k], built_speeds[k] = _sample(k, t_s, None, None)
+                    continue
+                if np.array_equal(first, second):
+                    # The same frame twice. `docs/RED-TEAM.md` A15 and D023 make a dead flow a null
+                    # with a reason and never a zero, but the exact-zero rule they rely on does not
+                    # fire here: Farneback on identical frames returns a *tiny non-zero* field, so
+                    # the residual is ~1e-07 rather than 0.0 and passes through as a real
+                    # measurement of almost no motion -- the flattering direction. Frame equality
+                    # is exact, needs no threshold, and catches the case D023 names (D051).
+                    built_samples[k], built_speeds[k] = _sample(
+                        k, t_s, None, "the two frames of this pair are identical")
+                    continue
                 built_samples[k], built_speeds[k] = _sample(
-                    k, t_s, None, "the two frames of this pair are identical")
-                continue
-            built_samples[k], built_speeds[k] = _sample(
-                k, t_s, flow_estimator.flow(first, second), None)
+                    k, t_s, flow_estimator.flow(first, second), None)
+        except Exception as exc:  # a clip that cannot be read through is a value, not a stop
+            # A decode that dies mid-stream used to raise out of the worker, taking every
+            # clip still queued behind it. Two workers died that way and six clips of the
+            # pilot were simply absent from the output (`docs/DECISIONS.md` D060). What
+            # decoded is kept; the instants that did not are marked absent with a reason
+            # by the loop below, which is what the rubric asks for.
+            failed_clips.append({"clip_id": clip.clip_id,
+                                 "error": f"{type(exc).__name__}: {str(exc)[:160]}"})
+            print(f"  decode failed mid-clip, continuing: {type(exc).__name__}", flush=True)
         for k, t_s in enumerate(times):
             if built_samples[k] is None:
                 built_samples[k], built_speeds[k] = _sample(k, t_s, None, no_pair)
@@ -342,6 +353,12 @@ def main(argv: list[str] | None = None) -> int:
 
     signals.close()
     speeds.close()
+    if failed_clips:
+        path = out_dir / "signal_failures.jsonl"
+        with path.open("a") as handle:
+            for row in failed_clips:
+                handle.write(json.dumps(row) + "\n")
+        print(f"\n{len(failed_clips)} clips failed mid-decode; recorded in {path}")
 
     # H2c, pre-registered: "Detector hand-box coverage is at least 60% of scored frames on the
     # pilot" with a flow-null rate at or under 10% of boxed samples. Aggregated over the pilot
