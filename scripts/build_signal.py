@@ -43,7 +43,13 @@ from cyclegraph.corpus.sampling import (  # noqa: E402
     sample_times,
 )
 from cyclegraph.corpus.shards import REPO_ID, ShardReader  # noqa: E402
-from cyclegraph.models import ClipRef, FrameSignal, HandSpeedEstimate  # noqa: E402
+from cyclegraph.models import (  # noqa: E402
+    COVERAGE_FLOOR,
+    FLOW_NULL_CEILING,
+    ClipRef,
+    FrameSignal,
+    HandSpeedEstimate,
+)
 from cyclegraph.signal.flow_farneback import FarnebackFlow  # noqa: E402
 from cyclegraph.signal.frames import FrameSample, build_frame_signal, resolve_conflicts  # noqa: E402
 from cyclegraph.signal.ports import Flow, HandBox, largest_box  # noqa: E402
@@ -212,6 +218,7 @@ def main(argv: list[str] | None = None) -> int:
     speeds = (out_dir / "hand_speed.jsonl").open("w")
     conflicts_total = 0
     built = 0
+    estimates: list[HandSpeedEstimate] = []
 
     for clip in refs:
         started = time.time()
@@ -267,9 +274,30 @@ def main(argv: list[str] | None = None) -> int:
 
     signals.close()
     speeds.close()
+
+    # H2c, pre-registered: "Detector hand-box coverage is at least 60% of scored frames on the
+    # pilot" with a flow-null rate at or under 10% of boxed samples. Aggregated over the pilot
+    # in the same shape the per-clip fields use, so the gate and the record agree on what the
+    # denominators are: coverage is boxes over samples, and the null rate is nulls over
+    # *boxed* samples, not over samples. Those differ by 1/coverage -- at 60% that is 1.67x,
+    # enough to straddle the ceiling in both directions.
+    total_samples = sum(e.n_samples for e in estimates)
+    boxed = sum(e.n_with_box for e in estimates)
+    nulls = sum(e.n_flow_null for e in estimates)
+    coverage = boxed / total_samples if total_samples else 0.0
+    null_rate = nulls / boxed if boxed else 0.0
+
     print(f"\npilot gates (values stay in {args.out_dir}, D018):")
     print(f"  {'PASS' if built == len(refs) else 'FAIL'}  every clip produced both records")
-    print(f"  {'PASS' if conflicts_total >= 0 else 'FAIL'}  detector/labeller conflicts counted")
+    # Not `>= 0`, which is what this checked and which no run could ever fail. A gate that
+    # cannot fail is not a gate; the labeller's equivalent bound is 10% of frames (D038).
+    conflict_rate = conflicts_total / total_samples if total_samples else 0.0
+    print(f"  {'PASS' if conflict_rate < 0.10 else 'FAIL'}  "
+          f"detector and labeller contradict each other on under 10% of samples")
+    print(f"  {'PASS' if coverage >= COVERAGE_FLOOR else 'FAIL'}  "
+          f"H2c: hand-box coverage clears the pre-registered {COVERAGE_FLOOR:.0%} floor")
+    print(f"  {'PASS' if null_rate <= FLOW_NULL_CEILING else 'FAIL'}  "
+          f"H2c: flow-null rate within the pre-registered {FLOW_NULL_CEILING:.0%} ceiling")
     return 0 if built == len(refs) else 1
 
 
