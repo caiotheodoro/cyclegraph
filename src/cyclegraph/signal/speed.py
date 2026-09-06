@@ -123,8 +123,18 @@ def speed_sample(
     if flow is None:
         return SpeedSample(t_s=t_s, px_per_s=None, box_width_px=box.width,
                            null_reason=flow_reason or "the flow estimator returned no field")
-    ego = ego_motion(flow, box_mask(flow.shape[:2], [box]))
-    residual = residual_rms_px(flow, box, ego)
+    try:
+        ego = ego_motion(flow, box_mask(flow.shape[:2], [box]))
+        residual = residual_rms_px(flow, box, ego)
+    except ValueError as exc:
+        # `ego_motion` refuses a mask with no complement, and `residual_rms_px` refuses a box
+        # covering no readable pixel. Both are right to refuse -- a full-frame hand mask is a
+        # segmentation failure and not a measurement of zero camera motion. But refusing by
+        # raising killed a worker mid-shard and cost every clip after it in that shard, and
+        # `docs/RUBRIC.md`'s own rule for this is a null with a reason, not a stop
+        # (`docs/DECISIONS.md` D060).
+        return SpeedSample(t_s=t_s, px_per_s=None, box_width_px=box.width,
+                           null_reason=f"ego-motion unavailable: {exc}"[:120])
     if residual == 0.0:
         return SpeedSample(t_s=t_s, px_per_s=None, box_width_px=box.width,
                            null_reason=ZERO_RESIDUAL_REASON)
