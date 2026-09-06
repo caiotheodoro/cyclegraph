@@ -88,7 +88,12 @@ def label_rows(clip: ClipRef, times: Sequence[float], manipulation: Sequence[boo
     conflicts = 0
     for t_s, manipulating, hands in zip(times, manipulation, hands_visible, strict=True):
         row: dict[str, object] = {
-            "clip_id": clip.clip_id, "t_s": t_s, "label_source": "probe",
+            # `corpus_rev` on every row, for the reason `ClipRef` carries it: records from two
+            # revisions are never pooled. It was absent, so `scripts/verify_labels.py`'s
+            # revision check had nothing to read and passed on every run -- including the run
+            # cited as evidence for D046 (`docs/DECISIONS.md` D058).
+            "clip_id": clip.clip_id, "corpus_rev": clip.corpus_rev,
+            "t_s": t_s, "label_source": "probe",
             "label_rev": label_rev, "prompt_variant": prompt_variant,
         }
         if manipulating and hands == 0:

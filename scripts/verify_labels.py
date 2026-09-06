@@ -46,11 +46,15 @@ def main(argv: list[str] | None = None) -> int:
 
     counted: Counter[str] = Counter()
     revisions: set[str] = set()
+    without_rev = 0
     for line in labels.read_text().splitlines():
         if line.strip():
             row = json.loads(line)
             counted[row["clip_id"]] += 1
-            revisions.add(row.get("corpus_rev", ""))
+            if "corpus_rev" in row:
+                revisions.add(row["corpus_rev"])
+            else:
+                without_rev += 1
 
     short = [c for c, n in expected.items() if counted.get(c, 0) < n]
     over = [c for c, n in expected.items() if counted.get(c, 0) > n]
@@ -60,7 +64,14 @@ def main(argv: list[str] | None = None) -> int:
     print(f"clips in manifest: {len(expected)}")
     print(f"clips with labels: {len(counted)}")
     print(f"rows: {sum(counted.values())} of {sum(expected.values())} planned")
-    print(f"corpus revisions present: {len(revisions)}")
+    if without_rev:
+        # Detection rows carry no `corpus_rev`. Reporting "1 revision" for a field that is not
+        # there would be a check passing on an absent input, which is the shape this file
+        # exists to catch elsewhere (`docs/DECISIONS.md` D052).
+        print(f"corpus revisions present: NOT RECORDED on {without_rev} rows; "
+              f"{len(revisions)} distinct where it is")
+    else:
+        print(f"corpus revisions present: {len(revisions)}")
 
     ok = True
     for name, group in (("absent", missing), ("short", short), ("over-long", over),
