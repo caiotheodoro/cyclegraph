@@ -14,6 +14,7 @@ from pathlib import Path
 
 import numpy as np
 import numpy.typing as npt
+import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -62,11 +63,16 @@ def test_a_failing_estimator_reports_no_residual_rather_than_zero() -> None:
     assert estimated is None
 
 
-def test_the_synthetic_is_evaluated_at_the_resolution_flow_actually_runs_at() -> None:
-    """The other half of the fix. A dense estimator's error is a function of displacement in
-    pixels, and the same rotation is 29 px at 480x270 and 118 px at 1920x1080. Measuring at
-    the camera's native resolution would report a number no pipeline pair ever sees."""
+def test_the_synthetic_is_evaluated_where_the_pipeline_actually_runs() -> None:
+    """A dense estimator's error is a function of displacement in pixels, so the column has to
+    be measured at the pipeline's own resolution *and* its own pair. Both were stale: the
+    resolution was 480x270 after D050 moved flow to 960x540, and the rotation was priced over
+    a 0.25 s pair after D045 made the pair one source frame. Measured over the old pair the
+    displacement lands in the regime D050 shows both estimators collapse in -- so the column
+    meant to separate them was measured where they are indistinguishable."""
     scene = bench_flow._bench_scene()
-    assert scene.camera.width == bench_flow.WIDTH
-    assert scene.camera.height == bench_flow.HEIGHT
+    assert scene.camera.width == bench_flow.WIDTH == 960
+    assert scene.camera.height == bench_flow.HEIGHT == 540
     assert scene.camera.width < CORPUS_CAMERA.width
+    # One frame of a 30 fps source, not a quarter second of it.
+    assert bench_flow.A14_ROTATION_DEG == pytest.approx(1.0)
