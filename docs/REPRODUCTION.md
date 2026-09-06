@@ -39,10 +39,15 @@ before any code exists.
 ## Compute
 
 - **Corpus reads** (E1, E2): any machine with `ffmpeg` and network. No GPU.
-- **Probe, detector, flow** (E3): GPU, on **AWS through the CLI** — a single `g5.xlarge`
-  (A10G, 24 GB) is enough for 100DOH at ~20 frames/s and RAFT-small flow; the pilot's ~1.7M
-  frames is ~24 GPU-hours, so a spot instance with checkpointed progress, not a long-lived
-  box. Launch, run the stage, pull `results/` down, terminate. `AWS_PROFILE`/`AWS_REGION` in
+- **Probe** (E3): **not a GPU stage, measured.** The labeller is bounded by ffmpeg decode
+  and frame preprocessing; on a `g5.2xlarge` the GPU sat at 0% while four workers managed ~53
+  frames/s between them, and one process on an Apple Silicon laptop matched that at 45–49
+  frames/s for nothing. The pilot is 97 clips and 462,437 instants, not the ~1.7M this line
+  used to estimate. Rent nothing for it. `docs/METHOD.md` E3 carries the numbers.
+- **Detector and flow** (E3): GPU, on **AWS through the CLI** — a single `g5.xlarge`
+  (A10G, 24 GB) for the detector and RAFT-small flow; unmeasured, because 100DOH's weights
+  are unobtainable (`docs/DECISIONS.md` D037) and no detector has run. Use a spot instance
+  with checkpointed progress, not a long-lived box. Launch, run the stage, pull `results/` down, terminate. `AWS_PROFILE`/`AWS_REGION` in
   `.env` name the account; nothing in this repository provisions infrastructure, and the
   instance does not need the HF token beyond the corpus reads it performs.
 - **Judge** (E3 calibration subset): the sibling's self-hosted Qwen3-VL route
