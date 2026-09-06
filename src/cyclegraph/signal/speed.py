@@ -149,7 +149,10 @@ def hand_speed_estimate(
     n_with_box = len(with_box)
     n_flow_null = sum(1 for s in samples if s.is_flow_null)
     coverage = n_with_box / n_samples
-    flow_null_rate = (n_flow_null / n_with_box) if n_with_box else 0.0
+    # Null, not zero, when nothing was boxed: the rate is nulls over *boxed* samples and that
+    # ratio has no value with an empty denominator. Zero there reads as "flow never failed" on
+    # a clip where flow was never attempted (`docs/DECISIONS.md` D054).
+    flow_null_rate = (n_flow_null / n_with_box) if n_with_box else None
     widths = [s.box_width_px for s in with_box if s.box_width_px is not None]
     median_box_width_px = float(np.median(widths)) if widths else None
 
@@ -162,7 +165,7 @@ def hand_speed_estimate(
     elif coverage < COVERAGE_FLOOR:
         status = "low_coverage"
         reason = f"detector coverage {coverage:.2f} below the {COVERAGE_FLOOR:.2f} floor"
-    elif flow_null_rate > FLOW_NULL_CEILING:
+    elif flow_null_rate is not None and flow_null_rate > FLOW_NULL_CEILING:
         status = "flow_failed"
         reason = f"flow-null rate {flow_null_rate:.2f} above the {FLOW_NULL_CEILING:.2f} ceiling"
     else:

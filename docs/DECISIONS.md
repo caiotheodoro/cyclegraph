@@ -1874,10 +1874,17 @@ schema fields had no way to express absence, so the code supplied a number:
   floor cannot be read. A constant series, whose periodogram *was* computed, now records a real
   ratio of 0.0 against a real floor instead of being lumped in with the unmeasured.
 
-**Both were forced by the schema, which is the part worth keeping.** Neither was a careless
+- **`HandSpeedEstimate.flow_null_rate`**, added 2026-09-06 for the same reason. It is nulls
+  over *boxed* samples, so with nothing boxed the ratio has no value; it carried `0.0`, which
+  reads as "the flow never failed" on a clip where flow was never attempted. The review rated
+  this one MINOR because the status discloses it and both aggregate gates guard it. It is fixed
+  anyway: leaving one instance of a mechanism after fixing two is what D049 and D053 did, and
+  the review found both.
+
+**All three were forced by the schema, which is the part worth keeping.** None was a careless
 line: a non-nullable field leaves a caller no way to be honest, so the fix belongs in the
 contract and not in a convention about what to write. The seven seams say absence must be
-sayable; these are two places where it was not.
+sayable; these are three places where it was not.
 
 **Reverses if:** nothing. This is a defect record.
 

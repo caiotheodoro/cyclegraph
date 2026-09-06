@@ -338,7 +338,7 @@ class HandSpeedEstimate(Record):
     n_with_box: int = Field(ge=0)
     n_flow_null: int = Field(ge=0)
     coverage: float = Field(ge=0, le=1)
-    flow_null_rate: float = Field(ge=0, le=1)
+    flow_null_rate: float | None = Field(ge=0, le=1)
     hand_breadth_mm: float = Field(gt=0)
     median_box_width_px: float | None
     mask_source: Literal["100doh", "egohos"] | None
@@ -359,22 +359,34 @@ class HandSpeedEstimate(Record):
             raise ValueError("counts must nest: n_flow_null <= n_with_box <= n_samples")
         if not _close(self.coverage, self.n_with_box / self.n_samples):
             raise ValueError("coverage must equal n_with_box / n_samples")
-        expected_null = self.n_flow_null / self.n_with_box if self.n_with_box else 0.0
-        if not _close(self.flow_null_rate, expected_null):
-            raise ValueError("flow_null_rate must equal n_flow_null / n_with_box")
+        # Null when no sample was boxed, because the rate is nulls **over boxed samples** and
+        # that ratio does not exist with an empty denominator. It was 0.0, which reads as "the
+        # flow never failed" on a clip where flow was never attempted -- the same
+        # absence-as-zero D054 removed from two other fields, left in the third.
+        if self.n_with_box == 0:
+            if self.flow_null_rate is not None:
+                raise ValueError("no boxed sample means no flow-null rate; it is null")
+        else:
+            if self.flow_null_rate is None:
+                raise ValueError("a boxed sample has a flow-null rate")
+            if not _close(self.flow_null_rate, self.n_flow_null / self.n_with_box):
+                raise ValueError("flow_null_rate must equal n_flow_null / n_with_box")
         if self.status == "ok":
             assert self.rms_speed_mm_s is not None
             if self.rms_speed_mm_s <= 0:
                 raise ValueError("a zero speed is a failed flow, not a measurement (A15)")
             if self.coverage < COVERAGE_FLOOR:
                 raise ValueError(f"coverage below {COVERAGE_FLOOR} is status 'low_coverage'")
+            assert self.flow_null_rate is not None
             if self.flow_null_rate > FLOW_NULL_CEILING:
                 raise ValueError(f"flow-null rate above {FLOW_NULL_CEILING} is status 'flow_failed'")
             if self.median_box_width_px is None or self.median_box_width_px <= 0:
                 raise ValueError("status 'ok' needs a positive median box width for the scale")
         if self.status == "low_coverage" and self.coverage >= COVERAGE_FLOOR:
             raise ValueError("status 'low_coverage' contradicts coverage")
-        if self.status == "flow_failed" and self.flow_null_rate <= FLOW_NULL_CEILING:
+        if self.status == "flow_failed" and (
+            self.flow_null_rate is None or self.flow_null_rate <= FLOW_NULL_CEILING
+        ):
             raise ValueError("status 'flow_failed' contradicts flow_null_rate")
         return self
 

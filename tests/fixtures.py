@@ -218,7 +218,7 @@ HAND_SPEED_LOW_COVERAGE: Fixture = _with(
 
 HAND_SPEED_NO_DETECTOR: Fixture = _with(
     HAND_SPEED,
-    rms_speed_mm_s=None, n_with_box=0, n_flow_null=0, coverage=0.0, flow_null_rate=0.0,
+    rms_speed_mm_s=None, n_with_box=0, n_flow_null=0, coverage=0.0, flow_null_rate=None,
     median_box_width_px=None, mask_source=None, status="no_detector",
     status_reason="no detector ran on this clip",
 )

@@ -177,6 +177,9 @@ Three rules apply to all of them.
   "tlv_evaluable": false, "status": "ok" }
 ```
 
+- `flow_null_rate` is `null` exactly when `n_with_box` is 0: it is `n_flow_null / n_with_box`
+  and that ratio does not exist with an empty denominator. `0.0` there would read as "flow was
+  attempted and never failed" (`docs/DECISIONS.md` D054).
 - `duty_cycle` is `null` exactly when `status` is `no_input` — the duty cycle could not be
   computed. It is `0.0` only under `zero_duty_cycle`, which means it *was* computed and the
   hands never engaged. Those are different facts and the field carried `0.0` for both until
