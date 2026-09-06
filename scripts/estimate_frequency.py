@@ -38,6 +38,9 @@ from cyclegraph.cycles.spectral import (  # noqa: E402
 from cyclegraph.cycles.transitions import (  # noqa: E402
     H2A_RELATIVE_DIFFERENCE,
     relative_difference,
+    exertion_segments,
+    null_bounded_segments,
+    scored_seconds,
     transition_frequency,
 )
 from cyclegraph.signal.stores import JsonlLabelStore  # noqa: E402
@@ -74,6 +77,11 @@ def main(argv: list[str] | None = None) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
     spectral_all = []
     agreements: list[float] = []
+    # D042's disclosure. A null landing inside a bout ends it and starts another, so part of
+    # the segment count is where the labels ran out rather than what the hands did. Written
+    # per clip beside the estimates, never subtracted from them, and never printed: these are
+    # pilot values and D018 keeps them in `results/`.
+    boundaries = (out_dir / "bout_boundaries.jsonl").open("w")
 
     with (out_dir / "frequency.jsonl").open("w") as handle:
         for clip in refs:
@@ -86,9 +94,22 @@ def main(argv: list[str] | None = None) -> int:
             handle.write(spectral.model_dump_json() + "\n")
             handle.write(counted.model_dump_json() + "\n")
             spectral_all.append(spectral)
+            boundaries.write(json.dumps({
+                "clip_id": clip.clip_id,
+                "corpus_rev": clip.corpus_rev,
+                "n_segments": len(exertion_segments(
+                    clip, series, fps=ANALYSIS_HZ,
+                    label_source=store.provenance.label_source)),
+                "n_null_bounded": null_bounded_segments(series, fps=ANALYSIS_HZ),
+                "scored_s": scored_seconds(series, fps=ANALYSIS_HZ),
+                "duration_s": clip.duration_s,
+            }) + "\n")
             if spectral.hz is not None and counted.hz is not None:
                 agreements.append(relative_difference(spectral.hz, counted.hz))
+    boundaries.close()
 
+    print(f"  bout boundaries written to {args.out_dir}/bout_boundaries.jsonl (D042); "
+          f"docs/BENCHMARK.md publishes them beside the segment count")
     print(f"pilot gates (values stay in {args.out_dir}, D018):")
     if agreements:
         mean_rel = sum(agreements) / len(agreements)
