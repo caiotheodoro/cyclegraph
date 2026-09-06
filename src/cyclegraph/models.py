@@ -42,6 +42,13 @@ SPECTRAL_FALSE_ALARM_RATE = 0.05
 # `docs/RUBRIC.md` "Hand speed" and `docs/PRE-REGISTRATION.md` H2c.
 COVERAGE_FLOOR = 0.60
 FLOW_NULL_CEILING = 0.10
+
+DECODE_FAILURE_CEILING = 0.01
+"""`docs/METHOD.md` E2's gate, as a fraction of the samples a clip's plan calls for.
+
+Defined here rather than in the script that first measured it, because two stages check it --
+the decode probe before the run and the labeller during it -- and a threshold written down
+twice is a threshold that can drift apart."""
 # `docs/PRE-REGISTRATION.md` "Clustering".
 BOOTSTRAP_B = 10_000
 # `docs/DECISIONS.md` D019.

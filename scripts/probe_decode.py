@@ -34,10 +34,11 @@ sys.path.insert(0, str(ROOT / "src"))
 from cyclegraph.corpus.decode import decode_gray_frames, ffmpeg_clip_argv  # noqa: E402
 from cyclegraph.corpus.manifest import MetadataRow, clip_refs  # noqa: E402
 from cyclegraph.corpus.sampling import n_samples  # noqa: E402
+from cyclegraph.models import DECODE_FAILURE_CEILING  # noqa: E402
 from cyclegraph.corpus.shards import REPO_ID, ShardReader  # noqa: E402
 from cyclegraph.models import ClipRef  # noqa: E402
 
-GATE = 0.01  # docs/METHOD.md E2
+GATE = DECODE_FAILURE_CEILING  # docs/METHOD.md E2; defined in models.py
 WIDTH, HEIGHT = 480, 270
 PROBE_FRAMES = 8
 
