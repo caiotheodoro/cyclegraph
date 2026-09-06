@@ -1202,3 +1202,53 @@ cycle these labels produce is unaffected — it does not depend on frequency at 
 
 **Reverses if:** the search band is re-specified in a later pre-registration and the comparison
 re-run on data not used to choose it.
+
+## D040 — The pilot labels were scored on the wrong feature distribution, and are withdrawn
+
+**Found by the fresh-context review of W4, not by the author.** The manipulation head was
+fitted on `../vernier`'s cached DINOv2 features and applied to features this project extracted
+differently, in two independent ways. `scripts/labellers/probe.py`'s own docstring claimed the
+pipeline was "vernier's, reproduced rather than re-derived". It was not.
+
+**Defect 1 — pooling.** Vernier pools **every** token (`last_hidden_state.mean(dim=1)`,
+`../vernier/scripts/distill_rung1.py`). This project pooled patch tokens only, discarding CLS.
+The origin is instructive: vernier's *docstring* says "mean-pooled patch tokens" and its *code*
+does not, and this project reproduced the docstring. **Measured impact: none.** Across 60
+frames not one prediction changed, and the duty cycle moved by 0.000 — CLS is one token of 257,
+so the perturbation is far smaller than the head's margin.
+
+**Defect 2 — colour.** Vernier's frames are colour JPEGs; `ffmpeg_extract_argv` sets no pixel
+format. This project decoded `-pix_fmt gray` and replicated the single channel three times, a
+choice `src/cyclegraph/corpus/decode.py` justified on the grounds that "every consumer of these
+frames is luminance only" — true when written, false once the labeller became a consumer.
+**Measured impact, and it decides the matter:**
+
+| | |
+|---|---|
+| Predictions changed | **6 of 120 (5.0%)** |
+| Duty-cycle shift | **0.033** |
+| Feature cosine, colour vs grey | 0.951 |
+
+**0.033 against H1a's bound of 0.05.** A preprocessing choice nobody had measured was consuming
+two-thirds of the tolerance of the hypothesis it feeds, in a fixed direction. H1a is the test
+that selects Arm A or Arm B for the whole main draw.
+
+**The fix is verified, not assumed.** With both defects corrected, features extracted here
+reproduce vernier's stored vectors at **cosine 1.000000, max absolute difference 1e-5**, on
+three frames drawn from three different source datasets. That is the strongest available check
+and it also proves the previous pipeline could not have matched.
+
+**Consequence.** The 462,437 labels in `results/pilot/labels.jsonl` and every derived artifact
+— `duty_cycle.jsonl`, `frequency.jsonl` — are **withdrawn** and re-scored. `docs/DECISIONS.md`
+D039's H2 verdict rests on those labels and is **provisional** until it is recomputed; the
+factor-60 disagreement is far larger than a 0.033 duty-cycle shift could explain, so the
+verdict is unlikely to move, but "unlikely to move" is not "re-checked".
+
+**What this says about the process.** Three defences failed silently and one worked. The
+contract, the tests and the gates all passed: nothing they check was violated, because a
+feature distribution is not a schema. `zip(strict=True)` caught a timestamp misalignment
+earlier in the same file, and nothing analogous exists for "these features are not the ones the
+model was fitted to". The fresh-context review caught it. That is the argument for the review
+step, made concrete.
+
+**Reverses if:** nothing. This is a defect record.

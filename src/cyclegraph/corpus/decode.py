@@ -47,11 +47,14 @@ def subfile_url(url: str, byte_start: int, byte_end: int) -> str:
 
 def ffmpeg_clip_argv(url: str, clip: ClipRef, *, fps_sampled: float,
                      width: int, height: int, start_s: float = 0.0,
-                     max_frames: int | None = None) -> list[str]:
-    """Decode one clip to raw 8-bit grey frames on stdout, at the analysis rate.
+                     max_frames: int | None = None, pix_fmt: str = "gray") -> list[str]:
+    """Decode one clip to raw 8-bit frames on stdout, at the analysis rate.
 
-    Grey because every consumer of these frames -- dense flow, and the box-width scale -- is
-    luminance only, and because it is a third of the bytes.
+    `pix_fmt` defaults to grey because the flow path and the box-width scale are luminance
+    only and grey is a third of the bytes. It is a **parameter** rather than a constant
+    because the labeller is not luminance-only: its head was fitted on colour frames, and
+    feeding it grey silently moves the feature distribution the head was trained against
+    (`docs/DECISIONS.md` D040). A consumer that needs colour asks for `rgb24`.
     """
     if fps_sampled <= 0:
         raise ValueError("the analysis rate is positive")
@@ -64,7 +67,7 @@ def ffmpeg_clip_argv(url: str, clip: ClipRef, *, fps_sampled: float,
     argv += [
         "-i", subfile_url(url, clip.byte_start, clip.byte_end),
         "-vf", f"fps={fps_sampled},scale={width}:{height}",
-        "-pix_fmt", "gray", "-f", "rawvideo",
+        "-pix_fmt", pix_fmt, "-f", "rawvideo",
     ]
     if max_frames is not None:
         argv += ["-frames:v", str(max_frames)]
@@ -94,9 +97,14 @@ class DecodeOutcome:
 
 
 def decode_gray_frames(argv: list[str], width: int, height: int, *,
-                       timeout_s: float = 900.0) -> Iterator[Gray]:
-    """Raw frames off ffmpeg's stdout. Raises with ffmpeg's own stderr on a non-zero exit."""
-    frame_bytes = width * height
+                       timeout_s: float = 900.0, channels: int = 1) -> Iterator[Gray]:
+    """Raw frames off ffmpeg's stdout. Raises with ffmpeg's own stderr on a non-zero exit.
+
+    `channels` must match the `pix_fmt` the argv asked for: 1 for `gray`, 3 for `rgb24`. A
+    mismatch would not error -- it would silently reinterpret the byte stream as frames of the
+    wrong shape.
+    """
+    frame_bytes = width * height * channels
     process = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     assert process.stdout is not None
     try:
@@ -104,7 +112,8 @@ def decode_gray_frames(argv: list[str], width: int, height: int, *,
             buffer = process.stdout.read(frame_bytes)
             if not buffer or len(buffer) < frame_bytes:
                 break
-            yield np.frombuffer(buffer, dtype=np.uint8).reshape(height, width)
+            shape = (height, width) if channels == 1 else (height, width, channels)
+            yield np.frombuffer(buffer, dtype=np.uint8).reshape(shape)
     finally:
         process.stdout.close()
         try:
