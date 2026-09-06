@@ -184,11 +184,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         remaining = args.smoke
         decoded = 0
         started = time.time()
+        with_box = 0
+        failed = 0
         for clip in clips:
             if remaining <= 0:
                 break
             batch = decode_clip(clip, token, limit=remaining)
-            detections_for_clip(batch, detector)
+            rows = detections_for_clip(batch, detector)
+            with_box += sum(1 for r in rows if r["boxes"])
+            failed += sum(1 for r in rows if "failed_reason" in r)
             decoded += len(batch.frames)
             remaining -= len(batch.frames)
         elapsed = time.time() - started
@@ -196,6 +200,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"smoke: {decoded} frames in {elapsed:.1f}s -> {rate:.1f} frames/s "
               f"(decode + detect, end to end)")
         print(f"  docs/METHOD.md E3 estimates ~20 frames/s for the detector alone")
+        # The install-sanity signal. An mmcv-full that does not match the installed torch can
+        # import cleanly and then produce empty or nonsense output; a box coverage near zero
+        # means a broken install far more often than it means a corpus without hands. It is
+        # deliberately *not* compared against H2c's 60% here -- that is a pre-registered gate
+        # on the full pilot, and reading a smoke sample as though it settled one would be
+        # exactly the shortcut docs/PRE-REGISTRATION.md exists to prevent.
+        print(f"  box coverage on this sample: {with_box}/{decoded} frames; "
+              f"{failed} frames the model raised on")
+        if decoded and with_box == 0:
+            print("  WARNING: no frame produced a box. Check the install before buying the "
+                  "pilot run; a mismatched mmcv-full imports cleanly and segments nothing.")
         print(f"  at this rate the pilot's {sum(1 for _ in clips)} clips need "
               f"{sum(len(sample_times(c.duration_s)) for c in clips) / rate / 3600:.2f} h"
               if rate else "  rate unavailable")
