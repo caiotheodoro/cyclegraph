@@ -70,6 +70,9 @@ class VarianceComponents:
     between_worker_within_factory: float
     n_factories: int
     n_workers: int
+    n_factories_with_two_workers: int = 0
+    """How many factories contributed any within-factory information at all. Zero means the
+    denominator of H4's ratio was never measured, only defaulted."""
 
     @property
     def ratio(self) -> float:
@@ -78,9 +81,22 @@ class VarianceComponents:
         return self.between_factory / self.between_worker_within_factory
 
     @property
+    def evaluable(self) -> bool:
+        """Whether H4's comparison was made against anything.
+
+        It compares two variances, and needs both to have been measurable. A corpus where no
+        factory contributed two workers has **no** within-factory information: `within` is an
+        empty list, its mean defaults to 0.0, `ratio` short-circuits to infinity and H4 would
+        otherwise be confirmed by a corpus containing no evidence about the thing it is about.
+        That is the defect `docs/DECISIONS.md` D034 corrected for H2b -- a hypothesis
+        satisfiable by data that cannot bear on it -- one hypothesis over (D053).
+        """
+        return self.n_factories_with_two_workers > 0 and self.between_factory > 0.0
+
+    @property
     def holds(self) -> bool:
-        """H4 is falsified if the ratio is at or below 1."""
-        return self.ratio > 1.0
+        """H4 is falsified if the ratio is at or below 1, and unsupported if never evaluated."""
+        return self.evaluable and self.ratio > 1.0
 
 
 def variance_components(observations: Sequence[ClipObservation]) -> VarianceComponents:
@@ -107,6 +123,7 @@ def variance_components(observations: Sequence[ClipObservation]) -> VarianceComp
         between_worker_within_factory=statistics.fmean(within) if within else 0.0,
         n_factories=len(by_factory),
         n_workers=sum(len(w) for w in by_factory.values()),
+        n_factories_with_two_workers=len(within),
     )
 
 

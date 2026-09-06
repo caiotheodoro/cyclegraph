@@ -93,7 +93,10 @@ def spectral_frequency(
         return FrequencyEstimate(
             clip_id=clip.clip_id, corpus_rev=clip.corpus_rev, label_source=label_source,
             hz=None, method="spectral", peak_power_ratio=ratio,
-            resolvability_floor=floor if floor is not None else 1.0,
+            # Null, not a stand-in. A clip that was never transformed has no floor, and the
+            # 1.0 this used to write is below the smallest value the formula can produce
+            # (5.30 at the two-bin minimum) -- a number no clip could have (D054).
+            resolvability_floor=floor,
             resolvable=False, hz_ci95=None, nyquist_hz=nyquist,
             status=status,  # type: ignore[arg-type]
         )
@@ -118,7 +121,10 @@ def spectral_frequency(
 
     power = _periodogram(times, values, freqs)
     if not np.any(power):
-        return absent("no_peak")  # a constant series has no dominant cycle
+        # A constant series has no dominant cycle. The periodogram *was* computed, so the peak
+        # ratio is a real measurement of zero and the floor it would have been judged against
+        # is known; both are recorded rather than dropped.
+        return absent("no_peak", 0.0, resolvability_floor(int(freqs.size)))
 
     floor = resolvability_floor(int(freqs.size))
     peak = int(np.argmax(power))

@@ -40,7 +40,7 @@ HAL_DECIMALS: Final[int] = 1
 def _score(
     duty: DutyCycleEstimate, *, mapping: Mapping, hz: float | None, speed: float | None,
 ) -> HALScore:
-    def build(hal: float | None, duty_cycle: float, out_of_range: bool,
+    def build(hal: float | None, duty_cycle: float | None, out_of_range: bool,
               status: str) -> HALScore:
         return HALScore(
             clip_id=duty.clip_id,
@@ -61,7 +61,8 @@ def _score(
 
     x = hz if mapping == "radwin-2015-freq-dc" else speed
     if duty.status != "ok" or duty.duty_cycle is None or x is None:
-        return build(None, duty.duty_cycle or 0.0, False, "no_input")
+        # Null, not zero: `or 0.0` published "not measured" as "measured, and zero".
+        return build(None, duty.duty_cycle, False, "no_input")
     if duty.duty_cycle == 0.0:
         # Both equations take ln D, so a zero duty cycle has no image. It is a value with a
         # status, not a HAL of zero: a worker whose hands never engaged is not at

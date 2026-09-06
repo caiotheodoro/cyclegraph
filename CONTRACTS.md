@@ -1,6 +1,6 @@
 # Contracts
 
-`contracts/v1.4`, frozen 2026-09-05, before any clip is decoded. Schemas are the seam between the
+`contracts/v1.5`, frozen 2026-09-05, before any clip is decoded; v1.5 amended 2026-09-06. Schemas are the seam between the
 modules described in `docs/ARCHITECTURE.md`; changing one is a decision and belongs in
 `docs/DECISIONS.md`. The changelog at the end records what v1.1 changed and why.
 
@@ -128,6 +128,13 @@ Three rules apply to all of them.
   manipulation *bouts*. It is a lower bound on the TLV's exertion frequency, because a hand
   stays "manipulating" across consecutive exertions (`docs/DECISIONS.md` D014;
   `docs/RED-TEAM.md` A10). Every consumer labels it so.
+- `resolvability_floor` and `peak_power_ratio` are **present together or absent together** on
+  a spectral estimate: the floor is what a ratio was judged against, so a floor without a ratio
+  judged nothing. `transitions` never carries either. A clip whose series was never transformed
+  — too short, or too few scored samples to form two frequency bins — carries both `null`. The
+  earlier rule, "null iff `transitions`", left no way to say that and made the code invent a
+  floor of `1.0`, which is below the smallest value the formula can produce (5.30, at the
+  two-bin minimum) and so could not have been any clip's floor (`docs/DECISIONS.md` D054).
 - `resolvable` is false when no peak clears the pre-registered `peak_power_ratio` floor of
   **6×** — a clip with no dominant cycle. `hz` is then `null` with `status: "no_peak"`, and
   such clips are counted, reported, and excluded rather than assigned a frequency of zero. A
@@ -170,6 +177,11 @@ Three rules apply to all of them.
   "tlv_evaluable": false, "status": "ok" }
 ```
 
+- `duty_cycle` is `null` exactly when `status` is `no_input` — the duty cycle could not be
+  computed. It is `0.0` only under `zero_duty_cycle`, which means it *was* computed and the
+  hands never engaged. Those are different facts and the field carried `0.0` for both until
+  `docs/DECISIONS.md` D054; the two statuses exist to keep them apart, and a fabricated zero
+  put them back together in the one field a reader averages.
 - `hal` is on the published 0–10 Hand Activity Level scale, to one decimal, per Radwin
   2015's recommendation. **It is recomputed from `mapping` and its inputs on construction**
   and must agree within one-decimal rounding, so a transcribed value cannot drift from the
