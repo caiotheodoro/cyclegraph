@@ -24,20 +24,35 @@ import json
 import os
 import sys
 import time
+from typing import Iterator
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from cyclegraph.corpus.decode import decode_gray_frames, ffmpeg_clip_argv  # noqa: E402
+from cyclegraph.corpus.decode import (  # noqa: E402
+    Gray,
+    decode_gray_frames,
+    ffmpeg_clip_argv,
+)
 from cyclegraph.corpus.manifest import MetadataRow, clip_refs  # noqa: E402
-from cyclegraph.corpus.sampling import ANALYSIS_HZ, n_samples, sample_times  # noqa: E402
+from cyclegraph.corpus.sampling import (  # noqa: E402
+    ANALYSIS_HZ,
+    n_samples,
+    pair_offset_s,
+    sample_times,
+)
 from cyclegraph.corpus.shards import REPO_ID, ShardReader  # noqa: E402
 from cyclegraph.models import ClipRef, FrameSignal, HandSpeedEstimate  # noqa: E402
 from cyclegraph.signal.flow_farneback import FarnebackFlow  # noqa: E402
 from cyclegraph.signal.frames import FrameSample, build_frame_signal, resolve_conflicts  # noqa: E402
-from cyclegraph.signal.ports import HandBox, largest_box  # noqa: E402
-from cyclegraph.signal.speed import HAND_BREADTH_MM, hand_speed_estimate, speed_sample  # noqa: E402
+from cyclegraph.signal.ports import Flow, HandBox, largest_box  # noqa: E402
+from cyclegraph.signal.speed import (  # noqa: E402
+    HAND_BREADTH_MM,
+    SpeedSample,
+    hand_speed_estimate,
+    speed_sample,
+)
 from cyclegraph.signal.stores import JsonlDetectionStore, JsonlLabelStore  # noqa: E402
 
 WIDTH, HEIGHT = 480, 270
@@ -107,6 +122,42 @@ def _record_not_attempted(args: argparse.Namespace) -> int:
     return 0 if written == len(refs) else 1
 
 
+def stream_pairs(clip: ClipRef, token: str | None, *, width: int, height: int,
+                 ) -> Iterator[tuple[int, float, Gray, Gray]]:
+    """`(k, t_s, first, second)` for each 4 Hz instant that has a pair.
+
+    The two frames are **one frame of the source video apart** (`docs/DECISIONS.md` D045), not
+    one analysis period. Getting that requires decoding at the clip's own rate: ffmpeg's `fps`
+    filter resamples to 4 Hz and cannot emit the frame that follows one of its outputs.
+
+    Decoding at the native rate costs no extra *network* -- the mp4 bytes fetched are the same
+    either way, because H.264 has to be decoded sequentially regardless of how many frames are
+    emitted. What grows is the local pipe, and only the two frames of the current pair are ever
+    held, so it does not grow memory (D049).
+
+    Instants whose pair falls off the end of the decode are simply not yielded; the caller
+    records them as absent with a reason rather than inventing a pair.
+    """
+    times = sample_times(clip.duration_s)
+    if not times:
+        return
+    # Which native frame index each instant starts at, and how far to decode for the last pair.
+    first_index: dict[int, int] = {}
+    for k, t_s in enumerate(times):
+        first_index.setdefault(int(round(t_s * clip.fps)), k)
+    limit = int(round(times[-1] * clip.fps)) + 2
+
+    url = ShardReader(REPO_ID, clip.shard, token)._resolve()
+    argv = ffmpeg_clip_argv(url, clip, fps_sampled=clip.fps, width=width, height=height,
+                            max_frames=limit)
+    previous: Gray | None = None
+    for n, frame in enumerate(decode_gray_frames(argv, width, height)):
+        index = first_index.get(n - 1)
+        if previous is not None and index is not None:
+            yield index, times[index], previous, frame
+        previous = frame
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", default="results/pilot/clips_factory_001.jsonl")
@@ -164,31 +215,38 @@ def main(argv: list[str] | None = None) -> int:
 
     for clip in refs:
         started = time.time()
-        url = ShardReader(REPO_ID, clip.shard, token)._resolve()
-        argv_ff = ffmpeg_clip_argv(url, clip, fps_sampled=ANALYSIS_HZ,
-                                   width=WIDTH, height=HEIGHT)
-        frames = list(decode_gray_frames(argv_ff, WIDTH, HEIGHT))
         times = sample_times(clip.duration_s)
         sx, sy = WIDTH / clip.width, HEIGHT / clip.height
+        # The pair spans one source frame, so this is what a pixel of displacement is worth in
+        # seconds. Using the analysis period here instead -- which this did -- divides every
+        # speed by the wrong number, by the ratio of the two baselines (D045).
+        dt_s = pair_offset_s(clip.fps)
+        no_pair = "no decoded pair at this instant"
 
-        samples: list[FrameSample] = []
-        speed_samples = []
-        for i, t_s in enumerate(times):
+        def _sample(k: int, t_s: float, field: Flow | None, reason: str | None
+                    ) -> tuple[FrameSample, SpeedSample]:
             detection = detections.detect(clip.clip_id, t_s)
             boxes = [_scaled(b, sx, sy) for b in detection.boxes]
-            label = labels.label(clip.clip_id, t_s)
             biggest = largest_box(boxes)
-            samples.append(FrameSample(
-                t_s=t_s, label=label,
+            frame_sample = FrameSample(
+                t_s=t_s, label=labels.label(clip.clip_id, t_s),
                 hand_box_width_px=None if biggest is None else biggest.width / sx,
-                decode_reason=None if i + 1 < len(frames) else "no decoded pair at this instant",
-            ))
-            field = (flow_estimator.flow(frames[i], frames[i + 1])
-                     if i + 1 < len(frames) else None)
-            speed_samples.append(speed_sample(
-                field, boxes, t_s=t_s, dt_s=1.0 / ANALYSIS_HZ,
-                flow_reason=None if i + 1 < len(frames) else "no decoded pair at this instant",
-            ))
+                decode_reason=reason,
+            )
+            return frame_sample, speed_sample(field, boxes, t_s=t_s, dt_s=dt_s,
+                                              flow_reason=reason)
+
+        built_samples: list[FrameSample | None] = [None] * len(times)
+        built_speeds: list[SpeedSample | None] = [None] * len(times)
+        for k, t_s, first, second in stream_pairs(clip, token, width=WIDTH, height=HEIGHT):
+            built_samples[k], built_speeds[k] = _sample(
+                k, t_s, flow_estimator.flow(first, second), None)
+        for k, t_s in enumerate(times):
+            if built_samples[k] is None:
+                built_samples[k], built_speeds[k] = _sample(k, t_s, None, no_pair)
+
+        samples: list[FrameSample] = [s for s in built_samples if s is not None]
+        speed_samples = [s for s in built_speeds if s is not None]
 
         resolved, conflicts = resolve_conflicts(samples)
         conflicts_total += conflicts.total
