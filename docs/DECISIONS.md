@@ -1439,7 +1439,8 @@ on features it was not fitted on) -- **a gate that passes quietly**. Three now, 
 different directions.
 
 **Scale.** The speed path is primary under D014, and hand speeds the HAL equations are fitted
-over run 400-1000 mm/s. Every one of those sits on the plateau. Doubling the decode to 960x540
+over run **255.3-1288.0 mm/s** (Akkas 2015 Table 1, as `exposure/hal.py` records it).
+Every speed above about 120 mm/s sits on the plateau. Doubling the decode to 960x540
 moves the knee by nothing in mm/s -- the knee is a fixed *pixel* displacement and finer pixels
 buy proportionally more of them, so the two curves agree.
 
@@ -1501,7 +1502,8 @@ analysis rate.
 
 **Why, measured rather than argued.** D044 swept hand displacement against what a dense
 estimator recovers, on rendered synthetics under the corpus lens. At a 0.25 s baseline, hand
-speeds of 400-1000 mm/s move the hand 45-130 px, past what either estimator can match; both
+speeds across the fitted range 255.3-1288.0 mm/s move the hand 29-167 px, past what either
+estimator can match above the low end; both
 Farneback and RAFT-small then smooth across the depth discontinuity and report **the
 background's** motion inside the hand box, at a gain of 0.18 — which is exactly
 `hand_distance / background_distance`. The rubric then subtracts the background's motion, so
@@ -1729,7 +1731,8 @@ RAFT (D044) nor parameters reach it.
 
 **What this leaves, stated rather than buried.** The speed path is faithful to about
 **600-700 mm/s** and collapses above **~900 mm/s**, and the HAL equations are fitted over
-400-1000 mm/s. So the top of the band is not measured, it is *under*-measured, in the flattering
+**255.3-1288.0 mm/s** (Akkas 2015 Table 1). So the top of the band is not measured, it is
+*under*-measured, in the flattering
 direction, by a factor approaching five. This is not fixed here and is not fixable with a dense
 estimator; it is a bound on what the speed path can say, and `docs/COVERAGE.md` carries it.
 
@@ -1877,3 +1880,29 @@ contract and not in a convention about what to write. The seven seams say absenc
 sayable; these are two places where it was not.
 
 **Reverses if:** nothing. This is a defect record.
+
+
+## D055 — Three entries quoted the wrong fitted range for the Akkas equation
+
+2026-09-06. Review finding 13.
+
+D044 and D050 both say "the HAL equations are fitted over 400-1000 mm/s". They are not.
+`src/cyclegraph/exposure/hal.py` carries `AKKAS_2015_RANGE = FittedRange(255.3, 1288.0, 11.0,
+100.0)` against a comment citing Akkas 2015 Table 1, and that constant is what `out_of_range`
+is computed from — so the code and the prose disagreed, and the code is the one with a source.
+
+**Where the wrong number came from.** D021 tabulated the cost of the A14 floor at 400, 612, 800
+and 1000 mm/s — a set of evaluation points chosen to span a plausible working band. Those four
+numbers were later quoted as though they were the equation's fitted range. A band someone chose
+to tabulate and a range a paper fitted over are different things, and one became the other by
+repetition across three entries.
+
+**It matters in the direction that makes the earlier entries too kind.** D050 argued that the
+speed path's collapse above ~900 mm/s leaves "the top of the band" unmeasured, with the band
+ending at 1000. The real range runs to **1288 mm/s**, so the unmeasured portion is larger than
+D050 said, not smaller. The correction is applied in place in D044, D050 and
+`docs/COVERAGE.md`.
+
+**Reverses if:** the Table 1 figures in `exposure/hal.py` are themselves wrong, which
+`docs/SURVEY.md` S3's golden cells would show, since they are checked against the paper's own
+table rows.

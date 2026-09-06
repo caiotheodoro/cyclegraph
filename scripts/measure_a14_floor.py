@@ -57,7 +57,16 @@ from cyclegraph.signal.synthetic import (  # noqa: E402
     valid_mask,
 )
 
-DT_S = 0.25  # the pre-registered 4 Hz pair interval (docs/DECISIONS.md D010)
+# One frame of the source video, which is what a speed pair spans since `docs/DECISIONS.md`
+# D045; every pilot clip's stream is exactly 30 fps, verified with ffprobe rather than taken
+# from the sidecar. This was 0.25 s, the analysis period D045 replaced.
+#
+# The floor is nearly invariant to it, which is worth stating so the change is not read as
+# bigger than it is: the residual is first-order proportional to the interval and the division
+# by it cancels, so the published mm/s move by 1-5% (rotation at 30 deg/s: 29.93 -> 30.27).
+# The artifact was nonetheless declaring an interval the pipeline no longer uses.
+CORPUS_FPS = 30.0
+DT_S = 1.0 / CORPUS_FPS
 DUTY_CYCLE_PCT = 68.0  # CONTRACTS.md's own example, used only to price a floor in HAL
 HAL_BUDGET = 0.25  # docs/PRE-REGISTRATION.md v1.3.0
 ASSUMED_MEDIAN_SPEEDS_MM_S = (400.0, 612.4, 800.0)
@@ -146,7 +155,7 @@ def main(argv: list[str] | None = None) -> int:
         "seed": None,
         "seed_note": "No random number is drawn; the computation is closed-form geometry.",
         "pre_registered_bound_hal": HAL_BUDGET,
-        "pre_registration_version": "1.3.0",
+        "pre_registration_version": "1.5.0",
         "lens": {
             "source": "docs/DECISIONS.md D025; identical for all 2144 shipped workers",
             "model": "fisheye (Kannala-Brandt)",
