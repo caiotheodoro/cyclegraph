@@ -134,6 +134,24 @@ def _token() -> str | None:
     return os.environ.get("HF_TOKEN")
 
 
+def stream_clip(clip: ClipRef, token: str | None) -> Iterator[tuple[float, np.ndarray]]:
+    """`(t_s, frame)` one at a time, so a clip is never held whole.
+
+    `decode_clip` below materialises every frame, which at 960x540 in colour is 1.55 MB each
+    and 7.4 GB for a 1200 s clip. Three of those exhausted the box and had a run killed before
+    it wrote a row -- the identical defect `docs/DECISIONS.md` D043 records in the labeller,
+    left in the sibling path because the labeller was the one that fell over first. The smoke
+    path still uses `decode_clip`: it is bounded by `--smoke` and small by construction.
+    """
+    url = ShardReader(REPO_ID, clip.shard, token)._resolve()
+    times = sample_times(clip.duration_s)
+    argv = ffmpeg_clip_argv(url, clip, fps_sampled=ANALYSIS_HZ,
+                            width=DECODE_WIDTH, height=DECODE_HEIGHT,
+                            max_frames=len(times), pix_fmt=DECODE_PIX_FMT)
+    frames = decode_gray_frames(argv, DECODE_WIDTH, DECODE_HEIGHT, channels=3)
+    yield from zip(times, frames, strict=False)
+
+
 def decode_clip(clip: ClipRef, token: str | None, *, limit: int | None = None) -> ClipFrames:
     url = ShardReader(REPO_ID, clip.shard, token)._resolve()
     argv = ffmpeg_clip_argv(url, clip, fps_sampled=ANALYSIS_HZ,
@@ -243,11 +261,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     frames_total = 0
     with out.open("a") as handle:
         for i, clip in enumerate(todo, 1):
-            batch = decode_clip(clip, token)
-            for row in detections_for_clip(batch, detector):
-                handle.write(json.dumps(row) + "\n")
+            n_frames = 0
+            for t_s, frame in stream_clip(clip, token):
+                one = ClipFrames(clip=clip, times=[t_s], frames=[frame])
+                for row in detections_for_clip(one, detector):
+                    handle.write(json.dumps(row) + "\n")
+                n_frames += 1
             handle.flush()  # a preemption after this loses at most one clip
-            frames_total += len(batch.frames)
+            frames_total += n_frames
             elapsed = time.time() - started
             print(f"  {i}/{len(todo)} clips, {frames_total} frames, "
                   f"{frames_total / elapsed:.1f} frames/s", flush=True)
