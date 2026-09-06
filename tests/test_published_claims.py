@@ -12,6 +12,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
@@ -103,9 +105,20 @@ def test_the_banner_paragraph_prose_is_checked_not_skipped() -> None:
     assert not any(s.startswith("**Version:**") for s in sentences)
 
 
-def test_the_grandfathered_addition_count_is_pinned() -> None:
+def test_the_grandfathered_addition_count_is_pinned(
+        monkeypatch: pytest.MonkeyPatch) -> None:
     """D041. Pre-v1.5.0 history is exempt from the additions rule but frozen: the gate carries
-    the exact count so that history cannot be edited under cover of the exemption."""
-    assert validate._GRANDFATHERED_ADDITIONS == 45
+    the exact count so that history cannot be edited under cover of the exemption.
+
+    Asserting the constant equals its own literal is a tautology -- it cannot fail for the
+    reason the test exists. What has to be true is that the count is *load-bearing*: move it,
+    and the gate must notice. That is checked by moving it."""
     assert validate._ADDITIONS_RULE_FROM == (1, 5, 0)
     assert validate.gate_prereg_version() == []
+
+    for wrong in (validate._GRANDFATHERED_ADDITIONS - 1,
+                  validate._GRANDFATHERED_ADDITIONS + 1):
+        monkeypatch.setattr(validate, "_GRANDFATHERED_ADDITIONS", wrong)
+        failures = validate.gate_prereg_version()
+        assert failures, f"the gate accepted a grandfathered count of {wrong}"
+        assert any("grandfathered" in f or "unquoted additions" in f for f in failures)

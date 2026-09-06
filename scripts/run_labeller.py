@@ -322,8 +322,19 @@ def main(argv: list[str] | None = None) -> int:
     missing = planned_total - total
     rate = missing / planned_total if planned_total else 0.0
     print(f"\npilot gates (values stay in {out.parent}, D018):")
-    print(f"  {'PASS' if rate <= DECODE_FAILURE_CEILING else 'FAIL'}  "
-          f"decode shortfall within E2's {DECODE_FAILURE_CEILING:.0%} ceiling")
+    if planned_total == 0:
+        # A resumed run with nothing left to do has no denominator, and a rate of 0/0 printed
+        # PASS -- the same vacuous pass D052 found in the H2c null gate.
+        print("  NOT EVALUABLE  this invocation decoded no clip; E2's gate has no denominator")
+    else:
+        print(f"  {'PASS' if rate <= DECODE_FAILURE_CEILING else 'FAIL'}  "
+              f"decode shortfall within E2's {DECODE_FAILURE_CEILING:.0%} ceiling, "
+              f"**for the clips this invocation decoded**")
+    # The pilot-wide gate is not this one. Sharding the manifest across processes gives each a
+    # partial denominator, and a gate over part of the pilot is not the pre-registered gate --
+    # the same correction `scripts/score_hal.py` carries for H2c. `scripts/verify_labels.py`
+    # reads the whole file against the whole manifest and is what E2 is judged on.
+    print("  see scripts/verify_labels.py for the pilot-wide count; this gate is per-run")
     print(f"  {'PASS' if total or not clips else 'FAIL'}  labels written for every clip")
     print(f"  {'PASS' if total == 0 or conflicts_total / max(total, 1) < 0.10 else 'FAIL'}  "
           f"the two heads contradict each other on under 10% of frames")
