@@ -1959,3 +1959,26 @@ signal pass run first, H2c would have been evaluated on an inflated coverage and
 published as a pre-registered gate outcome.
 
 **Reverses if:** nothing. This is a defect record.
+
+## D057 — The spectral path carried its own copy of the clip floor
+
+2026-09-06. Found by looking for more of D056's shape rather than waiting to be told.
+
+D056 was a rule defined once and applied at one of its two consumers. That is a class, not an
+incident, so the obvious next question is where else a rule has more than one home. The clip
+floor is one: `exposure/duty.py` and `signal/frames.py` compare against `models.MIN_CLIP_S`,
+and `cycles/spectral.py` compared against a literal `60.0`.
+
+**Nothing is wrong today** — `MIN_CLIP_S` is 60.0, so every path agrees. What was wrong is that
+they agreed by coincidence: changing the rubric's floor would have moved two paths and left the
+spectral one silently on the old value, and the divergence would show up as a frequency estimate
+existing for a clip that duty cycle refused to score. The original plan's acceptance criterion
+for the manifest unit said "the module contains no literal 60"; the same criterion was never
+applied to `cycles/`.
+
+The test is textual, like `tests/test_signal_ports.py`'s shard-token check, because an import
+check passes a module that imports the constant and then ignores it. It flags a `duration_s`
+comparison against any non-zero literal and leaves positivity guards alone.
+
+**Reverses if:** nothing. This is a defect record, and a small one — recorded because the way it
+was found is the point, not the size of it.

@@ -327,3 +327,24 @@ def test_the_segment_count_does_not_depend_on_where_the_nulls_fell() -> None:
     prefixed = len([r for r in runs(debounce([None, True, None] + body, fps=FPS))
                     if r.value is True])
     assert prefixed == plain + 1  # only the prefix's own unabsorbable run is added
+
+
+def test_no_path_carries_its_own_copy_of_the_clip_floor() -> None:
+    """The rubric's 60 s clip floor is `models.MIN_CLIP_S`. `exposure/duty.py` and
+    `signal/frames.py` import it; `cycles/spectral.py` had its own literal, so changing the
+    floor would have moved two paths and left the third (D057). Checked as text because an
+    import check passes a module that imports the constant and then ignores it.
+
+    Positivity guards (`duration_s <= 0`) are not floors and are not flagged."""
+    import re
+    from pathlib import Path as _Path
+
+    comparison = re.compile(r"duration_s\s*[<>]=?\s*([0-9]+(?:\.[0-9]+)?)")
+    root = _Path(__file__).resolve().parent.parent / "src" / "cyclegraph"
+    offenders: list[str] = []
+    for path in sorted(root.rglob("*.py")):
+        for line in path.read_text().splitlines():
+            for literal in comparison.findall(line):
+                if float(literal) != 0.0:
+                    offenders.append(f"{path.name}: {line.strip()}")
+    assert offenders == [], f"a clip floor that is not MIN_CLIP_S: {offenders}"
