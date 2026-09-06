@@ -1992,3 +1992,38 @@ from that geometry. All four now read one definition.
 **Reverses if:** nothing. This is a defect record. It is recorded because the way it was found
 is the point: D056 was a class, so the next move was to sweep for the class rather than wait
 for the next instance to surface.
+
+## D058 — The labels carried no `corpus_rev`, so the check for it passed on nothing
+
+2026-09-06.
+
+`scripts/verify_labels.py` reports "corpus revisions present: 1" and fails if there is more than
+one, because `corpus_rev` is on every contract record for one reason: records from two corpus
+revisions are never pooled. **The label rows never carried the field.** `row.get("corpus_rev",
+"")` returned `""` for all 462,437 of them, the set had one element, and the check passed —
+having read nothing.
+
+**This corrects evidence already given.** D046's checkpoint cited "462,437 of 462,437 planned
+rows, one corpus revision" as the basis for re-deriving H2's verdict. The row count was real.
+The revision claim was not: there was no revision on any row to count. The verdict does not
+depend on it — the labels came from a single run against a single pinned revision — but the
+statement was of a check that had not happened, which is worse than not making it.
+
+**Found the same way as D057**, by sweeping for a class rather than waiting: a check that cannot
+fail is the same defect whether the condition is trivially true (D052's conflict gate), computed
+over an empty denominator (D052's null gate, D053's H4), or — here — read from a field that does
+not exist. That third form is the hardest to see, because the code looks like it is checking
+something.
+
+**Fixed in three parts.** The labeller writes `corpus_rev` on every row. `verify_labels.py` now
+distinguishes "one revision" from "no revision recorded" and says which, instead of reporting
+the second as the first. And the existing 462,437 rows are stamped with the revision they were
+in fact produced at — disclosed here as a retro-stamp rather than a measurement, and safe only
+because the run took `--corpus-rev` and read one pinned revision throughout.
+
+**Detection rows still carry no `corpus_rev`**, and are not stamped: they were being written
+while this was found, and rewriting a file three workers were appending to is how the partial
+clips of D043 happen. `verify_labels.py` now reports that absence plainly instead of counting it
+as agreement.
+
+**Reverses if:** nothing. This is a defect record.
