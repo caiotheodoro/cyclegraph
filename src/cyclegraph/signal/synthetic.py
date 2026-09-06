@@ -221,3 +221,84 @@ def analytic_flow(scene: Scene, *, rotation_rad: float = 0.0,
     delta[~valid_mask(cam)] = np.nan
     flow: Flow = delta.astype(np.float32)
     return flow
+
+
+def _bilinear(image: npt.NDArray[np.float64], xs: npt.NDArray[np.float64],
+              ys: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+    """Sample `image` at fractional coordinates, clamping at the border.
+
+    Clamping rather than wrapping: a wrap would move texture across the frame edge and invent
+    motion where the scene left the field of view.
+    """
+    h, w = image.shape
+    x0 = np.floor(xs).astype(np.int64)
+    y0 = np.floor(ys).astype(np.int64)
+    fx, fy = xs - x0, ys - y0
+    x0c, x1c = np.clip(x0, 0, w - 1), np.clip(x0 + 1, 0, w - 1)
+    y0c, y1c = np.clip(y0, 0, h - 1), np.clip(y0 + 1, 0, h - 1)
+    top = image[y0c, x0c] * (1.0 - fx) + image[y0c, x1c] * fx
+    bottom = image[y1c, x0c] * (1.0 - fx) + image[y1c, x1c] * fx
+    return top * (1.0 - fy) + bottom * fy
+
+
+def texture(height: int, width: int, *, seed: int = 0) -> npt.NDArray[np.uint8]:
+    """A deterministic, band-limited pattern to move.
+
+    Not white noise. A dense flow estimator matches neighbourhoods, and per-pixel noise has no
+    structure at the scales a pyramid searches -- it would make every estimator look bad for a
+    reason that has nothing to do with the lens. Three octaves of smoothly interpolated noise
+    give something with real gradients at several scales, which is what a factory scene has.
+    """
+    if height < 2 or width < 2:
+        raise ValueError("a texture needs at least two rows and columns")
+    rng = np.random.default_rng(seed)
+    ys, xs = np.mgrid[0:height, 0:width].astype(np.float64)
+    out = np.zeros((height, width), dtype=np.float64)
+    amplitude = 1.0
+    for divisor in (16, 8, 4):
+        gh, gw = max(height // divisor, 2), max(width // divisor, 2)
+        grid = rng.random((gh, gw))
+        out += amplitude * _bilinear(grid, xs * (gw - 1) / (width - 1),
+                                     ys * (gh - 1) / (height - 1))
+        amplitude *= 0.5
+    out -= out.min()
+    peak = float(out.max())
+    if peak > 0.0:
+        out /= peak
+    return (out * 255.0).round().astype(np.uint8)
+
+
+def render_pair(scene: Scene, *, rotation_rad: float = 0.0,
+                translation_m: tuple[float, float, float] = (0.0, 0.0, 0.0),
+                axis: Literal["yaw", "pitch", "roll"] = "yaw",
+                seed: int = 0) -> tuple[npt.NDArray[np.uint8], npt.NDArray[np.uint8]]:
+    """Two frames a real estimator can be run on, moved by `analytic_flow`'s exact field.
+
+    This exists because a residual computed from `analytic_flow` alone measures the *geometry*
+    -- the error the rubric's scalar median leaves behind on a fisheye -- and says nothing
+    about the estimator. Comparing two estimators on that number would give both the same
+    answer. Rendering lets the estimator's own error be added to the geometry's, which is what
+    `docs/DECISIONS.md` D024's A14 column is for.
+
+    **The warp is backward and first-order**: the second frame's pixel `q` is sampled from
+    `q - flow(q)`, using the flow at the destination rather than at the source. The two agree
+    to first order in the displacement, and the difference is a fraction of a pixel wherever
+    the field is smooth. It is stated because it is an approximation and not an identity, and
+    because it bounds how tight a tolerance any test written against this may claim.
+
+    Pixels outside the image circle carry no ray, so they carry no flow and are rendered black
+    in **both** frames. Leaving them textured would let an estimator match stationary content
+    there and pull the ego-motion median toward zero.
+    """
+    cam = scene.camera
+    flow = analytic_flow(scene, rotation_rad=rotation_rad, translation_m=translation_m,
+                         axis=axis)
+    first = texture(cam.height, cam.width, seed=seed).astype(np.float64)
+    ys, xs = np.mgrid[0:cam.height, 0:cam.width].astype(np.float64)
+    finite = np.isfinite(flow).all(axis=-1)
+    sx = np.where(finite, xs - flow[..., 0], xs)
+    sy = np.where(finite, ys - flow[..., 1], ys)
+    second = _bilinear(first, sx, sy)
+    first = np.where(finite, first, 0.0)
+    second = np.where(finite, second, 0.0)
+    return (first.round().astype(np.uint8), second.round().astype(np.uint8))

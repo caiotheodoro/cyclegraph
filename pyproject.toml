@@ -49,5 +49,6 @@ strict = true
 # `docs/DECISIONS.md` D022 keeps model runtimes out of `src/cyclegraph/`, so they name no
 # module in `docs/ARCHITECTURE.md` and an extra for them would be the drift this file warns
 # about.
-module = ["scipy", "scipy.*", "cv2", "cv2.*", "sklearn", "sklearn.*", "joblib", "joblib.*"]
+module = ["scipy", "scipy.*", "cv2", "cv2.*", "sklearn", "sklearn.*", "joblib", "joblib.*",
+          "torchvision", "torchvision.*"]
 ignore_missing_imports = true

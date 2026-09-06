@@ -28,6 +28,8 @@ from cyclegraph.signal.synthetic import (
     image_circle_radius_px,
     max_theta,
     project,
+    render_pair,
+    texture,
     unproject,
     valid_mask,
 )
@@ -167,3 +169,60 @@ def test_the_hand_box_is_the_size_the_geometry_implies() -> None:
     box = hand_box_for(CORPUS_CAMERA)
     assert 150.0 < box.width < 250.0
     assert box.width == pytest.approx(box.height, rel=0.02)
+
+
+# The renderer's warp is backward and first-order: the second frame's pixel is sampled from
+# `q - flow(q)` rather than from the true source. The two agree to first order, so a test may
+# not claim a tolerance tighter than the field's own curvature over one pixel. Nothing below
+# needs one -- these are structural properties, exact or nearly so.
+
+
+def test_a_texture_is_deterministic_in_its_seed_and_not_a_constant() -> None:
+    a = texture(64, 96, seed=3)
+    assert a.shape == (64, 96) and a.dtype == np.uint8
+    assert np.array_equal(a, texture(64, 96, seed=3))
+    assert not np.array_equal(a, texture(64, 96, seed=4))
+    assert a.min() < a.max()
+
+
+def test_the_texture_has_structure_at_the_scales_a_pyramid_searches() -> None:
+    """Not white noise, and this is the assertion that says so. A dense estimator matches
+    neighbourhoods; per-pixel noise has no structure at those scales and would make every
+    estimator look bad for a reason that has nothing to do with the lens. Neighbouring pixels
+    must therefore be far more alike than distant ones."""
+    t = texture(128, 128, seed=7).astype(np.float64)
+    adjacent = float(np.abs(np.diff(t, axis=1)).mean())
+    rng = np.random.default_rng(0)
+    flat = t.ravel()
+    distant = float(np.abs(flat[rng.permutation(flat.size)] - flat).mean())
+    assert adjacent < distant / 5.0
+
+
+def test_no_camera_motion_renders_the_same_frame_twice() -> None:
+    """The warp's identity case. Zero flow samples at integer coordinates, so this is exact
+    and any sampling-offset bug shows up here rather than as a small bias later."""
+    first, second = render_pair(_corpus_scene(), seed=5)
+    assert np.array_equal(first, second)
+
+
+def test_pixels_outside_the_image_circle_are_black_in_both_frames() -> None:
+    """They carry no ray, so they carry no motion. Leaving them textured would let an
+    estimator match stationary content there and pull the ego-motion median toward zero --
+    which shrinks every residual measured against it, in the flattering direction."""
+    first, second = render_pair(_corpus_scene(), rotation_rad=math.radians(2.0), seed=5)
+    outside = ~valid_mask(CORPUS_CAMERA)
+    assert outside.sum() > 0
+    assert not first[outside].any() and not second[outside].any()
+
+
+def test_translation_moves_the_near_hand_more_than_the_far_background() -> None:
+    """Parallax, visible in the rendered pixels rather than only in the analytic field. A
+    renderer that ignored `depth_map` would move both planes together and pass every test
+    above; it fails here."""
+    scene = _corpus_scene()
+    first, second = render_pair(scene, translation_m=(0.0625, 0.0, 0.0), seed=5)
+    mask = box_mask(first.shape, [scene.hand_box])
+    changed = np.abs(first.astype(np.float64) - second.astype(np.float64))
+    inside = float(changed[mask].mean())
+    background = float(changed[(~mask) & valid_mask(CORPUS_CAMERA)].mean())
+    assert inside > background

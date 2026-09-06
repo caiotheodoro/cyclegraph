@@ -69,3 +69,42 @@ def test_the_method_name_reaches_the_record_verbatim() -> None:
 def test_the_parameters_are_named_so_a_record_can_carry_them() -> None:
     estimator = FarnebackFlow(winsize=21)
     assert estimator.winsize == 21 and estimator.levels == 3
+
+
+# Measured, not chosen: on the corpus geometry at the pipeline's 480x270 flow resolution, a
+# 2 deg pair (well inside `docs/DECISIONS.md` D026's 23-37 deg/s budget at the 4 Hz pair
+# baseline) gives a 7.85 px field that Farneback recovers to a median endpoint error of
+# 0.10 px. The bound is set five times above that, loose enough to survive an OpenCV build
+# difference and still two orders below the field it is recovering.
+RENDERED_RECOVERY_TOLERANCE_PX = 0.5
+
+
+def test_the_estimator_recovers_a_rendered_camera_rotation() -> None:
+    """What makes `render_pair` usable as a benchmark: the frames carry the motion the
+    analytic field describes, so an estimator run on them is measured against the geometry
+    rather than against another estimator. A warp with a sign error or a half-pixel offset
+    fails here; the analytic field alone could not detect either."""
+    import math
+
+    from cyclegraph.signal.synthetic import (
+        CORPUS_CAMERA,
+        Camera,
+        Scene,
+        analytic_flow,
+        hand_box_for,
+        render_pair,
+    )
+
+    c = CORPUS_CAMERA
+    scale = 0.25  # the resolution the pipeline actually runs flow at (scripts/bench_flow.py)
+    cam = Camera(width=int(c.width * scale), height=int(c.height * scale),
+                 fx=c.fx * scale, fy=c.fy * scale, cx=c.cx * scale, cy=c.cy * scale, k=c.k)
+    scene = Scene(camera=cam, hand_box=hand_box_for(cam))
+    first, second = render_pair(scene, rotation_rad=math.radians(2.0), seed=11)
+    truth = analytic_flow(scene, rotation_rad=math.radians(2.0))
+    field = FarnebackFlow().flow(first, second)
+    assert field is not None
+    finite = np.isfinite(truth).all(axis=-1)
+    error = np.linalg.norm(field[finite] - truth[finite], axis=-1)
+    assert np.median(np.linalg.norm(truth[finite], axis=-1)) > 5.0  # a real field to recover
+    assert float(np.median(error)) < RENDERED_RECOVERY_TOLERANCE_PX

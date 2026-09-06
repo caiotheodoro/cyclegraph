@@ -37,13 +37,15 @@ from cyclegraph.corpus.manifest import MetadataRow, clip_refs  # noqa: E402
 from cyclegraph.corpus.shards import REPO_ID, ShardReader  # noqa: E402
 from cyclegraph.models import FLOW_NULL_CEILING  # noqa: E402
 from cyclegraph.signal.flow_farneback import FarnebackFlow  # noqa: E402
-from cyclegraph.signal.ports import box_mask  # noqa: E402
+from cyclegraph.signal.ports import Flow, FlowEstimator, box_mask  # noqa: E402
 from cyclegraph.signal.speed import ego_motion, residual_rms_px  # noqa: E402
 from cyclegraph.signal.synthetic import (  # noqa: E402
     CORPUS_CAMERA,
+    Camera,
     Scene,
     analytic_flow,
     hand_box_for,
+    render_pair,
 )
 
 WIDTH, HEIGHT = 480, 270
@@ -59,14 +61,153 @@ def _token() -> str | None:
     return os.environ.get("HF_TOKEN")
 
 
-def _rotation_residual_px(estimator: FarnebackFlow) -> float | None:
-    """The A14 rotation synthetic, rendered and re-estimated, so the estimator's own error
-    is added to the geometry's. Compare against the exact value the geometry alone gives."""
-    scene = Scene(camera=CORPUS_CAMERA, hand_box=hand_box_for(CORPUS_CAMERA))
-    truth = analytic_flow(scene, rotation_rad=math.radians(30 * 0.25))
+# The corpus's own motion budget (`docs/DECISIONS.md` D026, 23-37 deg/s) at the 4 Hz pair
+# baseline: 30 deg/s over 0.25 s. The synthetic is evaluated at the resolution the pipeline
+# decodes flow at, not the camera's native one -- a dense estimator's error is a function of
+# the displacement in *pixels*, and the same rotation is 29 px at 480x270 and 118 px at
+# 1920x1080. Measuring it at native resolution would report a number no pipeline pair ever sees.
+A14_ROTATION_DEG = 30.0 * 0.25
+FLOW_SCALE = WIDTH / CORPUS_CAMERA.width
+
+
+def _bench_scene() -> Scene:
+    c = CORPUS_CAMERA
+    cam = Camera(width=int(c.width * FLOW_SCALE), height=int(c.height * FLOW_SCALE),
+                 fx=c.fx * FLOW_SCALE, fy=c.fy * FLOW_SCALE,
+                 cx=c.cx * FLOW_SCALE, cy=c.cy * FLOW_SCALE, k=c.k)
+    return Scene(camera=cam, hand_box=hand_box_for(cam))
+
+
+def _a14_residuals(estimator: FlowEstimator | None) -> tuple[float, float | None]:
+    """`(geometry_only, with_estimator)` RMS residual in the hand box, in pixels.
+
+    The first is what the rubric's scalar-median ego-motion leaves behind on a fisheye when
+    the flow field is exact -- a property of the lens, identical for every estimator, and
+    therefore useless on its own for choosing between them. The second runs the estimator on
+    rendered frames carrying that same motion, so its own error is added to the geometry's.
+    D024's A14 column is the second; the first is printed beside it as the floor it cannot
+    go below.
+
+    This function previously took an estimator and never called it, and so reported the
+    geometry for both arms.
+    """
+    scene = _bench_scene()
+    truth = analytic_flow(scene, rotation_rad=math.radians(A14_ROTATION_DEG))
     box = scene.hand_box
     mask = box_mask(truth.shape[:2], [box])
-    return residual_rms_px(truth, box, ego_motion(truth, mask))
+    geometry = residual_rms_px(truth, box, ego_motion(truth, mask))
+    if estimator is None:
+        return geometry, None
+    first, second = render_pair(scene, rotation_rad=math.radians(A14_ROTATION_DEG), seed=11)
+    field = estimator.flow(first, second)
+    if field is None:
+        return geometry, None
+    return geometry, residual_rms_px(field, box, ego_motion(field, mask))
+
+
+class _RaftFlow:
+    """RAFT-small behind the `FlowEstimator` port, with torch imported lazily.
+
+    It lives in a script and not in `src/cyclegraph/signal/` on purpose: `pyproject.toml`'s
+    extras map is the module boundary, torch is declared in no extra, and putting a model
+    runtime inside `signal/` would make the extras a lie. D024's tiebreaker prices that -- if
+    this arm wins, the declared dependency is part of the cost of choosing it.
+    """
+
+    def __init__(self, model: Any, device: str, torch_mod: Any) -> None:
+        self._model = model
+        self._device = device
+        self._torch = torch_mod
+
+    @property
+    def flow_method(self) -> str:
+        return "raft-small"
+
+    def _batch(self, frames: list[np.ndarray]) -> Any:
+        torch = self._torch
+        stacked = np.stack(frames).astype(np.float32) / 255.0
+        tensor = torch.from_numpy(stacked)[:, None, :, :].repeat(1, 3, 1, 1)
+        tensor = (tensor * 2.0) - 1.0            # RAFT's expected [-1, 1] range
+        return tensor.to(self._device)
+
+    def flow_batch(self, firsts: list[np.ndarray], seconds: list[np.ndarray]) -> list[Flow]:
+        torch = self._torch
+        h, w = firsts[0].shape
+        # RAFT downsamples by 8; a size that is not a multiple of 8 is padded and cropped back
+        # rather than resized, so the field stays in the input's own pixel units.
+        ph, pw = (-h) % 8, (-w) % 8
+        a, b = self._batch(firsts), self._batch(seconds)
+        if ph or pw:
+            a = torch.nn.functional.pad(a, (0, pw, 0, ph), mode="replicate")
+            b = torch.nn.functional.pad(b, (0, pw, 0, ph), mode="replicate")
+        with torch.no_grad():
+            predicted = self._model(a, b)[-1]
+        field = predicted[:, :, :h, :w].permute(0, 2, 3, 1).cpu().numpy()
+        return [f.astype(np.float32) for f in field]
+
+    def flow(self, first: np.ndarray, second: np.ndarray) -> Flow | None:
+        if first.shape != second.shape:
+            return None
+        field = self.flow_batch([first], [second])[0]
+        if not np.isfinite(field).all():
+            return None
+        if not field.any():
+            return None
+        return field
+
+
+def _raft_arm(frames: list[tuple[np.ndarray, np.ndarray]]) -> dict[str, Any]:
+    """Measure RAFT-small on the same pairs, or say precisely why it was not measured."""
+    unmeasured = {
+        "measured": False,
+        "declared_dependency_cost": "torch, undeclared in pyproject.toml (D024 tiebreaker)",
+    }
+    try:
+        import torch
+        from torchvision.models.optical_flow import Raft_Small_Weights, raft_small
+    except ImportError as exc:
+        return {**unmeasured, "why_not": f"torch/torchvision not importable: {exc}"}
+    if not torch.cuda.is_available():
+        return {**unmeasured, "why_not": (
+            "no CUDA device. A CPU throughput number for RAFT would decide D024's cost rule "
+            "on a configuration nobody would run.")}
+    model = raft_small(weights=Raft_Small_Weights.DEFAULT).to("cuda").eval()
+    estimator = _RaftFlow(model, "cuda", torch)
+    geometry, estimated = _a14_residuals(estimator)
+
+    firsts = [a for a, _ in frames]
+    seconds = [b for _, b in frames]
+    nulls = sum(1 for a, b in frames if estimator.flow(a, b) is None)
+    # Two throughput readings. Per-pair matches how Farneback is measured; batched is what a
+    # GPU arm would actually be run at, and reporting only the first would price RAFT on a
+    # configuration nobody would choose. The cost rule uses the better of the two.
+    torch.cuda.synchronize()
+    started = time.time()
+    for a, b in frames:
+        estimator.flow_batch([a], [b])
+    torch.cuda.synchronize()
+    per_pair = len(frames) / (time.time() - started)
+    batch = 8
+    torch.cuda.synchronize()
+    started = time.time()
+    for i in range(0, len(frames), batch):
+        estimator.flow_batch(firsts[i:i + batch], seconds[i:i + batch])
+    torch.cuda.synchronize()
+    batched = len(frames) / (time.time() - started)
+    return {
+        "measured": True,
+        "pairs": len(frames),
+        "pairs_per_s": round(max(per_pair, batched), 3),
+        "pairs_per_s_unbatched": round(per_pair, 3),
+        "pairs_per_s_batched_8": round(batched, 3),
+        "flow_null_rate": round(nulls / len(frames), 6) if frames else None,
+        "clears_null_ceiling": (nulls / len(frames)) <= FLOW_NULL_CEILING if frames else None,
+        "a14_rotation_residual_px": round(estimated, 4) if estimated is not None else None,
+        "a14_rotation_residual_geometry_only_px": round(geometry, 4),
+        "declared_dependency_cost": "torch, undeclared in pyproject.toml (D024 tiebreaker)",
+        "frame_size": [WIDTH, HEIGHT],
+        "device": torch.cuda.get_device_name(0),
+    }
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -97,6 +238,7 @@ def main(argv: list[str] | None = None) -> int:
 
     results: dict[str, Any] = {}
     estimator = FarnebackFlow()
+    fb_geometry, fb_estimated = _a14_residuals(estimator)
     started = time.time()
     nulls = 0
     for first, second in frames:
@@ -109,26 +251,14 @@ def main(argv: list[str] | None = None) -> int:
         "pairs_per_s": round(len(frames) / elapsed, 3),
         "flow_null_rate": round(nulls / len(frames), 6) if frames else None,
         "clears_null_ceiling": (nulls / len(frames)) <= FLOW_NULL_CEILING if frames else None,
-        "a14_rotation_residual_px": round(_rotation_residual_px(estimator) or 0.0, 4),
+        "a14_rotation_residual_px": round(fb_estimated, 4) if fb_estimated is not None
+        else None,
+        "a14_rotation_residual_geometry_only_px": round(fb_geometry, 4),
         "declared_dependency_cost": "none; opencv-python-headless is in the signal extra",
         "frame_size": [WIDTH, HEIGHT],
         "device": "cpu",
     }
-    try:
-        import torch  # noqa: F401
-        raft_available = True
-    except ImportError:
-        raft_available = False
-    results["raft-small"] = {
-        "measured": False,
-        "why_not": (
-            "torch is not installed and is declared in no extra; RAFT-small also needs a GPU "
-            "for the throughput arm to mean anything. docs/REPRODUCTION.md 'Compute' specifies "
-            "the g5.xlarge stage."
-        ),
-        "torch_importable": raft_available,
-        "declared_dependency_cost": "torch, undeclared in pyproject.toml (D024 tiebreaker)",
-    }
+    results["raft-small"] = _raft_arm(frames)
 
     decided = all(results[a].get("measured") for a in ARMS)
     payload = {
@@ -151,7 +281,12 @@ def main(argv: list[str] | None = None) -> int:
     fb = results["farneback-cv2"]
     print(f"  farneback: {fb['pairs_per_s']} pairs/s, null rate {fb['flow_null_rate']}, "
           f"clears ceiling: {fb['clears_null_ceiling']}")
-    print(f"  raft-small: not measured ({'torch present' if raft_available else 'no torch'})")
+    rf = results["raft-small"]
+    if rf.get("measured"):
+        print(f"  raft-small: {rf['pairs_per_s']} pairs/s, null rate {rf['flow_null_rate']}, "
+              f"clears ceiling: {rf['clears_null_ceiling']}")
+    else:
+        print(f"  raft-small: not measured ({rf['why_not']})")
     print(f"  decision: {'TAKEN' if decided else 'OPEN'}")
     return 0
 

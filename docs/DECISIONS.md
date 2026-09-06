@@ -1396,3 +1396,65 @@ real ones, and the pilot's own gates -- which check that labels exist for every 
 have passed on them.
 
 **Reverses if:** nothing. This is a defect record.
+
+## D044 — Above ~100 mm/s the flow estimator reports the background's motion inside the hand box
+
+2026-09-06.
+
+Fixing a defect in `scripts/bench_flow.py` turned this up. Its `_rotation_residual_px` took an
+estimator and **never called it**: it computed the A14 residual from `analytic_flow` alone, so
+both arms of D024's comparison would have reported the identical geometry number and the column
+meant to separate them could not. The module offered no way to do better -- `signal/synthetic.py`
+produced an exact flow field and no frames -- so `render_pair` was added, and with it the
+ability to ask what an estimator actually recovers.
+
+**The measurement.** `scripts/measure_flow_gain.py` sweeps hand displacement and reports
+*gain*: median recovered flow magnitude inside the hand box over the median true magnitude
+there. Published in `results/flow_displacement_gain.json`, seeded and closed-form; no corpus
+access. At the pipeline's 480x270 flow resolution:
+
+| Hand speed | Displacement over the pair | Gain |
+|---|---|---|
+| 20 mm/s | 2.8 px | 0.94 |
+| 80 mm/s | 11.4 px | 0.77 |
+| 120 mm/s | 17.1 px | 0.22 |
+| 320 mm/s | 45.0 px | 0.19 |
+| 570 mm/s | 81.5 px | 0.18 |
+
+**The plateau is not noise, and it identifies the mechanism.** It sits at 0.18, which is
+`hand_distance_m / background_distance_m` = 0.45 / 2.5 = 0.18. Once the hand's displacement
+exceeds what the estimator's pyramid can search, Farneback stops tracking the hand and smooths
+the surrounding field across the depth discontinuity -- so inside the hand box it reports **the
+background's** motion. `docs/RUBRIC.md` then subtracts the median flow over the mask complement,
+which is that same background motion, and the residual the hand speed is read from collapses
+toward zero. The estimator and the rubric fail in the same direction, and the second failure
+hides the first.
+
+**Why this is worse than a wrong number.** `docs/RED-TEAM.md` A15 and `docs/DECISIONS.md` D023
+make a flow failure a null with a reason and never a zero. This is not a failure by that
+definition: the field is finite, non-zero, spatially smooth and entirely plausible. `n_flow_null`
+does not move, H2c's 10% ceiling is untouched, and no contract validator can see it. It is the
+same shape as D039 (a tall peak in the wrong band clears resolvability) and D040 (a probe scored
+on features it was not fitted on) -- **a gate that passes quietly**. Three now, from three
+different directions.
+
+**Scale.** The speed path is primary under D014, and hand speeds the HAL equations are fitted
+over run 400-1000 mm/s. Every one of those sits on the plateau. Doubling the decode to 960x540
+moves the knee by nothing in mm/s -- the knee is a fixed *pixel* displacement and finer pixels
+buy proportionally more of them, so the two curves agree.
+
+**What is not concluded here.** Not that the estimator is wrong for this job, and not that the
+pre-registration must change. The pair interval is the independent variable and it is
+pre-registered: `docs/RUBRIC.md` and `docs/PRE-REGISTRATION.md` both say the sample is taken
+"from the frame pair (t, t + 1/fps)", and `src/cyclegraph/corpus/sampling.py` reads `fps` there
+as the 4 Hz analysis rate, giving a **0.25 s** baseline. The corpus also ships a per-clip `fps`,
+under which the same sentence would mean consecutive video frames and a ~0.033 s baseline --
+about 11 px at 570 mm/s, comfortably inside the tracked region. Which reading was meant is a
+question about the pre-registration's own words, and RAFT-small, whose whole design claim is
+large-displacement matching, is the other half of D024 and is still unmeasured. **Both are open
+and are not being settled by the author's preference after seeing this curve.** The options and
+their costs go to the record and to the project's owner, not into a quiet edit.
+
+**Reverses if:** RAFT-small measures a flat gain over this range, in which case this is a
+Farneback property and D024's A14 column decides the estimator rather than the rubric; or the
+pair interval is re-specified, in which case the curve is re-measured at the new baseline.
