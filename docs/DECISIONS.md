@@ -1482,3 +1482,49 @@ what the pre-registration's sentence means, not about tooling.
 **Reverses if:** the pair interval is re-specified, in which case the curve is re-measured at
 the new baseline; or a hand-only mask (rather than a box) is used for the residual, which would
 change what "smoothing across the discontinuity" costs and is not tested here.
+
+## D045 — The speed path's frame pair is the clip's own frame rate, not the analysis rate
+
+2026-09-06. Pre-registration **v1.4.0 → v1.5.0**.
+
+`docs/PRE-REGISTRATION.md` and `docs/RUBRIC.md` both say the speed sample is taken "from a
+frame pair (t, t + 1/fps)". `fps` was never defined in that sentence, and
+`src/cyclegraph/corpus/sampling.py` read it as the 4 Hz analysis rate, making the two frames a
+speed sample is computed from **0.25 s apart**. The release ships a per-clip `fps` under which
+the same sentence means consecutive video frames, about 0.033 s apart. Both readings are
+available in the words; only one of them works.
+
+**Prior:** "The hand-speed path samples instantaneous speed from a frame pair (t, t + 1/fps) at
+each of the same 4 Hz instants".
+**Now:** the same, with `fps` named as the clip's own frame rate and explicitly not the
+analysis rate.
+
+**Why, measured rather than argued.** D044 swept hand displacement against what a dense
+estimator recovers, on rendered synthetics under the corpus lens. At a 0.25 s baseline, hand
+speeds of 400-1000 mm/s move the hand 45-130 px, past what either estimator can match; both
+Farneback and RAFT-small then smooth across the depth discontinuity and report **the
+background's** motion inside the hand box, at a gain of 0.18 — which is exactly
+`hand_distance / background_distance`. The rubric then subtracts the background's motion, so
+the residual the speed is read from collapses. At the clip's own frame rate the same 570 mm/s
+is about 21 px, where Farneback measures 0.99 and RAFT 0.99. The defect is the baseline, and
+no estimator choice reaches it: `results/flow_gain_raft.json` is the arm that establishes that.
+
+**Why this is not post-hoc, stated plainly because the distinction is the whole point.** No
+pilot speed number exists and none can: 100DOH's weights are unobtainable (D037), so no
+`HandSpeedEstimate` has ever carried a measurement — every one written so far is
+`status: "no_detector"`. H2c is unmeasured, the corpus median speed is unmeasured, and A14's
+floor has never been compared against anything. The quantity this sentence governs is
+**unobserved**, which is the same position D021 and D034 amended from and the opposite of
+D039's, where the result was in hand and the method was therefore left alone. The evidence
+that forced this is a synthetic sweep of a known geometry, not a pilot statistic.
+
+**What it costs.** Decode currently resamples to 4 Hz with ffmpeg's `fps` filter, which cannot
+produce two adjacent native frames; the speed path needs a seek to `t` and two consecutive
+frames at the clip's own rate. That roughly doubles frames *decoded* while leaving frames
+*written* unchanged, and `docs/METHOD.md` E2's decode figures must be re-measured at the new
+shape rather than carried over. The manipulation series is untouched: it is sampled at 4 Hz and
+this sentence governs only the speed path's second frame.
+
+**Reverses if:** a later reading establishes that the corpus's per-clip `fps` is unreliable for
+the pairs actually decoded, in which case the baseline is set explicitly in seconds rather than
+by reference to a shipped field.
