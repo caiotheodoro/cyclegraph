@@ -150,6 +150,16 @@ def stream_pairs(clip: ClipRef, token: str | None, *, width: int, height: int,
 
     Instants whose pair falls off the end of the decode are simply not yielded; the caller
     records them as absent with a reason rather than inventing a pair.
+
+    **This trusts the sidecar's `fps` to be the stream's real rate**, because the index of the
+    frame at `t` is `round(t * fps)` and `ffmpeg`'s `fps` filter resamples to whatever it is
+    told. A sidecar claiming 30 over a 29.97 stream would have the filter duplicate about one
+    frame in a thousand, and the mapping would drift by a second or so by the end of a 20-minute
+    clip -- pairing late instants with frames from elsewhere, silently. Checked rather than
+    assumed, 2026-09-06: every clip in the pilot manifest declares 30.0, and `ffprobe` on the
+    streams themselves reports `r_frame_rate` and `avg_frame_rate` of exactly `30/1`, with
+    `nb_frames / duration` agreeing (35998 / 1199.933). The filter is a no-op here. On a corpus
+    where it is not, this needs the filter dropped rather than the rate trusted.
     """
     times = sample_times(clip.duration_s)
     if not times:
