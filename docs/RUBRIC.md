@@ -1,6 +1,6 @@
 # Rubric
 
-**Version:** 1.4.0. Frozen with `docs/PRE-REGISTRATION.md`; amended with it, with the
+**Version:** 1.5.0. Frozen with `docs/PRE-REGISTRATION.md`; amended with it, with the
 replaced text quoted at the end.
 
 The operational definitions the standards leave open. Every one of these is a choice; the
@@ -93,10 +93,10 @@ disagree with a rule rather than with a number.
   this path. Both rates are reported.
 - **The clip's estimate** is the RMS over its valid samples. It is a sampled speed process,
   not a tracked trajectory; no hand is followed between samples and Nyquist does not apply.
-- **A hand box from a segmentation mask** is the axis-aligned bounding box of the mask's
-  hand pixels, per hand; "largest detected hand box" above then selects among those by area,
-  unchanged. Only hand classes are read — an object a hand is holding is not part of the hand
-  (`docs/DECISIONS.md` D047).
+- **A hand box from a segmentation mask** is the axis-aligned bounding box of the largest
+  connected component of that hand's mask, per hand; "largest detected hand box" above then
+  selects among those by area, unchanged. Only hand classes are read — an object a hand is
+  holding is not part of the hand (`docs/DECISIONS.md` D047, D048).
 - **Never from a region prior.** A "lower half of the frame" mask is not a hand mask; a
   record built from one is a contract violation.
 
@@ -183,3 +183,12 @@ the resulting agreement would be reported whatever it said.
   segmenter and the rubric scaled pixel speed by a *box* width, which had no definition for a
   mask. A bounding box keeps the same functional form as the box it replaces, so the change is
   where the box comes from and not what quantity is taken.
+
+### v1.5.0 — D048
+
+- **Hand speed** (D048). Prior: "A hand box from a segmentation mask is the axis-aligned
+  bounding box of the mask's hand pixels, per hand". Now: the bounding box of the **largest
+  connected component** of that hand's mask. A bounding box over a disconnected mask spans the
+  segmenter's scattered false positives rather than the hand; measured on 120 pilot frames it
+  reached 676 px at 960x540 against a hand of about 96 px. The box is a divisor, so an inflated
+  box lowers every speed on the clip. Corrected before any detection was written.

@@ -81,6 +81,31 @@ def test_an_object_the_hand_is_holding_is_not_part_of_the_hand() -> None:
     assert boxes[0].x + boxes[0].width <= 40.0
 
 
+def test_a_speck_across_the_frame_does_not_stretch_the_box_to_reach_it() -> None:
+    """The defect real frames exposed and clean synthetic masks could not. A bounding box over
+    every pixel of the class spans the segmenter's scattered false positives; measured on the
+    corpus it produced boxes up to 676 px wide at 960x540 against a hand of about 96 px. The
+    box is a *divisor* -- `hand_breadth_mm / box_width_px` -- so an inflated box deflates every
+    speed on the clip, in the flattering direction. D048."""
+    labels = _labels((60, 200))
+    labels[10:26, 10:26] = HAND_CLASSES[0]        # the hand: 16x16 = 256 px
+    labels[50:54, 190:196] = HAND_CLASSES[0]      # a speck at the far edge, 24 px
+    boxes = boxes_from_labels(labels)
+    assert len(boxes) == 1
+    assert boxes[0].width == 16.0 and boxes[0].height == 16.0
+    assert boxes[0].x + boxes[0].width < 50.0  # nowhere near the speck
+
+
+def test_the_floor_applies_to_the_largest_component_not_the_class_total() -> None:
+    """Otherwise a hand made only of specks passes the floor by adding them up, and its box is
+    the extent of the scatter."""
+    labels = _labels((60, 200))
+    for i in range(6):
+        labels[10:14, 10 + i * 30 : 14 + i * 30] = HAND_CLASSES[0]  # 6 specks, 16 px each
+    assert int((labels == HAND_CLASSES[0]).sum()) > MIN_MASK_PIXELS
+    assert boxes_from_labels(labels) == []
+
+
 def test_the_score_is_not_a_confidence() -> None:
     """It is 1.0 and means "this hand was segmented". The model emits a label map and no
     per-region probability, so any other value would be a number nothing measured."""

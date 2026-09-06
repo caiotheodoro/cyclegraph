@@ -186,12 +186,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         started = time.time()
         with_box = 0
         failed = 0
+        widths: list[float] = []
         for clip in clips:
             if remaining <= 0:
                 break
             batch = decode_clip(clip, token, limit=remaining)
             rows = detections_for_clip(batch, detector)
             with_box += sum(1 for r in rows if r["boxes"])
+            for r in rows:
+                found = r["boxes"]
+                assert isinstance(found, list)
+                widths.extend(float(b["width"]) for b in found)
             failed += sum(1 for r in rows if "failed_reason" in r)
             decoded += len(batch.frames)
             remaining -= len(batch.frames)
@@ -208,6 +213,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         # exactly the shortcut docs/PRE-REGISTRATION.md exists to prevent.
         print(f"  box coverage on this sample: {with_box}/{decoded} frames; "
               f"{failed} frames the model raised on")
+        # Box widths, because a plausible *count* of boxes says nothing about their size and
+        # the size is what the whole speed axis is divided by. This is the check that caught
+        # `docs/DECISIONS.md` D048: boxes reaching 70% of the frame width, from a bounding box
+        # drawn over a disconnected mask. It costs one line and it runs before the money does.
+        if widths:
+            q = np.percentile(np.asarray(widths), [10, 50, 90, 100])
+            print(f"  box width px, detector coordinates: p10 {q[0]:.0f} median {q[1]:.0f} "
+                  f"p90 {q[2]:.0f} max {q[3]:.0f}")
+            print(f"  a hand at the assumed working distance is ~{DECODE_WIDTH // 10} px here;"
+                  f" a median far above that is a mask defect, not a large hand")
         if decoded and with_box == 0:
             print("  WARNING: no frame produced a box. Check the install before buying the "
                   "pilot run; a mismatched mmcv-full imports cleanly and segments nothing.")

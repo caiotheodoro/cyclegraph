@@ -58,16 +58,31 @@ is an 8x8 block, about 0.01% of the frame."""
 
 
 def boxes_from_labels(labels: np.ndarray) -> list[HandBox]:
-    """A box per hand class present in one label map. `docs/RUBRIC.md` v1.4.0's definition.
+    """A box per hand class present in one label map. `docs/RUBRIC.md` v1.5.0's definition.
 
     Pure, so it is testable without mmsegmentation installed -- which matters because this is
     the half of the adapter that decides a number the whole speed axis is scaled by, and the
     half that would otherwise only ever run on a rented GPU.
+
+    **The box bounds the largest connected component, not every pixel of the class.** A
+    segmenter emits scattered false positives, and a bounding box over a disconnected mask
+    spans the specks rather than the hand: measured on real frames it produced boxes up to
+    676 px wide at 960x540, against a hand of about 96 px there. That is not a small error --
+    `hand_breadth_mm / box_width_px` is a *divisor*, so an inflated box deflates every speed on
+    the clip, in the flattering direction (`docs/DECISIONS.md` D048).
     """
+    from scipy import ndimage
+
     out: list[HandBox] = []
     for klass in HAND_CLASSES:
-        mask = labels == klass
-        if int(mask.sum()) < MIN_MASK_PIXELS:
+        components, found = ndimage.label(labels == klass)
+        if found == 0:
+            continue
+        sizes = np.bincount(components.ravel())
+        sizes[0] = 0  # background of this class's component map
+        largest = int(sizes.argmax())
+        mask = components == largest
+        if int(sizes[largest]) < MIN_MASK_PIXELS:
             continue
         ys, xs = np.nonzero(mask)
         x0, x1 = int(xs.min()), int(xs.max())

@@ -1614,3 +1614,36 @@ not as a resolved question.
 **Reverses if:** 100DOH's weights become obtainable, in which case both detectors run on the
 same frames, the offset is measured rather than reasoned about, and the primary detector
 returns to the one `docs/METHOD.md` pre-registered.
+
+## D048 — A mask's hand box bounds its largest connected component, not every pixel of the class
+
+2026-09-06. Rubric **v1.4.0 → v1.5.0**. This corrects D047, one day old, before any detection
+was written.
+
+D047 defined the box as "the axis-aligned bounding box of the mask's hand pixels". On real
+frames that is wrong, and the smoke run said so. Measured over 120 pilot frames at 960x540,
+where a hand at the assumed 0.45 m subtends about **96 px**: box widths came out at a median
+of 132, a p90 of **484** and a maximum of **676** — 70% of the frame width. A segmenter emits
+scattered false positives, and a bounding box over a disconnected mask spans the specks rather
+than the hand.
+
+**The direction matters more than the size.** `hand_breadth_mm / median_box_width_px` is a
+**divisor**: an inflated box makes every pixel worth fewer millimetres, so every speed on the
+clip comes out *lower*. The flattering direction, on the primary axis, from a definition this
+project wrote itself.
+
+**Now:** the box bounds the **largest connected component** of that hand's mask, and
+`MIN_MASK_PIXELS` applies to that component rather than to the class total — otherwise a hand
+made only of specks clears the floor by summing them and gets a box the size of the scatter.
+
+**Why the tests did not catch it, which is the part worth keeping.** `boxes_from_labels` was
+written as a pure function and tested offline precisely so a scale error could not first appear
+on a rented GPU. That was right and it still missed this, because every fixture was a **clean
+rectangle**: a synthetic mask has no false positives, so no test could distinguish "bounds the
+class" from "bounds the hand". The gap was not too few tests but fixtures drawn from the
+author's idea of the input rather than from the input. The smoke run's box-width percentiles
+cost nothing and found it in one pass; they are now part of what a smoke run reports.
+
+**Reverses if:** a later reading shows the largest component regularly drops a genuinely
+detached part of one hand — a gloved finger segmented separately, say — in which case the rule
+becomes a size-weighted union rather than a single component, measured rather than assumed.
