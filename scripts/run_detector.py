@@ -51,6 +51,14 @@ DECODE_WIDTH, DECODE_HEIGHT = 960, 540
 """Large enough for a hand at arm's length to survive detection, small enough to decode at
 network speed. Boxes are scaled back to native before they are written."""
 
+DECODE_PIX_FMT = "rgb24"
+"""**Colour, and this is load-bearing.** Every hand model in reach was trained on colour, and
+skin is one of the cues they were fitted on. `docs/DECISIONS.md` D040 measured what feeding a
+grey frame to a colour-trained model costs on the labeller -- a 0.033 duty-cycle shift against
+H1a's 0.05 bound -- and the detector path had the identical defect waiting in it: this decoded
+grey and the adapter replicated it to three channels, which is a grey image in a colour tensor,
+not a colour image. No detector has ever run, so the defect is latent rather than realised."""
+
 
 class FrameDetector(Protocol):
     """What this script needs of a model. Deliberately narrower than `HandDetector`."""
@@ -129,8 +137,9 @@ def _token() -> str | None:
 def decode_clip(clip: ClipRef, token: str | None, *, limit: int | None = None) -> ClipFrames:
     url = ShardReader(REPO_ID, clip.shard, token)._resolve()
     argv = ffmpeg_clip_argv(url, clip, fps_sampled=ANALYSIS_HZ,
-                            width=DECODE_WIDTH, height=DECODE_HEIGHT, max_frames=limit)
-    frames = list(decode_gray_frames(argv, DECODE_WIDTH, DECODE_HEIGHT))
+                            width=DECODE_WIDTH, height=DECODE_HEIGHT, max_frames=limit,
+                            pix_fmt=DECODE_PIX_FMT)
+    frames = list(decode_gray_frames(argv, DECODE_WIDTH, DECODE_HEIGHT, channels=3))
     times = sample_times(clip.duration_s)[: len(frames)]
     return ClipFrames(clip=clip, times=times, frames=frames)
 
@@ -142,11 +151,9 @@ def build_detector(name: str) -> FrameDetector:
 
         return Doh100Detector()
     if name == "egohos":
-        raise RuntimeError(
-            "EgoHOS is docs/METHOD.md's declared fallback if 100DOH's coverage fails H2c, "
-            "and it is not written. Writing it before that gate fires would be building a "
-            "fallback for a failure that has not happened."
-        )
+        from detectors.egohos import EgoHosDetector
+
+        return EgoHosDetector()
     raise ValueError(
         f"{name!r} is not a detector this contract knows. CONTRACTS.md's mask_source is "
         f"'100doh' or 'egohos'; a hand box never comes from anything else."

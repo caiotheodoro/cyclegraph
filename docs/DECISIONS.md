@@ -1566,3 +1566,51 @@ path is computed from, so the speed axis is not merely unmeasured but unmeasured
 definition nothing has ever been run against*.
 
 **Reverses if:** the labels are withdrawn again, on the same standard D040 set.
+
+## D047 — EgoHOS replaces 100DOH, and a mask's hand box is its axis-aligned bounding box
+
+2026-09-06. Rubric **v1.3.0 → v1.4.0**. No pre-registration amendment: it says "detector hand
+boxes" and "the clip's median box width" and defines neither's source, so a box derived from a
+mask satisfies it as written.
+
+**Why now, and not under the trigger `docs/METHOD.md` anticipated.** METHOD names EgoHOS as
+the fallback "if 100DOH's coverage fails H2c". That trigger has not fired and cannot: coverage
+has never been measured, because 100DOH's weights are unobtainable (D037, re-probed 2026-09-06
+against a live EgoHOS control). Switching is therefore a different decision from the one METHOD
+anticipated, taken for a different reason — the primary detector cannot be downloaded, by
+anyone, which breaks `docs/REPRODUCTION.md`'s promise independently of what this project does
+next.
+
+**The definition.** `hand_box_width_px` from a segmentation mask is the width of the
+**axis-aligned bounding box of the mask's hand pixels**, per hand, and `docs/RUBRIC.md`'s
+"largest detected hand box" then selects among those by area, unchanged. EgoHOS segments left
+hand, right hand and interacting objects; only the two hand classes are read, and an object
+touching a hand is not part of it.
+
+**Why the axis-aligned box, argued rather than assumed.** Three candidates: the mask's
+bounding box, the short side of its minimum-area rectangle, and the square root of its area.
+The last two are better proxies for *hand breadth* in isolation, which is what the 85 mm
+constant is. They are rejected anyway, because the rubric's rule is not "estimate hand breadth"
+— it is "take the median detected box width and let it stand in for hand breadth". A bounding
+box keeps the same functional form as the detector box it replaces, so the substitution changes
+where the box comes from and not what quantity is being taken. Swapping in a different
+estimator of a different quantity would change two things at once and make the change
+unauditable.
+
+**What it costs, stated because it is not zero and cannot be measured.** A human-annotated
+detector box and a mask's tight bounding box do not agree: annotation conventions include
+margin that a mask does not. The offset is systematic, and it enters mm/s **linearly** through
+`hand_breadth_mm / median_box_width_px`. It cannot be bounded by running both on the same
+frames, because 100DOH cannot be run at all.
+
+**But it is not unquantified.** A box-convention offset of *x*% is arithmetically identical to
+an *x*% change in `hand_breadth_mm`: both scale mm/px and nothing else. `docs/BENCHMARK.md`'s
+sensitivity table already re-runs HAL at 79.5 and 90.4 mm against 85, which is −6.5% and
++6.4%, so the table's existing rows *are* the sensitivity to a box-convention offset of that
+size, and a reader can read them as such. What is not covered is an offset materially larger
+than 6%, and whether the real one is larger is unknown. `docs/COVERAGE.md` carries it as a gap,
+not as a resolved question.
+
+**Reverses if:** 100DOH's weights become obtainable, in which case both detectors run on the
+same frames, the offset is measured rather than reasoned about, and the primary detector
+returns to the one `docs/METHOD.md` pre-registered.
