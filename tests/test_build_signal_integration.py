@@ -118,7 +118,8 @@ def _stub_decode(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_the_stage_writes_valid_records_for_a_clip_it_can_measure(
-        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str]) -> None:
     manifest, detections, labels = _write_inputs(tmp_path)
     _stub_decode(monkeypatch)
     out = tmp_path / "out"
@@ -152,6 +153,16 @@ def test_the_stage_writes_valid_records_for_a_clip_it_can_measure(
     # right size, not merely positive.
     assert speed.rms_speed_mm_s is not None
     assert speed.rms_speed_mm_s == pytest.approx(EXPECTED_MM_S, rel=0.10)
+
+    # The gates this stage prints must be able to *pass*. Every instant here carried a box, so
+    # coverage is 1.0 and H2c's floor is cleared; a gate reading an empty aggregate would print
+    # FAIL on exactly this input and look like an honest negative. That is what it did: the
+    # list the gates summed over was declared and never appended to, and the permanent FAIL
+    # read as "no detector ran" because no detector ever had.
+    printed = capsys.readouterr().out
+    assert "PASS  H2c: hand-box coverage" in printed
+    assert "PASS  H2c: flow-null rate" in printed
+    assert "not evaluable" not in printed
 
     # Ego-motion really is subtracted: the background moves 3 px per frame and the hand 5, and
     # the reported speed is the difference, not the sum. A stage that forgot the subtraction

@@ -297,3 +297,33 @@ def test_a_wholly_unreadable_series_is_no_peak_rather_than_a_division_by_zero() 
     estimate = transition_frequency(_clip(100.0), [None] * 400, fps=FPS, label_source="probe")
     assert estimate.status == "no_peak" and estimate.hz is None
     assert scored_seconds([None] * 400, fps=FPS) == 0.0
+
+
+def test_an_unabsorbable_short_run_does_not_stop_the_debounce(fps: float = FPS) -> None:
+    """A short run flanked by nulls on both sides has nothing to be absorbed into, and that is
+    a fact about that run -- not a reason to leave every later flicker in the clip in place.
+
+    `debounce` returned at the first such run, so a single-frame gap between two long bouts was
+    absorbed on a series with no nulls and left alone on one with them. The segment count was
+    therefore a function of where the unreadable frames fell, which is the confound
+    `docs/DECISIONS.md` D042 exists to keep *out* of the count."""
+    flicker: list[Label] = [*([True] * 20 + [False] + [True] * 20)]
+    assert [(r.value, r.length) for r in runs(debounce(flicker, fps=fps))] == [(True, 41)]
+
+    # The same flicker, behind a short run that cannot be absorbed. It must still be absorbed.
+    blocked: list[Label] = [None, True, None] + flicker + [None] * 3
+    shaped = [(r.value, r.length) for r in runs(debounce(blocked, fps=fps))]
+    assert (True, 41) in shaped
+    assert (False, 1) not in shaped
+    # And the unabsorbable run survives rather than being silently rewritten.
+    assert (True, 1) in shaped
+
+
+def test_the_segment_count_does_not_depend_on_where_the_nulls_fell() -> None:
+    """The property the defect broke, stated as the thing that matters: prefixing a clip with
+    an unreadable stretch must not change how many exertions the rest of it contains."""
+    body: list[Label] = [*(([True] * 8 + [False] + [True] * 8 + [False] * 8) * 3)]
+    plain = len([r for r in runs(debounce(body, fps=FPS)) if r.value is True])
+    prefixed = len([r for r in runs(debounce([None, True, None] + body, fps=FPS))
+                    if r.value is True])
+    assert prefixed == plain + 1  # only the prefix's own unabsorbable run is added

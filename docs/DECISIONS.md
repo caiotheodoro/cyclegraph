@@ -1759,3 +1759,45 @@ motion, and the mutation then failed as it should. An assertion that only checks
 accept any bug that leaves the sign alone.
 
 **Reverses if:** nothing. This is a defect record.
+
+## D052 — Fresh-context review: a dead gate, and a debounce that stopped early on nulls
+
+2026-09-06. `docs/WAVES.md` requires a review from a context that did not produce the work. This
+one was given the session's diff, `CONTRACTS.md`, the seam list and the checklist, and
+explicitly not the author's account. It returned fourteen findings. The two that change numbers
+are here; the rest are tracked below and in the entries that follow.
+
+**1. `debounce` stopped at the first short run it could not absorb.** A run flanked by nulls on
+both sides has nothing to absorb it into, and the loop returned instead of moving on — so every
+later flicker in the clip stayed. Reproduced directly: a single-frame gap between two 20-frame
+bouts is absorbed on a series without nulls and left in place on one with them.
+
+The consequence is the one this project cares about most: **the segment count became a function
+of where the unreadable frames fell**, which is the confound D042 introduced `null_bounded_segments`
+to keep *out* of the count. Re-run on the pilot's rescored labels, total exertion segments went
+**18,075 → 12,042**, a third fewer. Every count D042 and D046 rest on was inflated by half.
+
+**The H2 verdicts do not move.** H2a still FAILS, H2b still passes, and 75 of 93 resolved peaks
+still sit below 0.05 Hz. Transition-counting got *smaller*, which narrows its disagreement with
+the spectral path, and it is still far outside H2a's 20% bound. D046 stands; the magnitude it
+was derived from was wrong, and is corrected here rather than left to be discovered.
+
+**2. `build_signal`'s H2c gates summed a list nothing appended to.** `estimates` was declared
+and read three times and never written. So coverage was always 0.0 and always FAILED, the
+flow-null gate was never evaluable and always FAILED, and the conflict gate divided by zero
+samples and **always PASSED**.
+
+The comment directly above it reads: *"Not `>= 0`, which is what this checked and which no run
+could ever fail. A gate that cannot fail is not a gate."* The replacement was unfalsifiable for
+a different reason, three lines under a note about unfalsifiable gates.
+
+**Worse, the failure was visible and misread.** The integration test's own output printed
+`FAIL H2c: hand-box coverage` on a fixture where every instant carried a box, and it was read as
+"correct, no detector has run". A permanent FAIL is as uninformative as a permanent PASS, and
+this project has now made that mistake twice in one session — the other was reading a `make
+validate` failure as success because the absent line was the signal.
+
+**Both are now pinned by tests that fail on the defect**, and the integration test asserts the
+gates can *pass* on a fixture where they should, which no test did before.
+
+**Reverses if:** nothing. This is a defect record.
