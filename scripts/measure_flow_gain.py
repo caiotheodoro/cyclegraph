@@ -34,7 +34,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from cyclegraph.corpus.sampling import ANALYSIS_HZ, pair_offset_s  # noqa: E402
 from cyclegraph.signal.flow_farneback import FarnebackFlow  # noqa: E402
-from cyclegraph.signal.ports import box_mask  # noqa: E402
+from cyclegraph.signal.ports import FlowEstimator, box_mask  # noqa: E402
 from cyclegraph.signal.synthetic import (  # noqa: E402
     CORPUS_CAMERA,
     Camera,
@@ -61,10 +61,9 @@ def _scaled_camera(width: int) -> Camera:
                   cx=c.cx * s, cy=c.cy * s, k=c.k)
 
 
-def measure(width: int) -> dict[str, Any]:
+def measure(width: int, estimator: FlowEstimator) -> dict[str, Any]:
     cam = _scaled_camera(width)
     scene = Scene(camera=cam, hand_box=hand_box_for(cam))
-    estimator = FarnebackFlow()
     mask = box_mask((cam.height, cam.width), [scene.hand_box])
     mm_per_px = HAND_BREADTH_MM / scene.hand_box.width
     dt = pair_offset_s(ANALYSIS_HZ)
@@ -96,16 +95,34 @@ def measure(width: int) -> dict[str, Any]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", default="results/flow_displacement_gain.json")
+    parser.add_argument("--estimator", choices=("farneback", "raft"), default="farneback",
+                        help="raft needs a CUDA device and torchvision; it is the arm that "
+                             "decides whether D044's collapse is a property of Farneback or "
+                             "of the 0.25 s pair the rubric specifies")
     args = parser.parse_args(argv)
 
-    scales = [measure(480), measure(960)]
+    estimator: FlowEstimator
+    parameters: dict[str, Any]
+    if args.estimator == "raft":
+        sys.path.insert(0, str(ROOT / "scripts"))
+        from bench_flow import load_raft
+        raft, why_not = load_raft()
+        if raft is None:
+            print(f"REFUSING: {why_not}", file=sys.stderr)
+            return 2
+        estimator, parameters = raft, {"weights": "Raft_Small_Weights.DEFAULT"}
+    else:
+        farneback = FarnebackFlow()
+        estimator, parameters = farneback, asdict(farneback)
+
+    scales = [measure(480, estimator), measure(960, estimator)]
     payload: dict[str, Any] = {
         "what_this_is": (
             "Median recovered flow magnitude over median true magnitude, inside the hand box, "
             "against hand displacement. Gain 1.0 recovers the motion; gain 0.2 reports a "
             "fifth of it. Rendered synthetics under the corpus lens; no corpus access."),
-        "estimator": FarnebackFlow().flow_method,
-        "estimator_parameters": asdict(FarnebackFlow()),
+        "estimator": estimator.flow_method,
+        "estimator_parameters": parameters,
         "seed": SEED,
         "deterministic": True,
         "pair_interval_s": pair_offset_s(ANALYSIS_HZ),
