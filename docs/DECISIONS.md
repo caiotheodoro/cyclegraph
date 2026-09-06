@@ -1647,3 +1647,34 @@ cost nothing and found it in one pass; they are now part of what a smoke run rep
 **Reverses if:** a later reading shows the largest component regularly drops a genuinely
 detached part of one hand — a gloved finger segmented separately, say — in which case the rule
 becomes a size-weighted union rather than a single component, measured rather than assumed.
+
+## D049 — The same memory defect, in the sibling path, because only the path that fell over was fixed
+
+2026-09-06.
+
+D043 recorded that the labeller materialised a clip's frames and that colour made it fatal:
+4,799 frames at 960x540 in RGB is 7.4 GB, four workers of that exhausted a 32 GB box, two were
+OOM-killed. The fix streamed the decode.
+
+`scripts/run_detector.py` had the identical defect and it was not fixed, because it had not yet
+failed. The EgoHOS run was launched, three workers each began decoding a 1200 s clip whole, and
+fifteen minutes later the run had written **zero rows** and was at 14 GB and climbing. It was
+stopped before it repeated the OOM.
+
+**The generalisation that was available and not taken.** D043 named the cause precisely — a
+`list(...)` over a colour decode — and stopped at the file where it was found. Both scripts
+decode the same corpus at the same resolution through the same helper; the second was one grep
+away. A defect record that names a mechanism has said something about every place the mechanism
+lives, and treating it as a fact about one file is how the same bug gets paid for twice.
+
+**Fixed the same way**, plus a test. There is nothing to assert on in the output — the run
+produces correct rows right up until the machine swaps — so `tests/test_detector_streaming.py`
+pins the *shape*: `stream_clip` is a generator, and the pilot loop calls it rather than
+`decode_clip`. That follows `tests/test_feature_fidelity.py`, which pins D040 the same way.
+`decode_clip` stays for the smoke path, which is bounded by `--smoke` and small by construction.
+
+**What it cost:** about 20 minutes of a `g5.2xlarge` and one restart. Nothing was corrupted --
+the run wrote no rows, so there were no partial clips, and the resume logic had nothing to
+clean up.
+
+**Reverses if:** nothing. This is a defect record.
