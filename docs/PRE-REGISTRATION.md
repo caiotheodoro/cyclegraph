@@ -1,8 +1,8 @@
 # Pre-registration
 
-**Version:** 1.4.0
+**Version:** 1.5.0
 **Frozen:** 2026-09-05, before `src/` exists and before a single clip is decoded.
-**Amended:** 2026-09-05, v1.1.0 through v1.4.0, still before a single clip is decoded. The
+**Amended:** 2026-09-05, v1.1.0 through v1.4.0, and 2026-09-06 at v1.5.0. The
 amendment blocks at the end quote every prior sentence they replaced, and
 `scripts/validate.py` refuses any change to the frozen body that a block does not quote.
 
@@ -32,9 +32,10 @@ exertions per minute, which spans the range the Hand Activity Level scale is def
 A lower rate would alias fast repetitive work into a plausible-looking slow frequency, and
 the aliasing would bias exposure *downward* — the direction that flatters the corpus. Any
 `FrequencyEstimate` at or above Nyquist is recorded `status: "aliased"` and excluded. The
-hand-speed path samples instantaneous speed from a frame pair (t, t + 1/fps) at each of the
-same 4 Hz instants; it samples a speed process and does not track a trajectory, so Nyquist
-does not bound it and the RMS over samples is the estimate.
+hand-speed path samples instantaneous speed from a frame pair (t, t + 1/fps_clip), where
+fps_clip is the clip's own frame rate as the release ships it per clip and not the 4 Hz
+analysis rate, at each of the same 4 Hz instants; it samples a speed process and does not
+track a trajectory, so Nyquist does not bound it and the RMS over samples is the estimate.
 
 **Mapping.** HAL is computed by a published regression fit to the ACGIH 2001 look-up table,
 never by an approximation of this project's own: `radwin-2015-freq-dc` for (frequency, duty
@@ -300,3 +301,11 @@ post-hoc.
   multiple therefore gets easier to clear the longer the clip. H2b was satisfiable by a
   corpus containing no repetition, which is the same class of defect as the design-effect
   ambiguity H5 was written to avoid.
+
+### v1.5.0 — D045 · prior hash eff20f3cb5b51f3cfbb8f0a103677b974dba28d0961a1554acd0abe03be61775
+
+Applied 2026-09-06. No pilot speed number exists or can exist while 100DOH's weights are
+unobtainable (D037), so the quantity this sentence governs is unobserved; the evidence that
+forced the change is a synthetic sweep of a known geometry (D044), not a pilot statistic.
+
+- **Analysis rate** (D045). Prior: "The hand-speed path samples instantaneous speed from a frame pair (t, t + 1/fps) at each of the same 4 Hz instants; it samples a speed process and does not track a trajectory, so Nyquist does not bound it and the RMS over samples is the estimate." Now: "The hand-speed path samples instantaneous speed from a frame pair (t, t + 1/fps_clip), where fps_clip is the clip's own frame rate as the release ships it per clip and not the 4 Hz analysis rate, at each of the same 4 Hz instants; it samples a speed process and does not track a trajectory, so Nyquist does not bound it and the RMS over samples is the estimate." `fps` was never defined in that sentence and both readings were available in the words; at the 4 Hz reading both flow estimators recover 0.18 of a working hand's motion, which is the ratio of the two plane distances, because they report the background inside the hand box and the rubric then subtracts the background.
