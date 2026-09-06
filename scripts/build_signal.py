@@ -167,10 +167,20 @@ def stream_pairs(clip: ClipRef, token: str | None, *, width: int, height: int,
     if not times:
         return
     # Which native frame index each instant starts at, and how far to decode for the last pair.
+    # Half-up, not `round`. At 4 Hz over a 30 fps source every odd instant lands on a
+    # half-integer frame index, and Python's banker's rounding then alternates between the
+    # frame before and the frame after by the instant's *parity* -- k=1 to frame 8, k=3 to
+    # frame 22, k=5 to frame 38. Which source frame an instant means should not depend on
+    # whether its index is odd.
+    #
+    # This does not remove the underlying ambiguity, and nothing here can: the box and the
+    # label at the same instant come from a separate `-vf fps=4` decode whose frame selection
+    # is ffmpeg's, so box and flow can still differ by one source frame -- 33 ms, about 21 px
+    # of hand travel at 600 mm/s against a ~96 px box. `docs/COVERAGE.md` carries that bound.
     first_index: dict[int, int] = {}
     for k, t_s in enumerate(times):
-        first_index.setdefault(int(round(t_s * clip.fps)), k)
-    limit = int(round(times[-1] * clip.fps)) + 2
+        first_index.setdefault(int(t_s * clip.fps + 0.5), k)
+    limit = int(times[-1] * clip.fps + 0.5) + 2
 
     url = ShardReader(REPO_ID, clip.shard, token)._resolve()
     argv = ffmpeg_clip_argv(url, clip, fps_sampled=clip.fps, width=width, height=height,
