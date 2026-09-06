@@ -1881,6 +1881,17 @@ schema fields had no way to express absence, so the code supplied a number:
   anyway: leaving one instance of a mechanism after fixing two is what D049 and D053 did, and
   the review found both.
 
+**The revision invalidates stored records, and that is the intended behaviour.** Every
+`HandSpeedEstimate` on disk was written under v1.4 with `flow_null_rate: 0.0` and no boxes, so
+`make hal` now refuses to load them instead of accepting them — the same rule `corpus_rev`
+enforces, that records written under two definitions are never pooled. They are the placeholder
+`no_detector` records and are regenerated from the real detections.
+
+A reader hitting that refusal sees a pydantic error and not "this file predates the contract",
+because records do not carry a `contracts_rev` the way they carry `corpus_rev`. That is a real
+gap and it is not fixed here: adding the field would invalidate every stored record a second
+time, for a message.
+
 **All three were forced by the schema, which is the part worth keeping.** None was a careless
 line: a non-nullable field leaves a caller no way to be honest, so the fix belongs in the
 contract and not in a convention about what to write. The seven seams say absence must be
