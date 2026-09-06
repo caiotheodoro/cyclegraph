@@ -1,6 +1,6 @@
 # Rubric
 
-**Version:** 1.3.0. Frozen with `docs/PRE-REGISTRATION.md`; amended with it, with the
+**Version:** 1.4.0. Frozen with `docs/PRE-REGISTRATION.md`; amended with it, with the
 replaced text quoted at the end.
 
 The operational definitions the standards leave open. Every one of these is a choice; the
@@ -93,6 +93,10 @@ disagree with a rule rather than with a number.
   this path. Both rates are reported.
 - **The clip's estimate** is the RMS over its valid samples. It is a sampled speed process,
   not a tracked trajectory; no hand is followed between samples and Nyquist does not apply.
+- **A hand box from a segmentation mask** is the axis-aligned bounding box of the mask's
+  hand pixels, per hand; "largest detected hand box" above then selects among those by area,
+  unchanged. Only hand classes are read — an object a hand is holding is not part of the hand
+  (`docs/DECISIONS.md` D047).
 - **Never from a region prior.** A "lower half of the frame" mask is not a hand mask; a
   record built from one is a contract violation.
 
@@ -168,3 +172,14 @@ the resulting agreement would be reported whatever it said.
   background inside the hand box and this rubric then subtracts the background (D044). Amended
   while no `HandSpeedEstimate` has ever carried a measurement: 100DOH's weights are
   unobtainable (D037) and every such record so far is `status: "no_detector"`.
+
+### v1.4.0 — D047
+
+- **Hand speed** (D047). No prior sentence replaced. Added: "A hand box from a segmentation
+  mask is the axis-aligned bounding box of the mask's hand pixels, per hand; "largest detected
+  hand box" above then selects among those by area, unchanged. Only hand classes are read — an
+  object a hand is holding is not part of the hand." 100DOH's weights are unobtainable (D037),
+  so the detector this rubric was written against cannot be run by anyone; EgoHOS is a
+  segmenter and the rubric scaled pixel speed by a *box* width, which had no definition for a
+  mask. A bounding box keeps the same functional form as the box it replaces, so the change is
+  where the box comes from and not what quantity is taken.
