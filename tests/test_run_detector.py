@@ -21,11 +21,13 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from run_detector import (  # noqa: E402
     ClipFrames,
     build_detector,
-    completed_clips,
+    drop_partial_clips,
+    rows_per_clip,
     detections_for_clip,
     scale_box,
 )
 
+from cyclegraph.corpus.sampling import sample_times
 from cyclegraph.models import ClipRef  # noqa: E402
 from cyclegraph.signal.ports import HandBox, MaskSource  # noqa: E402
 from cyclegraph.signal.stores import JsonlDetectionStore  # noqa: E402
@@ -107,12 +109,40 @@ def test_the_rows_round_trip_through_the_store_that_consumes_them(tmp_path: Path
     assert found.boxes[0].width == pytest.approx(960.0)
 
 
-def test_resume_skips_clips_already_written(tmp_path: Path) -> None:
-    """A spot instance is interrupted, not asked. Work already bought is not re-bought."""
+def test_resume_counts_rows_rather_than_trusting_that_any_exist(tmp_path: Path) -> None:
+    """A spot instance is interrupted, not asked, so work already bought is not re-bought --
+    but a clip it was interrupted *inside* has rows and is not finished.
+
+    This asserted that two rows made a clip complete, which is the defect
+    `docs/DECISIONS.md` D043 names and D052 found still here: a done-set resumes past the part
+    of a clip that was never written, and the hole reaches H2c's coverage as no-box samples.
+    """
     path = tmp_path / "detections.jsonl"
     path.write_text("\n".join(json.dumps(r) for r in detections_for_clip(_frames(2), _Fake())))
-    assert completed_clips(path) == {_clip().clip_id}
-    assert completed_clips(tmp_path / "absent.jsonl") == set()
+    counts = rows_per_clip(path)
+    assert counts == {_clip().clip_id: 2}
+    assert rows_per_clip(tmp_path / "absent.jsonl") == {}
+
+    # Two rows is not a finished clip: the plan for this clip is far longer, so a caller
+    # comparing against the sample plan sees it as partial.
+    assert len(sample_times(_clip().duration_s)) > 2
+
+
+def test_a_partly_written_clip_is_dropped_so_the_rerun_appends_a_whole_one(
+        tmp_path: Path) -> None:
+    """Without this the re-run appends a second copy of the clip's rows and the file carries a
+    clip that is both short and duplicated."""
+    path = tmp_path / "detections.jsonl"
+    rows = detections_for_clip(_frames(3), _Fake())
+    other = [{**r, "clip_id": "factory_002/worker_009/000004"} for r in rows[:2]]
+    path.write_text("\n".join(json.dumps(r) for r in rows + other) + "\n")
+
+    kept = drop_partial_clips(path, {_clip().clip_id})
+    assert kept == 2
+    remaining = rows_per_clip(path)
+    assert _clip().clip_id not in remaining
+    assert remaining == {"factory_002/worker_009/000004": 2}
+    assert drop_partial_clips(path, set()) == 0  # nothing to do is not a rewrite
 
 
 def test_an_unknown_detector_is_refused_by_name() -> None:
