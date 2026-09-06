@@ -38,7 +38,11 @@ from cyclegraph.estimation.aggregate import (  # noqa: E402
 )
 from cyclegraph.exposure.duty import duty_cycle_estimate  # noqa: E402
 from cyclegraph.exposure.score import score_speed_path  # noqa: E402
-from cyclegraph.models import HandSpeedEstimate  # noqa: E402
+from cyclegraph.models import (  # noqa: E402
+    COVERAGE_FLOOR,
+    FLOW_NULL_CEILING,
+    HandSpeedEstimate,
+)
 from cyclegraph.signal.stores import JsonlLabelStore  # noqa: E402
 
 PILOT_REV = "3e5f87c88c54ce8343865d8e2a8c171f18385a05"
@@ -100,9 +104,27 @@ def main(argv: list[str] | None = None) -> int:
             if hal.status == "ok" and hal.hal is not None:
                 observations.append(ClipObservation(clip.factory_id, clip.worker_id, hal.hal))
 
+    # H2c over every speed record, whatever wrote them. `build_signal` reports the same gate
+    # for the clips one invocation happened to see; sharding the pilot across processes gives
+    # each of those a partial denominator, and a gate computed on part of the pilot is not the
+    # pre-registered gate. This one reads the whole file.
+    total_samples = sum(e.n_samples for e in speeds.values())
+    boxed = sum(e.n_with_box for e in speeds.values())
+    nulls = sum(e.n_flow_null for e in speeds.values())
+    coverage = boxed / total_samples if total_samples else 0.0
+    # A rate over no boxed samples is 0.0, which would print PASS on no data at all. An
+    # unevaluable gate is not a satisfied one; it reports FAIL and says which it is.
+    null_rate = nulls / boxed if boxed else 0.0
+    null_evaluable = boxed > 0
+
     print(f"pilot gates (values stay in {args.out_dir}, D018):")
     print(f"  {'PASS' if scored else 'FAIL'}  every clip with a speed record produced a HAL")
     print(f"  {'PASS' if observations else 'FAIL'}  at least one clip scored on the speed path")
+    print(f"  {'PASS' if coverage >= COVERAGE_FLOOR else 'FAIL'}  "
+          f"H2c: hand-box coverage clears the pre-registered {COVERAGE_FLOOR:.0%} floor")
+    print(f"  {'PASS' if null_evaluable and null_rate <= FLOW_NULL_CEILING else 'FAIL'}  "
+          f"H2c: flow-null rate within the pre-registered {FLOW_NULL_CEILING:.0%} ceiling"
+          f"{'' if null_evaluable else ' (no boxed sample: not evaluable, not satisfied)'}")
 
     if not args.aggregate:
         return 0 if scored else 1
