@@ -1980,5 +1980,15 @@ The test is textual, like `tests/test_signal_ports.py`'s shard-token check, beca
 check passes a module that imports the constant and then ignores it. It flags a `duration_s`
 comparison against any non-zero literal and leaves positivity guards alone.
 
-**Reverses if:** nothing. This is a defect record, and a small one — recorded because the way it
-was found is the point, not the size of it.
+**The same sweep found a second, larger one: the hand breadth had three homes.** 85 mm is the
+constant every reported speed is divided by. `signal/speed.py` defines `HAND_BREADTH_MM`,
+`scripts/build_signal.py` and `scripts/measure_a14_floor.py` import it — and
+`signal/synthetic.py` carried it as a literal default while `scripts/measure_flow_gain.py` kept
+a private copy. `docs/BENCHMARK.md`'s sensitivity table re-runs HAL at 79.5 and 90.4 mm against
+that constant, so a copy that did not move would have left the synthetic geometry describing a
+hand the pipeline no longer assumes — and the A14 floor and the gain curves are both computed
+from that geometry. All four now read one definition.
+
+**Reverses if:** nothing. This is a defect record. It is recorded because the way it was found
+is the point: D056 was a class, so the next move was to sweep for the class rather than wait
+for the next instance to surface.

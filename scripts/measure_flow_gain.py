@@ -35,6 +35,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from cyclegraph.corpus.sampling import ANALYSIS_HZ  # noqa: E402
 from cyclegraph.signal.flow_farneback import FarnebackFlow  # noqa: E402
 from cyclegraph.signal.ports import FlowEstimator, box_mask  # noqa: E402
+from cyclegraph.signal.speed import HAND_BREADTH_MM  # noqa: E402
 from cyclegraph.signal.synthetic import (  # noqa: E402
     CORPUS_CAMERA,
     Camera,
@@ -44,7 +45,6 @@ from cyclegraph.signal.synthetic import (  # noqa: E402
     render_pair,
 )
 
-HAND_BREADTH_MM = 85.0
 SEED = 11
 # Camera translations, in metres per pair interval, chosen to sweep the hand-box displacement
 # through and past the range a working hand produces. Translating the camera is how a static

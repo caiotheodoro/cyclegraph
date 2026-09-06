@@ -36,6 +36,7 @@ import numpy as np
 import numpy.typing as npt
 
 from cyclegraph.signal.ports import Flow, HandBox
+from cyclegraph.signal.speed import HAND_BREADTH_MM
 
 # `docs/DECISIONS.md` D025: identical across all 2,144 shipped workers.
 CORPUS_FX: Final[float] = 1030.587009
@@ -185,7 +186,7 @@ class Scene:
         return depth
 
 
-def hand_box_for(cam: Camera, hand_breadth_mm: float = 85.0,
+def hand_box_for(cam: Camera, hand_breadth_mm: float = HAND_BREADTH_MM,
                  distance_m: float = HAND_DISTANCE_M) -> HandBox:
     """The box an 85 mm hand subtends at the image centre, from the geometry rather than a guess."""
     half = (hand_breadth_mm / 1000.0) / 2.0
