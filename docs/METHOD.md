@@ -101,7 +101,13 @@ calibration subset of ~20,000 frames: `vernier` paid **$9.06** and ~10–11 h fo
 frames with two prompt variants (D066's estimate was $8.56; the real invoice is the number
 that counts), so ~$9 and ~10 h for one variant here. Detector ~1.7M
 frames at ~20 frames/s on one GPU ≈ 24 GPU-hours, the largest single cost in the pilot.
-Flow: Farneback **measured at 116.9 pairs/s** on CPU at 480x270 over 192 real pilot pairs, with a flow-null rate of 0.000 (`results/flow_benchmark.json`, `docs/DECISIONS.md` D028) -- more than twice the ~50 pairs/s this line previously estimated. RAFT-small is unmeasured and the estimator choice is still OPEN.
+Flow: **decided, both arms measured** (`docs/DECISIONS.md` D059). At the pair D045 defines and
+the 960x540 D050 chose, over 200 real pilot pairs: Farneback **7.57 pairs/s** on CPU, RAFT-small
+**21.5 pairs/s** on an A10G, both with a flow-null rate of 0.000. **Farneback is chosen**, on
+D024's cost rule — it needs no GPU and parallelises across processes, pricing the pilot at
+roughly $2 against RAFT's $6 — and on the A14 column, where RAFT's residual falls *below* the
+exact-geometry floor and Farneback's sits above it. The earlier 116.9 pairs/s figure was
+measured at 480x270 over the 0.25 s pair both of those decisions replaced and is not comparable.
 **Gate:** H1. If duty cycle is not stable across the two sources within 0.05 mean absolute
 difference, the probe cannot carry the corpus. The method does not scale a known-biased
 labeller to 30M frames; it takes **Arm B** of the pre-registered two-arm draw — judge-only,

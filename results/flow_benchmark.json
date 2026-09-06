@@ -1,30 +1,42 @@
 {
-  "superseded": "Measured over a 0.25 s pair baseline, which docs/DECISIONS.md D045 replaced with the clip's own frame rate. The rates and the null rate below are for a pair the speed path no longer uses and are NOT comparable with a run carrying a `pair_baseline` field. The A14 column is also pre-D044: it was computed from the analytic field without running the estimator, so it reported the geometry for every arm. Kept rather than deleted because it is what D028 cites.",
   "rule": "docs/DECISIONS.md D024, fixed before any rate was measured",
+  "pair_baseline": "the clip's own frame rate (docs/DECISIONS.md D045). Any stored result whose pair_baseline field is absent was measured over the 0.25 s baseline D045 replaced and is not comparable.",
   "seed": 777,
   "null_ceiling": 0.1,
   "arms": {
     "farneback-cv2": {
       "measured": true,
-      "pairs": 192,
-      "pairs_per_s": 116.937,
+      "pairs": 200,
+      "pairs_per_s": 7.568,
       "flow_null_rate": 0.0,
       "clears_null_ceiling": true,
-      "a14_rotation_residual_px": 17.0011,
+      "a14_rotation_residual_px": 1.2171,
+      "a14_rotation_residual_geometry_only_px": 1.1461,
       "declared_dependency_cost": "none; opencv-python-headless is in the signal extra",
       "frame_size": [
-        480,
-        270
+        960,
+        540
       ],
       "device": "cpu"
     },
     "raft-small": {
-      "measured": false,
-      "why_not": "torch is not installed and is declared in no extra; RAFT-small also needs a GPU for the throughput arm to mean anything. docs/REPRODUCTION.md 'Compute' specifies the g5.xlarge stage.",
-      "torch_importable": true,
-      "declared_dependency_cost": "torch, undeclared in pyproject.toml (D024 tiebreaker)"
+      "measured": true,
+      "pairs": 200,
+      "pairs_per_s": 21.5,
+      "pairs_per_s_unbatched": 21.5,
+      "pairs_per_s_batched_8": 21.494,
+      "flow_null_rate": 0.0,
+      "clears_null_ceiling": true,
+      "a14_rotation_residual_px": 1.014,
+      "a14_rotation_residual_geometry_only_px": 1.1461,
+      "declared_dependency_cost": "torch, undeclared in pyproject.toml (D024 tiebreaker)",
+      "frame_size": [
+        960,
+        540
+      ],
+      "device": "NVIDIA A10G"
     }
   },
-  "decision_taken": false,
-  "decision_status": "OPEN: D024 compares two arms and only one has been measured. Recording the measured arm's rates and calling the decision made would be the preference-with-a-table-attached the rule exists to prevent."
+  "decision_taken": true,
+  "decision_status": "TAKEN"
 }
