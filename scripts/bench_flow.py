@@ -48,7 +48,10 @@ from cyclegraph.signal.synthetic import (  # noqa: E402
     render_pair,
 )
 
-WIDTH, HEIGHT = 480, 270
+WIDTH, HEIGHT = 960, 540
+"""The resolution the speed path decodes flow at (`docs/DECISIONS.md` D050), so the rates and
+the residual measured here are the ones the pipeline will pay and see. It was 480x270, which
+D050 measured as recovering 0.77 of a working hand's motion where 960x540 recovers 0.99."""
 ARMS = ("farneback-cv2", "raft-small")
 
 
@@ -61,12 +64,18 @@ def _token() -> str | None:
     return os.environ.get("HF_TOKEN")
 
 
-# The corpus's own motion budget (`docs/DECISIONS.md` D026, 23-37 deg/s) at the 4 Hz pair
-# baseline: 30 deg/s over 0.25 s. The synthetic is evaluated at the resolution the pipeline
-# decodes flow at, not the camera's native one -- a dense estimator's error is a function of
-# the displacement in *pixels*, and the same rotation is 29 px at 480x270 and 118 px at
-# 1920x1080. Measuring it at native resolution would report a number no pipeline pair ever sees.
-A14_ROTATION_DEG = 30.0 * 0.25
+# The corpus's own motion budget (`docs/DECISIONS.md` D026, 23-37 deg/s) over **one pair**. The
+# pair is one frame of the source video since D045, not the 0.25 s analysis period, and every
+# pilot clip's stream is exactly 30 fps (verified with ffprobe, not taken from the sidecar --
+# see `scripts/build_signal.py:stream_pairs`). So the rotation is 30/30 = 1 degree, not the
+# 7.5 this used to price it at.
+#
+# The synthetic is evaluated at the resolution the pipeline decodes flow at, not the camera's
+# native one -- a dense estimator's error is a function of the displacement in *pixels*, and
+# the same rotation spans four times as many at 1920x1080. Measuring it at native resolution
+# would report a number no pipeline pair ever sees.
+CORPUS_FPS = 30.0
+A14_ROTATION_DEG = 30.0 / CORPUS_FPS
 FLOW_SCALE = WIDTH / CORPUS_CAMERA.width
 
 

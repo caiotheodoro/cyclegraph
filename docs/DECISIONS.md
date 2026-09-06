@@ -1644,6 +1644,24 @@ class" from "bounds the hand". The gap was not too few tests but fixtures drawn 
 author's idea of the input rather than from the input. The smoke run's box-width percentiles
 cost nothing and found it in one pass; they are now part of what a smoke run reports.
 
+**Correction to this entry's own justification, 2026-09-06 (review finding 6).** The line
+above — "Corrected before any detection was written" — and rubric v1.5.0's repetition of it are
+a claim about the *output artifact*, not about the quantity. This project's test is whether the
+quantity the amended sentence governs was still unmeasured, and it was not: the evidence for the
+change is 120 pilot frames of `median_box_width_px`, and the change was made *because of* those
+numbers. D045, two entries earlier, is scrupulous about exactly this distinction — "the evidence
+that forced the change is a synthetic sweep of a known geometry, not a pilot statistic" — and
+these two amendments were held to different standards one section apart.
+
+The change still stands, on a ground that has to be stated rather than implied: the prior
+definition **demonstrably did not measure the quantity it named**. A bounding box over a
+disconnected mask is not "the hand's box" under any reading; 70% of the frame width is not a
+hand. That is a different justification from "the quantity was unmeasured", and a weaker one —
+it relies on the defect being visible without reference to whether the resulting numbers were
+convenient. Two things make it checkable rather than a matter of trust: the direction is
+**anti-flattering** (the box is a divisor, so the correction raises every speed), and the
+finding is reproducible from the published percentiles without seeing any pilot value.
+
 **Reverses if:** a later reading shows the largest component regularly drops a genuinely
 detached part of one hand — a gloved finger segmented separately, say — in which case the rule
 becomes a size-weighted union rather than a single component, measured rather than assumed.
