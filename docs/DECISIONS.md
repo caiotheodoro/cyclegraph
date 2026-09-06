@@ -1678,3 +1678,46 @@ the run wrote no rows, so there were no partial clips, and the resume logic had 
 clean up.
 
 **Reverses if:** nothing. This is a defect record.
+
+## D050 — Flow decodes at 960x540, a measured optimum, and the speed path still fails above ~900 mm/s
+
+2026-09-06.
+
+D045 moved the speed pair to one frame of the source video. That changes what displacement the
+estimator sees, so the decode resolution — which nothing had ever chosen — became a live
+parameter. Swept at the amended pair on the rendered synthetics
+(`results/flow_gain_by_resolution.json`), gain inside the hand box:
+
+| Decode | 301 mm/s | 602 mm/s | 903 mm/s |
+|---|---|---|---|
+| 480x270 | 0.96 | **0.77** | 0.22 |
+| **960x540** | 1.00 | **0.99** | 0.20 |
+| 1440x810 | 1.00 | 0.20 | 0.20 |
+| 1920x1080 | 1.00 | 0.20 | 0.19 |
+
+**The knee is not monotone in resolution, which is the part worth understanding.** A dense
+estimator's search range is in *pixels*; a higher resolution spends the same physical motion on
+more of them, so 1440 and 1920 fail at a speed 960 handles. And 480 is worse than 960 in the
+other direction: the hand box is only 48 px there, so the depth discontinuity sits inside the
+window and is smoothed across. 960x540 is a **measured optimum, not a maximum**, and the
+pipeline moves to it from the 480x270 nothing had justified.
+
+**Tuning the estimator does not extend it.** Raising the pyramid to 5 and 6 levels and the
+window to 21 and 31 px, at 960x540: gain at 602 mm/s went 0.993, 0.993, 0.988, 0.241, 0.262.
+Bigger windows are *worse*, which identifies the mechanism as the smoothness prior rather than
+the search range — a wider window straddles the hand/background boundary and averages across
+it. That is intrinsic to dense flow with a global smoothness assumption, and it is why neither
+RAFT (D044) nor parameters reach it.
+
+**What this leaves, stated rather than buried.** The speed path is faithful to about
+**600-700 mm/s** and collapses above **~900 mm/s**, and the HAL equations are fitted over
+400-1000 mm/s. So the top of the band is not measured, it is *under*-measured, in the flattering
+direction, by a factor approaching five. This is not fixed here and is not fixable with a dense
+estimator; it is a bound on what the speed path can say, and `docs/COVERAGE.md` carries it.
+
+**Chosen before any pilot speed exists**, on synthetics whose ground truth is exact geometry.
+No hypothesis is decided by it and no pilot number has ever been produced on this path.
+
+**Reverses if:** a sparse or hand-masked estimator is measured on the same synthetics and holds
+gain above 900 mm/s, in which case the resolution sweep is re-run for it and this optimum is
+that estimator's, not the pipeline's.

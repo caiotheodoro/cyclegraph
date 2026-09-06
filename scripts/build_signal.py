@@ -61,9 +61,16 @@ from cyclegraph.signal.speed import (  # noqa: E402
 )
 from cyclegraph.signal.stores import JsonlDetectionStore, JsonlLabelStore  # noqa: E402
 
-WIDTH, HEIGHT = 480, 270
+WIDTH, HEIGHT = 960, 540
 """Flow and the box-width scale are both ratios of pixels, so a uniform downscale cancels in
-mm/s. It does not cancel in the detector's coordinates, which is why boxes are scaled below."""
+mm/s. It does not cancel in the detector's coordinates, which is why boxes are scaled below.
+
+**It also does not cancel in what the estimator can recover**, which is why this is 960 and not
+the 480 it was. Measured at the pair D045 defines (`results/flow_gain_by_resolution.json`), a
+hand at 602 mm/s is recovered with gain **0.77 at 480x270 and 0.99 at 960x540**. The knee is
+not monotone in resolution and 960 is a measured optimum, not a maximum: at 1440 and 1920 the
+same motion spans more pixels than the estimator's search range and the gain falls back to
+0.20 (`docs/DECISIONS.md` D050)."""
 
 
 def _token() -> str | None:
