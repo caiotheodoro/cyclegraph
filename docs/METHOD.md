@@ -67,7 +67,25 @@ the CPU rate is too slow); ego-motion as the median flow over the mask complemen
 residual RMS inside the box; scaled by the clip's median box width against 85 mm
 (`docs/RUBRIC.md`). Emits `HandSpeedEstimate`.
 
-**Cost:** probe ~1.7M frames at ~100 frames/s ≈ 5 GPU-hours for the pilot. Judge on a
+**Cost:** **measured 2026-09-06.** The pilot factory is **97 clips and 462,437 sampled
+instants** — the ~1.7M frames this line previously estimated was high by roughly a factor of
+four. The probe ran at **13.2–13.6 frames/s per worker**, four workers on one `g5.2xlarge`
+(A10G, 8 vCPU, 32 GB), so ~53 frames/s aggregate.
+
+**The GPU was idle at 0% throughout, and that is the finding.** The stage is bounded by ffmpeg
+decode and per-frame preprocessing, not by the backbone: DINOv2-small over a 384-dim head is
+negligible beside decoding colour frames at 960×540. The same labeller on an Apple Silicon
+laptop's MPS ran at **45–49 frames/s in a single process** — comparable to four workers on the
+paid instance, at no cost. `docs/REPRODUCTION.md` names a GPU stage for E3; for the *labeller*
+that is the wrong shape of machine, and a reader reproducing this should not rent one for it.
+The detector, when there is one, is a different question and unmeasured.
+
+Two costs that are not throughput. Colour frames are three times grey, and a 1200 s clip
+buffered whole is **7.5 GB**; four workers of that exhausted 32 GB, drove the box into swap and
+had two workers OOM-killed before the decode was streamed (`docs/DECISIONS.md` D043). And the
+first full pass lost **1.1385%** of planned samples to three clips whose HTTPS reads ended
+mid-stream while ffmpeg still exited 0 — above E2's 1% ceiling, invisible to every check until
+one was written for it. Re-decoding those three brought the run to 462,437 of 462,437. Judge on a
 calibration subset of ~20,000 frames: `vernier` paid **$9.06** and ~10–11 h for 10,000
 frames with two prompt variants (D066's estimate was $8.56; the real invoice is the number
 that counts), so ~$9 and ~10 h for one variant here. Detector ~1.7M
