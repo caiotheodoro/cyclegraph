@@ -292,7 +292,10 @@ def main(argv: list[str] | None = None) -> int:
     boxed = sum(e.n_with_box for e in estimates)
     nulls = sum(e.n_flow_null for e in estimates)
     coverage = boxed / total_samples if total_samples else 0.0
+    # A rate over no boxed samples is 0.0, which would print PASS on no data at all. An
+    # unevaluable gate is not a satisfied one; it reports FAIL and says which it is.
     null_rate = nulls / boxed if boxed else 0.0
+    null_evaluable = boxed > 0
 
     print(f"\npilot gates (values stay in {args.out_dir}, D018):")
     print(f"  {'PASS' if built == len(refs) else 'FAIL'}  every clip produced both records")
@@ -303,8 +306,9 @@ def main(argv: list[str] | None = None) -> int:
           f"detector and labeller contradict each other on under 10% of samples")
     print(f"  {'PASS' if coverage >= COVERAGE_FLOOR else 'FAIL'}  "
           f"H2c: hand-box coverage clears the pre-registered {COVERAGE_FLOOR:.0%} floor")
-    print(f"  {'PASS' if null_rate <= FLOW_NULL_CEILING else 'FAIL'}  "
-          f"H2c: flow-null rate within the pre-registered {FLOW_NULL_CEILING:.0%} ceiling")
+    print(f"  {'PASS' if null_evaluable and null_rate <= FLOW_NULL_CEILING else 'FAIL'}  "
+          f"H2c: flow-null rate within the pre-registered {FLOW_NULL_CEILING:.0%} ceiling"
+          f"{'' if null_evaluable else ' (no boxed sample: not evaluable, not satisfied)'}")
     return 0 if built == len(refs) else 1
 
 
