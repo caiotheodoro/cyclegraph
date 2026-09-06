@@ -88,14 +88,26 @@ class Doh100Detector:
         return net
 
     def boxes(self, frame: np.ndarray) -> list[HandBox]:
-        """Hand boxes for one greyscale frame, in that frame's own pixel coordinates.
+        """Hand boxes for one **colour** frame, in that frame's own pixel coordinates.
 
         The caller scales them to native clip pixels; this returns what the model saw.
+
+        Colour, not grey. This replicated a grey frame across three channels, which is a grey
+        image in a colour tensor and not a colour image -- the same substitution
+        `docs/DECISIONS.md` D040 measured on the labeller. The repo's pixel means are in
+        **BGR** order, so an RGB frame is reversed before they are subtracted; subtracting them
+        in RGB order would tint every frame by the channel differences and is the kind of
+        mistake that produces plausible boxes rather than an error.
         """
         import torch
 
+        if frame.ndim != 3 or frame.shape[2] != 3:
+            raise ValueError(
+                "100DOH was fitted on colour frames; pass an (H, W, 3) RGB frame. "
+                "docs/DECISIONS.md D040."
+            )
         net = self._load()
-        rgb = np.repeat(frame[:, :, None], 3, axis=2).astype(np.float32)
+        rgb = frame[:, :, ::-1].astype(np.float32)  # RGB to the BGR the means are stated in
         rgb -= np.array([102.9801, 115.9465, 122.7717], dtype=np.float32)  # the repo's means
         tensor = torch.from_numpy(rgb).permute(2, 0, 1).unsqueeze(0).to(self._device)
         info = torch.tensor([[frame.shape[0], frame.shape[1], 1.0]], device=self._device)

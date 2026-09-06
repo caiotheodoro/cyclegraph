@@ -56,11 +56,22 @@ against 0.8"; corrected 2026-09-05. Those numbers are a warning, not a licence: 
 H1 exists. The **judge** runs on a stratified calibration subset only, sized so that H1's
 cross-source comparison is powered, not on the full corpus.
 
-**Hand boxes.** 100DOH (Shan et al., CVPR 2020; MIT licence; the released model is trained
-on 100K YouTube frames plus egocentric EPIC-KITCHENS/EGTEA/CharadesEgo — `[V]`, from the
-repository `github.com/ddshan/hand_object_detector`, opened 2026-09-05) on every sampled
-frame; box width recorded. EgoHOS is the
-fallback segmenter if 100DOH's coverage fails H2c.
+**Hand boxes.** **EgoHOS** (Zhang et al., ECCV 2022) on every sampled frame; box width
+recorded. It replaces 100DOH, which this section named until 2026-09-06 and which cannot be
+run by anyone: both Google Drive links its authors publish return 404 and no mirror exists
+(`docs/DECISIONS.md` D037, re-probed against a live EgoHOS control). That is **not** the
+trigger this section anticipated — EgoHOS was named the fallback "if 100DOH's coverage fails
+H2c", and coverage has never been measured — so the switch is its own decision, D047, with its
+own cost. EgoHOS is a segmenter, so `docs/RUBRIC.md` v1.4.0 defines the box: the axis-aligned
+bounding box of a hand's mask pixels, hand classes only. The offset between that and a
+human-annotated detector box is systematic, linear in mm/s, and unmeasurable while 100DOH
+cannot be run; it is arithmetically identical to a change in `hand_breadth_mm`, so
+`docs/BENCHMARK.md`'s 79.5/90.4 rows already bound it to about ±6%, and `docs/COVERAGE.md`
+carries the remainder as a gap.
+
+Frames reach the detector in **colour**. This stage decoded grey and the adapter replicated it
+across three channels, which is a grey image in a colour tensor — the same substitution D040
+measured on the labeller, latent here because no detector had ever run.
 
 **Hand speed.** Dense optical flow on each pair (Farneback on CPU, or RAFT-small on GPU if
 the CPU rate is too slow); ego-motion as the median flow over the mask complement;
