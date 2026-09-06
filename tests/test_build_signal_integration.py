@@ -23,9 +23,14 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
 import build_signal  # noqa: E402
+import score_hal  # noqa: E402
 
 from cyclegraph.corpus.sampling import sample_times  # noqa: E402
-from cyclegraph.models import FrameSignal, HandSpeedEstimate  # noqa: E402
+from cyclegraph.models import (  # noqa: E402
+    FrameSignal,
+    HALScore,
+    HandSpeedEstimate,
+)
 
 FPS = 30.0
 DURATION_S = 61.0
@@ -181,3 +186,36 @@ def test_a_pair_of_identical_frames_is_a_null_with_a_reason_not_a_speed_of_almos
     assert speed.n_flow_null == speed.n_with_box   # every boxed sample is a null
     assert speed.status == "flow_failed"
     assert speed.rms_speed_mm_s is None            # not 3.5e-07
+
+
+def test_a_measured_speed_reaches_a_hal_score(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The last link, and the only one never exercised: every `HandSpeedEstimate` written so far
+    is `status: "no_detector"` (D037), so `score_hal` has only ever been run over records that
+    carry no measurement. This runs it over one that does."""
+    manifest, detections, labels = _write_inputs(tmp_path)
+    _stub_decode(monkeypatch)
+    out = tmp_path / "out"
+    assert build_signal.main([
+        "--manifest", str(manifest), "--detections", str(detections),
+        "--labels", str(labels), "--out-dir", str(out), "--corpus-rev", REV,
+    ]) == 0
+
+    code = score_hal.main([
+        "--manifest", str(manifest), "--labels", str(labels),
+        "--speeds", str(out / "hand_speed.jsonl"), "--out-dir", str(out),
+        "--corpus-rev", REV,
+    ])
+    assert code == 0
+
+    scores = [HALScore.model_validate_json(line)
+              for line in (out / "hal.jsonl").read_text().splitlines() if line.strip()]
+    assert len(scores) == 1
+    score = scores[0]
+    assert score.status == "ok"
+    assert score.hal is not None
+    # The Hand Activity Level scale is 0-10 by construction; a mapping that escaped it would be
+    # reporting something other than HAL.
+    assert 0.0 <= score.hal <= 10.0
+    assert score.mapping == "akkas-2015-speed-dc"  # the speed path's equation, not frequency
+    assert score.duty_cycle is not None
