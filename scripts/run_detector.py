@@ -219,10 +219,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         # drawn over a disconnected mask. It costs one line and it runs before the money does.
         if widths:
             q = np.percentile(np.asarray(widths), [10, 50, 90, 100])
-            print(f"  box width px, detector coordinates: p10 {q[0]:.0f} median {q[1]:.0f} "
-                  f"p90 {q[2]:.0f} max {q[3]:.0f}")
-            print(f"  a hand at the assumed working distance is ~{DECODE_WIDTH // 10} px here;"
-                  f" a median far above that is a mask defect, not a large hand")
+            print(f"  box width px, **native clip coordinates**: p10 {q[0]:.0f} "
+                  f"median {q[1]:.0f} p90 {q[2]:.0f} max {q[3]:.0f}")
+            print("  boxes are scaled to native before they are written, so these are not in "
+                  "the detector's own pixels; at 1920 wide a hand at the assumed 0.45 m is "
+                  "~193 px (results/a14_translation_floor.json). A median far above that is a "
+                  "mask defect, not a large hand.")
         if decoded and with_box == 0:
             print("  WARNING: no frame produced a box. Check the install before buying the "
                   "pilot run; a mismatched mmcv-full imports cleanly and segments nothing.")
