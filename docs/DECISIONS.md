@@ -1528,3 +1528,41 @@ this sentence governs only the speed path's second frame.
 **Reverses if:** a later reading establishes that the corpus's per-clip `fps` is unreliable for
 the pairs actually decoded, in which case the baseline is set explicitly in seconds rather than
 by reference to a shipped field.
+
+## D046 — D039's H2 verdict is confirmed on the rescored labels, and D040's withdrawal is discharged
+
+2026-09-06.
+
+D040 withdrew the pilot labels and every artifact derived from them, and marked D039's H2
+verdict **provisional** until it was recomputed: *"'unlikely to move' is not 're-checked'."*
+It has now been re-checked.
+
+**What was re-run.** All 97 pilot clips were re-labelled from scratch with the corrected
+feature pipeline — colour frames, all tokens pooled — on the same probe and the same inherited
+hand-count head. `scripts/verify_labels.py` reports every clip carrying exactly the rows its
+sample plan calls for, from one corpus revision. Duty cycle and the frequency axis were then
+recomputed from those labels alone; nothing was carried over.
+
+**The verdicts do not move.** H2a FAILED and H2b passed, as in D039, and the mechanism is the
+same one: the great majority of resolved spectral peaks still sit below 0.05 Hz, slower than
+the slowest cycle `docs/RUBRIC.md`'s own 60 s floor contemplates. D040 predicted this — a
+0.033 duty-cycle shift cannot explain a two-order-of-magnitude disagreement — and recorded the
+prediction rather than acting on it. The prediction held, which is worth exactly as much as it
+is worth: it is now a measurement instead of an expectation.
+
+**Three things changed underneath the verdict and none of them rescued it.** The transition
+estimator's denominator became scored time (D042), which widens the disagreement rather than
+narrowing it. The bout count's null-boundary confound is now measured and published beside it
+(D042) rather than sitting unquantified inside H2a. And three clips that the first run wrote
+short — 12%, 32% and 66% of their frames missing, from HTTPS reads that ended mid-stream while
+ffmpeg still exited 0 — were caught by the new completeness check, dropped and re-decoded
+(D043). The first run's aggregate shortfall was 1.1385% of planned samples, above
+`docs/METHOD.md` E2's 1% ceiling; the completed run is at zero and the labeller now gates on it.
+
+**What is still not measured.** The speed path. `make hal`'s speed gate FAILs because no
+`HandSpeedEstimate` carries a measurement — 100DOH's weights are unobtainable (D037) and every
+such record is `status: "no_detector"`. H2c is unmeasured, and D045 changed the pair the speed
+path is computed from, so the speed axis is not merely unmeasured but unmeasured *at a
+definition nothing has ever been run against*.
+
+**Reverses if:** the labels are withdrawn again, on the same standard D040 set.
