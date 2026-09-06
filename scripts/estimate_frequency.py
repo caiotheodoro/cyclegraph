@@ -8,10 +8,11 @@ cross-check's own cross-check, which H2a compares it against).
 Refuses without labels rather than substituting anything. An unwritten instant read as a
 negative would shorten every bout and raise the count, which is the flattering direction.
 
-**H2b is not evaluable as specified.** `docs/DECISIONS.md` D033 measured that white noise
-clears the rubric's 6x peak-power floor at every clip duration in this corpus, so a resolvable
-fraction computed here would be satisfiable by a corpus with no repetition in it. The script
-computes and prints it, labelled, and does not treat clearing 70% as evidence of anything.
+**H2b's floor was fixed before this ran** (`docs/DECISIONS.md` D034): the resolvability
+threshold is now the ratio white noise of the same length would exceed 5% of the time, so
+clearing it is evidence rather than arithmetic. What it is *not* evidence of is that the peak
+sits at a bout frequency -- resolvability says a peak is tall, not that it is in the right
+band, and D039 records what that turned out to mean here.
 
 Usage:
     python3 scripts/estimate_frequency.py --labels results/pilot/labels.jsonl
@@ -98,9 +99,12 @@ def main(argv: list[str] | None = None) -> int:
     fraction = resolvable_fraction(spectral_all)
     print(f"  {'PASS' if fraction >= H2B_RESOLVABLE_FRACTION else 'FAIL'}  "
           f"H2b: resolvable fraction clears the pre-registered bound")
-    print("  NOT EVIDENCE  the 6x peak floor does not separate signal from noise at these"
-          " clip lengths (docs/DECISIONS.md D033); read H2b's verdict as untrustworthy until"
-          " that is amended")
+    below = sum(1 for e in spectral_all if e.hz is not None and e.hz < 0.05)
+    resolved = sum(1 for e in spectral_all if e.hz is not None)
+    if resolved:
+        print(f"  READ WITH D039  {below}/{resolved} resolved peaks sit below 0.05 Hz, the "
+              f"slowest cycle docs/RUBRIC.md's own 60 s floor contemplates. A tall peak in "
+              f"the wrong band still clears H2b.")
     return 0
 
 
