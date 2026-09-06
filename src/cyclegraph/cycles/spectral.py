@@ -33,6 +33,7 @@ import numpy as np
 
 from cyclegraph.models import (
     SPECTRAL_FALSE_ALARM_RATE,
+    MIN_CLIP_S,
     UNREADABLE_CEILING,
     ClipRef,
     FrequencyEstimate,
@@ -101,7 +102,10 @@ def spectral_frequency(
             status=status,  # type: ignore[arg-type]
         )
 
-    if clip.duration_s < 60.0:
+    # `MIN_CLIP_S`, not a literal 60: `exposure/duty.py` and `signal/frames.py` both import the
+    # constant, and a third path carrying its own copy is how the rubric's clip floor comes to
+    # mean two different things (`docs/DECISIONS.md` D057).
+    if clip.duration_s < MIN_CLIP_S:
         return absent("too_short")
     if n_total == 0 or n_excluded / n_total > UNREADABLE_CEILING:
         return absent("no_labels")
