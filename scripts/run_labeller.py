@@ -81,7 +81,8 @@ def _token() -> str | None:
 
 
 def label_rows(clip: ClipRef, times: Sequence[float], manipulation: Sequence[bool],
-               hands_visible: Sequence[int], *, label_rev: str, prompt_variant: str
+               hands_visible: Sequence[int], *, label_rev: str, prompt_variant: str,
+               fps_sampled: float = ANALYSIS_HZ
                ) -> tuple[list[dict[str, object]], int]:
     """One row per instant, plus the count of frames the two heads contradicted."""
     rows: list[dict[str, object]] = []
@@ -93,7 +94,7 @@ def label_rows(clip: ClipRef, times: Sequence[float], manipulation: Sequence[boo
             # revision check had nothing to read and passed on every run -- including the run
             # cited as evidence for D046 (`docs/DECISIONS.md` D058).
             "clip_id": clip.clip_id, "corpus_rev": clip.corpus_rev,
-            "t_s": t_s, "label_source": "probe",
+            "t_s": t_s, "fps_sampled": fps_sampled, "label_source": "probe",
             "label_rev": label_rev, "prompt_variant": prompt_variant,
         }
         if manipulating and hands == 0:
@@ -219,6 +220,10 @@ def main(argv: list[str] | None = None) -> int:
                         default="../vernier/data/rung1_probe.joblib")
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--batch", type=int, default=64)
+    parser.add_argument("--fps", type=float, default=ANALYSIS_HZ,
+                        help="analysis rate. H1b compares duty cycle at 4 Hz against 8 Hz, so "
+                             "the rate has to be a parameter rather than the constant it was; "
+                             "it is recorded on every row so two rates are never pooled.")
     parser.add_argument("--ffmpeg-threads", type=int, default=2,
                         help="decoder threads per clip; uncapped, one decode takes most of "
                              "the box and starves the workers beside it")
@@ -244,7 +249,8 @@ def main(argv: list[str] | None = None) -> int:
     out.parent.mkdir(parents=True, exist_ok=True)
     have = rows_per_clip(out)
     every = list(iter_clips(ROOT / args.manifest, args.corpus_rev))
-    expected = {c.clip_id: len(sample_times(c.duration_s)) for c in every}
+    expected = {c.clip_id: len(sample_times(c.duration_s, fps_sampled=args.fps))
+                for c in every}
     complete = {cid for cid, n in have.items() if n == expected.get(cid)}
     partial = set(have) - complete
     if partial:
@@ -271,8 +277,8 @@ def main(argv: list[str] | None = None) -> int:
             # inside the clip and the filter has no such rule. Capping the decode at the plan
             # length drops the surplus at the source, so no frame is labelled at a timestamp
             # that does not exist and ffmpeg still reaches a clean exit.
-            times = sample_times(clip.duration_s)
-            argv_ff = ffmpeg_clip_argv(url, clip, fps_sampled=ANALYSIS_HZ,
+            times = sample_times(clip.duration_s, fps_sampled=args.fps)
+            argv_ff = ffmpeg_clip_argv(url, clip, fps_sampled=args.fps,
                                        width=DECODE_WIDTH, height=DECODE_HEIGHT,
                                        pix_fmt=DECODE_PIX_FMT, max_frames=len(times),
                                        threads=args.ffmpeg_threads)
@@ -308,7 +314,8 @@ def main(argv: list[str] | None = None) -> int:
                 })
             times = times[: len(predictions)]
             rows, conflicts = label_rows(clip, times, predictions, counts,
-                                         label_rev=label_rev, prompt_variant="none")
+                                         label_rev=label_rev, prompt_variant="none",
+                                         fps_sampled=args.fps)
             for row in rows:
                 handle.write(json.dumps(row) + "\n")
             handle.flush()
