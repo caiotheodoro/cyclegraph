@@ -49,6 +49,11 @@ records are written for the pilot and every one of them says so: `FrameSignal` a
 | Expert anchor | **None, and none expected.** `docs/DECISIONS.md` D009 |
 | Reviews | Every wave ends with a fresh-context review; findings land as a DECISIONS entry. W3's stalled twice before returning a report; what worked was a narrow scope and a hard tool-call budget (D030). The 2026-09-06 review returned 14 findings, all closed (D052–D055) — including a gate that could not fail, a hypothesis confirmed by data that could not bear on it, and a debounce whose output depended on where the unreadable frames fell |
 
+**`docs/BLOCKED.md` is the resource ledger**: what is stopped, by money or by a human step or
+permanently, with every cost derived from a rate this project measured. Read it before costing
+anything. Its first line is the one most easily missed — the Ego4D negative control is blocked on
+a licence acceptance, not a budget, and `docs/WAVES.md` puts it before H3 in sequence.
+
 ## The next three things
 
 1. **Finish the speed path's first real run.** EgoHOS is adopted (D047) and its boxes are the
