@@ -25,6 +25,9 @@ sys.path.insert(0, str(ROOT / "src"))
 from cyclegraph.corpus.manifest import MetadataRow, clip_refs  # noqa: E402
 from cyclegraph.corpus.sampling import sample_times  # noqa: E402
 
+sys.path.insert(0, str(ROOT / "scripts"))
+from run_labeller import rate_of as _rate_of  # noqa: E402
+
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -32,6 +35,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--labels", default="results/pilot/labels.jsonl")
     parser.add_argument("--corpus-rev",
                         default="3e5f87c88c54ce8343865d8e2a8c171f18385a05")
+    parser.add_argument("--fps", type=float, default=None,
+                        help="analysis rate the file was written at. Default: inferred from "
+                             "the instants. Expectations were computed at 4 Hz regardless, so "
+                             "this could not verify an 8 Hz file at all (D070).")
     parser.add_argument("--expect-corpus-rev", action="store_true", default=None,
                         help="require every row to carry corpus_rev. Default: required for a "
                              "labels file, not for detections, which by docs/DECISIONS.md "
@@ -49,7 +56,15 @@ def main(argv: list[str] | None = None) -> int:
     rows = [MetadataRow(**json.loads(line))
             for line in (ROOT / args.manifest).read_text().splitlines() if line.strip()]
     refs = clip_refs(rows, corpus_rev=args.corpus_rev)
-    expected = {c.clip_id: len(sample_times(c.duration_s)) for c in refs}
+    # Inferred rather than assumed. `run_labeller.rate_of` derives it from instant spacing,
+    # which every row carries; hard-coding 4 Hz meant an 8 Hz file's every clip read as short.
+    rate = args.fps if args.fps is not None else _rate_of(labels)
+    if rate is None:
+        print(f"REFUSING: cannot determine the analysis rate of {labels}; pass --fps.",
+              file=sys.stderr)
+        return 2
+    print(f"analysis rate: {rate} Hz")
+    expected = {c.clip_id: len(sample_times(c.duration_s, fps_sampled=rate)) for c in refs}
 
     counted: Counter[str] = Counter()
     revisions: set[str] = set()
