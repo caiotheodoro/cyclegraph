@@ -111,15 +111,34 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  bout boundaries written to {args.out_dir}/bout_boundaries.jsonl (D042); "
           f"docs/BENCHMARK.md publishes them beside the segment count")
     print(f"pilot gates (values stay in {args.out_dir}, D018):")
+    h2a_holds = bool(agreements) and (sum(agreements) / len(agreements)) <= H2A_RELATIVE_DIFFERENCE
     if agreements:
-        mean_rel = sum(agreements) / len(agreements)
-        print(f"  {'PASS' if mean_rel <= H2A_RELATIVE_DIFFERENCE else 'FAIL'}  "
+        print(f"  {'PASS' if h2a_holds else 'FAIL'}  "
               f"H2a: spectral and transition-counting agree")
     else:
         print("  FAIL  H2a: no clip resolved on both paths")
     fraction = resolvable_fraction(spectral_all)
-    print(f"  {'PASS' if fraction >= H2B_RESOLVABLE_FRACTION else 'FAIL'}  "
+    h2b_holds = fraction >= H2B_RESOLVABLE_FRACTION
+    print(f"  {'PASS' if h2b_holds else 'FAIL'}  "
           f"H2b: resolvable fraction clears the pre-registered bound")
+
+    # The card reads a verdict per claim from `results/`; it does not parse stdout, and a claim
+    # with no file is UNTESTED -- which is what H2a and H2b were reporting as, long after they
+    # had been measured, because the gates printed and persisted nothing
+    # (`docs/DECISIONS.md` D062). H2 is the conjunction: it is recoverable only if both halves
+    # hold, and H2c is written by `scripts/score_hal.py` from the records it reads.
+    def _verdict(name: str, holds: bool, note: str) -> None:
+        (out_dir / f"{name}.json").write_text(json.dumps({
+            "claim": name, "status": "HOLDS" if holds else "FAILED",
+            "corpus_rev": args.corpus_rev, "note": note,
+        }, indent=2) + "\n")
+
+    _verdict("h2a", h2a_holds,
+             "mean relative difference between the spectral and transition-counting "
+             "frequencies, over clips both paths resolved")
+    _verdict("h2b", h2b_holds,
+             "fraction of clips carrying a resolvable dominant cycle, against the "
+             "length-dependent floor D034 derived")
     below = sum(1 for e in spectral_all if e.hz is not None and e.hz < 0.05)
     resolved = sum(1 for e in spectral_all if e.hz is not None)
     if resolved:
