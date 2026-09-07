@@ -32,6 +32,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--labels", default="results/pilot/labels.jsonl")
     parser.add_argument("--corpus-rev",
                         default="3e5f87c88c54ce8343865d8e2a8c171f18385a05")
+    parser.add_argument("--expect-corpus-rev", action="store_true", default=None,
+                        help="require every row to carry corpus_rev. Default: required for a "
+                             "labels file, not for detections, which by docs/DECISIONS.md "
+                             "D058 carry none and never will. A blanket requirement failed a "
+                             "complete and correct artifact (D065).")
+    parser.add_argument("--no-expect-corpus-rev", dest="expect_corpus_rev",
+                        action="store_false")
     args = parser.parse_args(argv)
 
     labels = ROOT / args.labels
@@ -73,6 +80,12 @@ def main(argv: list[str] | None = None) -> int:
     else:
         print(f"corpus revisions present: {len(revisions)}")
 
+    # Detections are the artifact D058 records as carrying no revision; a labels file that
+    # lost its provenance still has to fail. Default from the filename, override explicitly.
+    expect_rev = (args.expect_corpus_rev if args.expect_corpus_rev is not None
+                  else "detection" not in Path(args.labels).name)
+    if without_rev and not expect_rev:
+        print("  (no corpus_rev expected on this artifact; D058)")
     ok = True
     for name, group in (("absent", missing), ("short", short), ("over-long", over),
                         ("not in the manifest", unknown)):
@@ -84,7 +97,7 @@ def main(argv: list[str] | None = None) -> int:
     if len(revisions) > 1:
         ok = False
         print("  FAIL  rows from more than one corpus revision; they are never pooled")
-    elif without_rev:
+    elif without_rev and expect_rev:
         # D058 made the printed line honest and left the verdict where it was: a file whose
         # rows carry no `corpus_rev` gave an empty set, `len(...) > 1` was false, and the run
         # passed having checked nothing. An unverifiable provenance is not a verified one.

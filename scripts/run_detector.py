@@ -278,14 +278,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     out = ROOT / args.out
     out.parent.mkdir(parents=True, exist_ok=True)
     have = rows_per_clip(out)
-    # From the **whole** manifest, not this invocation's slice. Sharded onto one `--out`, a
-    # clip completed by another shard has no entry here, lands in `partial`, and is deleted.
-    # `run_labeller.py` builds it from every clip for exactly this reason; D049 said a named
-    # mechanism speaks to every place it lives and this half was not carried across (D064).
-    every = list(iter_clips(ROOT / args.manifest, args.corpus_rev))
-    expected = {c.clip_id: len(sample_times(c.duration_s)) for c in every}
+    expected = {c.clip_id: len(sample_times(c.duration_s)) for c in clips}
+    # A clip this invocation knows nothing about is left alone, not deleted. `expected.get(cid)`
+    # returns None for a clip another shard wrote into a shared `--out`, so it never equalled
+    # its row count, landed in `partial`, and had its rows removed. Reading the manifest twice
+    # -- which is what D064 first did here -- could not fix that, because both reads are the
+    # same shard file; the hazard is the *unknown* clip, not the manifest (D065).
     complete = {cid for cid, n in have.items() if n == expected.get(cid)}
-    partial = set(have) - complete
+    partial = {cid for cid in have if cid in expected and cid not in complete}
     if partial:
         kept = drop_partial_clips(out, partial)
         print(f"dropped {len(partial)} partly-written clips, {kept} rows kept", flush=True)

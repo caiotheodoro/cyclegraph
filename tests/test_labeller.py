@@ -185,7 +185,7 @@ def test_the_rate_is_derived_from_the_instants_not_from_a_field(tmp_path: Path) 
 
 
 def test_a_run_at_a_different_rate_refuses_rather_than_deleting_the_file(
-        tmp_path: Path) -> None:
+        tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     """Resume compares row counts against a plan computed at --fps. Point --fps 8 at 4 Hz
     labels and every clip is short, drop_partial_clips keeps nothing, and the file is gone."""
     import run_labeller as rl
@@ -206,4 +206,8 @@ def test_a_run_at_a_different_rate_refuses_rather_than_deleting_the_file(
                     "--hand-probe", "../vernier/data/rung1_probe.joblib",
                     "--out", str(out), "--fps", "8", "--device", "cpu"])
     assert code == 2
+    # `main` also returns 2 for a missing probe, and `--hand-probe` defaults outside this
+    # repository -- so on a checkout without the sibling this test passed with the guard
+    # deleted. Assert the refusal actually happened (D065).
+    assert "holds labels at 4.0 Hz" in capsys.readouterr().err
     assert len(out.read_text().splitlines()) == 8   # untouched

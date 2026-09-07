@@ -66,6 +66,23 @@ def box_is_contradicted(label: FrameLabel) -> bool:
     return label.hands_visible is None or label.hands_visible == 0
 
 
+def contradiction_reason(label: FrameLabel) -> str | None:
+    """Why a box on this frame is dropped, or None if it is kept.
+
+    Two causes, and `docs/BENCHMARK.md` gives them separate rows so a reader need not guess:
+    the labeller saw no hand, or the labeller could not read the frame at all. `resolve_conflicts`
+    counts them apart and the speed path's reason string collapsed them, attributing a statement
+    to the labeller it never made on 8,750 of the pilot's samples (`docs/DECISIONS.md` D065).
+    """
+    if label.hands_visible is None:
+        return ("the detector's box was dropped: the labeller could not read this frame, so "
+                "there is no hand count to corroborate it (D022)")
+    if label.hands_visible == 0:
+        return ("the detector's box was dropped: the labeller reports no visible hand on this "
+                "frame (D022)")
+    return None
+
+
 def resolve_conflicts(samples: Sequence[FrameSample]) -> tuple[list[FrameSample], SignalConflicts]:
     """Drop detector boxes the labeller contradicts, and count them. D022."""
     out: list[FrameSample] = []

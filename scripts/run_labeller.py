@@ -34,6 +34,7 @@ import json
 import os
 import sys
 import time
+from collections import Counter
 from pathlib import Path
 from typing import Any, Iterator, Sequence
 
@@ -186,38 +187,42 @@ def iter_clips(manifest: Path, corpus_rev: str) -> Iterator[ClipRef]:
 
 
 def rate_of(path: Path) -> float | None:
-    """The analysis rate the rows in a label file were written at, or None if the file is empty.
+    """The analysis rate the rows in a label file were written at, or None if undecidable.
 
-    Resume compares row counts against a sample plan computed at `--fps`. Point `--fps 8` at a
-    file of 4 Hz labels and every clip looks short, `drop_partial_clips` keeps nothing, and the
-    labels are gone -- 462,437 rows that cost GPU time to make (`docs/DECISIONS.md` D064).
+    Resume compares row counts against a plan computed at `--fps`. Point `--fps 8` at 4 Hz
+    labels and every clip looks short, `drop_partial_clips` keeps nothing, and the labels are
+    gone (`docs/DECISIONS.md` D064).
 
-    **Derived from `t_s`, not read from `fps_sampled`.** The first version of this guard read
-    the field, which was added in the same change that created the hazard -- so every label
-    file written before it returned None, the guard did not fire, and the file was deleted
-    anyway. Tested on a copy, which is the only reason that is a paragraph and not an incident.
-    Instant spacing is in every row this project has ever written.
+    **The modal gap over the first clip's instants**, not the first two. Two instants is a thin
+    basis and failed three ways: a first clip truncated to one row gave None, so the guard did
+    not fire on exactly the file `drop_partial_clips` exists for; a gap at the second instant
+    inferred double the rate and refused a correct run; and rows out of `t_s` order inferred
+    nonsense. The mode survives all three, because a gap or a swap is a minority of the
+    spacings and the real step is the majority (D065).
     """
     if not path.exists():
         return None
     first_clip: str | None = None
-    seen: list[float] = []
+    instants: list[float] = []
     for line in path.read_text().splitlines():
         if not line.strip():
             continue
         row = json.loads(line)
+        clip = str(row["clip_id"])
         if first_clip is None:
-            first_clip = str(row["clip_id"])
-        if str(row["clip_id"]) != first_clip:
+            first_clip = clip
+        if clip != first_clip:
             break
-        t = float(row["t_s"])
-        if t not in seen:
-            seen.append(t)
-        if len(seen) >= 2:
-            break
-    if len(seen) < 2:
+        instants.append(float(row["t_s"]))
+    if len(instants) < 2:
         return None
-    step = abs(seen[1] - seen[0])
+    ordered = sorted(set(instants))
+    if len(ordered) < 2:
+        return None
+    gaps = [round(b - a, 6) for a, b in zip(ordered, ordered[1:], strict=False) if b > a]
+    if not gaps:
+        return None
+    step = Counter(gaps).most_common(1)[0][0]
     return None if step <= 0 else round(1.0 / step, 6)
 
 
@@ -284,17 +289,28 @@ def main(argv: list[str] | None = None) -> int:
     out = ROOT / args.out
     out.parent.mkdir(parents=True, exist_ok=True)
     existing_rate = rate_of(out)
+    have = rows_per_clip(out)
+    if have and existing_rate is None:
+        # Non-empty and undecidable -- a first clip truncated to one row, say. That is exactly
+        # the state `drop_partial_clips` exists for, and it is the state where guessing the
+        # rate wrong costs the whole file. Refuse rather than assume (D065).
+        print(f"REFUSING: {out} holds rows but its analysis rate cannot be determined from "
+              f"them. Resuming could treat every clip as partial and delete the file. Move it "
+              f"aside or write to a different --out.", file=sys.stderr)
+        return 2
     if existing_rate is not None and existing_rate != args.fps:
         print(f"REFUSING: {out} holds labels at {existing_rate} Hz and --fps is {args.fps}. "
               f"Resuming would treat every clip as partial and delete the file. Write the new "
               f"rate to its own --out.", file=sys.stderr)
         return 2
-    have = rows_per_clip(out)
     every = list(iter_clips(ROOT / args.manifest, args.corpus_rev))
     expected = {c.clip_id: len(sample_times(c.duration_s, fps_sampled=args.fps))
                 for c in every}
     complete = {cid for cid, n in have.items() if n == expected.get(cid)}
-    partial = set(have) - complete
+    # Only clips this manifest names. A clip another shard wrote into a shared `--out` is not
+    # this run's to judge, and deleting it is how a shared output file loses finished work
+    # (D065). `every` already covers the whole manifest, so this is about foreign clips.
+    partial = {cid for cid in have if cid in expected and cid not in complete}
     if partial:
         kept = drop_partial_clips(out, partial)
         print(f"dropped {len(partial)} partly-written clips, {kept} rows kept", flush=True)

@@ -56,6 +56,7 @@ from cyclegraph.signal.flow_farneback import FarnebackFlow  # noqa: E402
 from cyclegraph.signal.frames import (  # noqa: E402
     FrameSample,
     box_is_contradicted,
+    contradiction_reason,
     build_frame_signal,
     resolve_conflicts,
 )
@@ -94,6 +95,24 @@ def _scaled(box: HandBox, sx: float, sy: float) -> HandBox:
                    height=box.height * sy, score=box.score)
 
 
+def _refuse_to_overwrite(out_dir: Path) -> str | None:
+    """Why writing placeholders here would destroy something, or None if it would not.
+
+    `--record-not-attempted` opens both outputs in mode `"w"`. Before D064 it then died on the
+    validator, leaving two empty files and an obvious incident. D064 fixed the record and left
+    the truncation, so at the default `--out-dir` the flag now *succeeds* at replacing the
+    pilot's measured records with placeholders -- and `score_hal` then reads 97 records with no
+    boxes and publishes H2c as **FAILED**: a pre-registered hypothesis falsified by a stage
+    that never ran. A silent success is worse than the crash it replaced (D065).
+    """
+    for name in ("frame_signal.jsonl", "hand_speed.jsonl"):
+        path = out_dir / name
+        if path.exists() and path.stat().st_size > 0:
+            return (f"{path} already holds records. This flag writes placeholders that say no "
+                    f"stage ran, and would overwrite them. Use a different --out-dir.")
+    return None
+
+
 def _record_not_attempted(args: argparse.Namespace) -> int:
     """Write what is true of a pilot whose signal stage has not run.
 
@@ -110,6 +129,10 @@ def _record_not_attempted(args: argparse.Namespace) -> int:
     refs = clip_refs(rows, corpus_rev=args.corpus_rev)
     out_dir = ROOT / args.out_dir
     out_dir.mkdir(parents=True, exist_ok=True)
+    refusal = _refuse_to_overwrite(out_dir)
+    if refusal is not None:
+        print(f"REFUSING: {refusal}", file=sys.stderr)
+        return 2
 
     written = 0
     with (out_dir / "frame_signal.jsonl").open("w") as signals, \
@@ -285,13 +308,11 @@ def main(argv: list[str] | None = None) -> int:
             # boxes, so a box the contract had discarded was counted in `n_with_box` and an RMS
             # was taken inside it (D056). The raw width stays on `frame_sample` so the conflict
             # is still counted where it is reported.
-            contradicted = box_is_contradicted(label)
-            for_speed = [] if contradicted else boxes
+            dropped_because = contradiction_reason(label)
+            for_speed = [] if dropped_because is not None else boxes
             return frame_sample, speed_sample(
                 field, for_speed, t_s=t_s, dt_s=dt_s, flow_reason=reason,
-                no_box_reason=("the detector's box was dropped: the labeller reports no "
-                               "visible hand on this frame (D022)") if contradicted and boxes
-                else None)
+                no_box_reason=dropped_because if boxes else None)
 
         built_samples: list[FrameSample | None] = [None] * len(times)
         built_speeds: list[SpeedSample | None] = [None] * len(times)

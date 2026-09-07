@@ -6,6 +6,11 @@ tell a detector miss from a labeller miss. `scripts/build_signal.py` counts it a
 it, per invocation; nothing writes it down, and sharding the pilot across processes gives each
 one a fraction of it. So the number `docs/BENCHMARK.md` promises did not exist anywhere.
 
+**`dropped_rate_of_samples` is the no-hand drop alone**, which is BENCHMARK's row.
+`SignalConflicts.total`, which `build_signal` prints, adds the unreadable-frame drop to it, so
+the two are deliberately different numbers and this file is not a reproduction of that one.
+Both components are in the payload; neither is inferred from the other (D065).
+
 This recomputes it from the two inputs, which is cheap and needs no decode: the join is on
 `(clip_id, t_s)` and the rule is one boolean. Values stay in `results/` (D018).
 """

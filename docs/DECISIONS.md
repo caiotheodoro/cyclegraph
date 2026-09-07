@@ -2254,3 +2254,57 @@ over every series up to length 9), the unit arithmetic end to end, D056's fix vi
 data, and D059/D061/D062 against their artifacts.
 
 **Reverses if:** nothing. This is a defect record.
+
+## D065 — Third review: one of D064's fixes was worse than the defect it replaced
+
+2026-09-07. A third fresh-context review, scoped to D064's ~500 lines and pointed at the fixes.
+Eight findings. Three of the ten claimed fixes were wrong or incomplete, and **one made the
+situation worse**. The empirical result across three rounds is now unambiguous: in this
+codebase, a fix is where the next defect is.
+
+**The one that got worse.** D064 diagnosed `--record-not-attempted` as *"deleted the pilot's 194
+records **and wrote nothing in their place**"* and fixed only the second clause. The truncation
+was untouched. So at its default `--out-dir` the flag went from crashing on record one — leaving
+two empty files and an obvious incident — to **succeeding**: it now replaces the pilot's measured
+records with placeholders, and the next `score_hal` reads 97 records with no boxes and publishes
+H2c as **FAILED**. A pre-registered hypothesis falsified by a stage that never ran, written to
+the file the card reads. A silent success is worse than the crash it replaced, and D064's own
+wording contained the clue it did not follow.
+
+Fixed twice over: the writer refuses a non-empty target, and `score_hal` treats an all-
+`no_detector` speeds file as UNTESTED, because a stage that did not run cannot falsify anything.
+
+**The one that did nothing.** D064 claimed to rebuild the detector's `expected` set "from the
+whole manifest, not this invocation's slice". Both lines are `list(iter_clips(ROOT /
+args.manifest, args.corpus_rev))` — the same call with the same arguments. The manifest was
+parsed twice and nothing changed. `run_detector` has no shard flag, so a "slice" does not exist;
+sharding is by passing a different `--manifest`. **The real hazard was the clip the manifest does
+not name**: `expected.get(cid)` returns None for a clip another shard wrote into a shared
+`--out`, so it never matched, landed in `partial`, and had its rows deleted. That is now fixed —
+in both scripts, because `run_labeller` had it too.
+
+**The one that recreated the error it was fixing.** The new `no_box_reason` used
+`box_is_contradicted`, which is true for `hands_visible is None` as well as `0`. So a frame the
+labeller could not read got a reason claiming the labeller *reported no hand* — 8,750 of the
+pilot's samples, 43% of the drops. `resolve_conflicts` counts those two apart twelve lines below
+the function that conflates them, and `docs/BENCHMARK.md` gives them separate rows for exactly
+this reason.
+
+**A false refusal is a defect too.** D064 made `verify_labels` fail when no row carries
+`corpus_rev` — and detections, by D058's explicit decision, carry none and never will. A
+complete, correct artifact could no longer pass. The requirement now keys on what the file is.
+
+**Also fixed:** `score_hal` compared record *counts* to manifest counts, so a file missing one
+clip and carrying one foreign clip read as complete; `rate_of` inferred from the first two
+instants and failed three ways (a single-row first clip returned None and left the original
+hazard open, a gap doubled the inferred rate, disorder gave nonsense) and now takes the modal
+spacing, refusing outright when the rate is undecidable; the new refusal test asserted only an
+exit code that `main` also returns for a missing probe; and `count_conflicts`'s docstring claimed
+equivalence with a number it had deliberately narrowed.
+
+**What three reviews have established about this project's failure modes**, all now in HANDOFF:
+a gate that cannot fail; a check over absent data; a rule fixed at one of its consumers; a claim
+the artifact does not support; and — the one only a second look at a fix can find — **a repair
+that reads its own diagnosis too narrowly**.
+
+**Reverses if:** nothing. This is a defect record.
