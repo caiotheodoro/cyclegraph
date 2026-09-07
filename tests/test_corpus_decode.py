@@ -104,3 +104,19 @@ def test_the_thread_cap_is_an_input_option_and_absent_unless_asked() -> None:
 def test_a_non_positive_thread_cap_is_refused() -> None:
     with pytest.raises(ValueError):
         ffmpeg_clip_argv(URL, _clip(), fps_sampled=4.0, width=480, height=270, threads=0)
+
+
+def test_a_read_deadline_is_set_on_the_input_and_can_be_disabled() -> None:
+    """D063. Without it a stalled read has no deadline anywhere: the reader blocks in
+    `stdout.read()`, and `decode_gray_frames`'s own `timeout_s` guards only `communicate()`,
+    which a hung ffmpeg never reaches. An 8 Hz run sat on a CDN read for eleven hours and
+    looked exactly like slow work."""
+    argv = ffmpeg_clip_argv(URL, _clip(), fps_sampled=4.0, width=480, height=270)
+    assert argv[argv.index("-rw_timeout") + 1] == str(120 * 1_000_000)  # microseconds
+    assert argv.index("-rw_timeout") < argv.index("-i")  # bounds the read, not the decode
+
+    tighter = ffmpeg_clip_argv(URL, _clip(), fps_sampled=4.0, width=480, height=270,
+                               rw_timeout_s=5.0)
+    assert tighter[tighter.index("-rw_timeout") + 1] == str(5_000_000)
+    assert "-rw_timeout" not in ffmpeg_clip_argv(URL, _clip(), fps_sampled=4.0,
+                                                 width=480, height=270, rw_timeout_s=0)

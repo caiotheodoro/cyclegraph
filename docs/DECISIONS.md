@@ -2166,3 +2166,36 @@ H1b is still running and H1a is unfunded; everything else UNTESTED. Verdict `NOT
 nonzero, which is the stage working.
 
 **Reverses if:** nothing. This is a defect record.
+
+## D063 — A stalled decode had no deadline anywhere, and looked exactly like slow work
+
+2026-09-07.
+
+The 8 Hz labelling run for H1b stopped at 50 of 97 clips and **sat for eleven hours**. The
+Python process was at 0.0% CPU with an ffmpeg child holding an open HuggingFace CDN read. No
+error, no exit, no log line. Nothing distinguished it from a long clip.
+
+**There was no read deadline in the pipeline at all.** `decode_gray_frames` blocks in
+`process.stdout.read(frame_bytes)`, and the `timeout_s` it carries applies to
+`process.communicate()` in the `finally` block — reached only *after* stdout is exhausted, which
+a hung ffmpeg never does. The guard that existed protected the path that could not hang.
+
+**The expiring signed URL is a red herring**, and worth writing down so the next reader does not
+chase it: the CDN URL expired at 06:37 UTC and the stall began around 01:37, five hours earlier.
+The URL expiry is a consequence of the hang, not its cause.
+
+**Fixed with ffmpeg's own `-rw_timeout`, on the input**, so a stalled read aborts and ffmpeg
+exits non-zero — which `decode_gray_frames` already turns into a `RuntimeError` and which
+D060's per-clip wrapper already catches. The fix is one argument because the machinery to
+handle a failed decode was built the day before; what was missing was any way for the failure
+to *occur*.
+
+**This is the fourth shape of the same defect this project has produced**: a check that cannot
+fail (D052's conflict gate), a check over an empty denominator (D052's null gate, D053's H4), a
+check reading a field that does not exist (D058), and now a check on a path that cannot be
+reached. In every case the code looked like it was checking something.
+
+**It cost eleven hours of wall-clock and nothing else** — the labeller's resume (D043) keeps the
+50 finished clips, so the re-run starts at 51.
+
+**Reverses if:** nothing. This is a defect record.
