@@ -67,6 +67,33 @@ def main(argv: list[str] | None = None) -> int:
             for line in (ROOT / args.manifest).read_text().splitlines() if line.strip()]
     refs = clip_refs(rows, corpus_rev=args.corpus_rev)
 
+    # H1b is pre-registered "on the pilot factory", so the statistic is not computed from part
+    # of it. A clip *present* and scored `no_labels` is a legitimate exclusion; a clip whose
+    # rows are simply absent means the run has not finished, and averaging over what happens to
+    # be there is the partial-denominator mistake D064 and D065 removed from `score_hal`. Put
+    # in before H1b's number existed, so it cannot have been shaped by the answer (D067).
+    for label, path, rate in (("4 Hz", ROOT / args.labels_4hz, 4.0),
+                              ("8 Hz", ROOT / args.labels_8hz, 8.0)):
+        counts: dict[str, int] = {}
+        for line in path.read_text().splitlines():
+            if line.strip():
+                cid = json.loads(line)["clip_id"]
+                counts[cid] = counts.get(cid, 0) + 1
+        short = [c.clip_id for c in refs
+                 if counts.get(c.clip_id, 0) != len(sample_times(c.duration_s,
+                                                                 fps_sampled=rate))]
+        if short:
+            (ROOT / args.out).write_text(json.dumps({
+                "claim": "H1b", "status": "UNTESTED",
+                "reason": (f"the {label} labels cover {len(refs) - len(short)} of {len(refs)} "
+                           f"clips; H1b is pre-registered on the pilot and is not computed "
+                           f"from part of it"),
+            }, indent=2) + "\n")
+            print(f"  NOT EVALUABLE  the {label} labels cover "
+                  f"{len(refs) - len(short)} of {len(refs)} clips; H1b is pre-registered on "
+                  f"the pilot and is not computed from part of it")
+            return 1
+
     four = _estimates(ROOT / args.labels_4hz, refs, 4.0)
     eight = _estimates(ROOT / args.labels_8hz, refs, 8.0)
     result = agreement(four, eight, threshold=H1B_SAMPLING_RATE_MAD)
