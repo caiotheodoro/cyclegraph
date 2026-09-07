@@ -1,6 +1,6 @@
 {
   "verdict": "NOT_VERIFIED",
-  "generated": "2026-09-07T04:44:18.695339Z",
+  "generated": "2026-09-07T21:02:37.930898Z",
   "corpus_rev": "3e5f87c88c54ce8343865d8e2a8c171f18385a05",
   "arm": null,
   "claims": [
@@ -23,7 +23,7 @@
     {
       "id": "H1b",
       "statement": "duty cycle agrees across sampling rates",
-      "status": "UNTESTED",
+      "status": "HOLDS",
       "source": "results/pilot/h1b.json",
       "interval": null,
       "pilot_gate": true

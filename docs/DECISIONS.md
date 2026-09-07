@@ -2360,3 +2360,37 @@ denser in risk than the code it repairs. That is the number worth carrying forwa
 total.
 
 **Reverses if:** nothing. This is a defect record.
+
+## D069 — H1b holds on the pilot; H1 stays open because its other half is unfunded
+
+2026-09-07. The verdicts are the publishable part; the values stay in `results/pilot/` (D018).
+
+**H1b HOLDS.** Duty cycle at 4 Hz agrees with duty cycle at 8 Hz within the pre-registered
+0.02 mean absolute difference, over the 93 of 97 pilot clips both rates scored `ok`. The other
+four are excluded by `docs/RUBRIC.md`'s 10% unreadable ceiling at one rate or the other — a
+legitimate exclusion, and distinct from a clip whose rows are absent, which is what the
+completeness guard refuses to average over.
+
+**This is the half of H1 that needs no second labeller**, and that is exactly what makes it
+worth having: the same probe scores both rates, so the comparison isolates the sampling rate
+from the label source. Duty cycle is not an artefact of sampling at 4 Hz rather than 8.
+
+**H1 remains UNTESTED, not HOLDS.** H1a — agreement across *label sources* — needs a judge, and
+the budget for one is $5 against a design that needs more. A conjunction with an unmeasured part
+is unevaluated, never satisfied. The card says so.
+
+**What H1b's passing does not license.** It says the rate does not move the number. It says
+nothing about whether the number is right: the probe's own fidelity is 0.6933 against a
+pre-registered ≥0.90 (`docs/METHOD.md` E3, from the sibling's published negative result), and
+H1a exists precisely because a labeller can be stable and wrong. A duty cycle that is stable
+across rates and biased at both is exactly what this pilot cannot distinguish, and H1a is the
+test that would.
+
+**Two verdict rules were corrected while this number did not yet exist**, which is the only
+window in which either could be corrected honestly: the conjunction now lets a falsified part
+falsify its parent (D067), and the H1b statistic now covers the pilot or reports nothing
+(D068's completeness guard). The second refused a verdict from 66 of 97 clips on its first real
+use, and the diagnosis that followed is D068.
+
+**Reverses if:** the labels are withdrawn on the D040 standard, or a judge lands and H1a
+falsifies H1 — in which case H1b's holding is a fact about sampling that survives H1's failure.
