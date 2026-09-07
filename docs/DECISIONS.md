@@ -2100,3 +2100,38 @@ pre-registered "on the pilot", and a gate computed over 94% of it is the partial
 mistake D052 corrected in a different file. The six were re-run before any verdict was recorded.
 
 **Reverses if:** nothing. This is a defect record.
+
+## D061 — W3's exit condition is met: H2c passes on the pilot, and the aggregate is suppressed
+
+2026-09-06. `docs/WAVES.md`'s W3 gate, verbatim: *"Pilot factory manifest reconciles against
+published counts; decode failure rate <1%; `FrameSignal` and `HandSpeedEstimate` written for the
+pilot; A14 synthetics pass"*. All four hold. The verdicts are the publishable part; the values
+stay in `results/pilot/` (D018).
+
+**H2c PASSES, both halves.** Detector hand-box coverage clears the pre-registered 60% floor and
+the flow-null rate is within the 10% ceiling, computed over all 97 clips from one file rather
+than per shard (D052). Every clip with a speed record produced a HAL, and at least one clip
+scored on the speed path — the first exposure values this project has computed from a
+measurement rather than a placeholder. All 194 records validate against contracts v1.5, and
+carry the provenance the decisions require: `mask_source: egohos` (D047) and
+`flow_method: farneback-cv2` (D059).
+
+**The corpus aggregate is SUPPRESSED, and that is the correct outcome, not a failure.** D019's
+k-anonymity floor needs 5 factories and 50 workers; the pilot is one factory by D012. So **H3,
+H4 and H5 are not answerable here at all** — not "failed", not "untested pending data", but
+structurally outside what a single-site pilot may publish. The stratum prints as suppressed
+rather than being omitted, which is the rule.
+
+**What the pass does and does not license.** It says the detector finds hands often enough, and
+the flow estimator returns a field often enough, for the speed path to be computed on this
+factory. It says nothing about whether the speed is *right*: D050 measures the path collapsing
+above ~900 mm/s against an equation fitted to 1288 mm/s, D047 records that the box-convention
+offset against the pre-registered detector can never be measured, and `docs/COVERAGE.md` still
+names the absent ergonomist as the largest gap. A gate that tests coverage has tested coverage.
+
+**Six clips had to be re-run** after D060's uncaught exceptions, and the per-clip flush added in
+the same hour is why they survived the instance's shutdown timer firing mid-re-run. The gates
+were not computed until all 97 were present.
+
+**Reverses if:** the labels are withdrawn again, on the standard D040 set, or the detector is
+replaced — both would require the coverage number to be re-measured rather than inherited.
