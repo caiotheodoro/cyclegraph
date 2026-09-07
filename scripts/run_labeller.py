@@ -219,11 +219,19 @@ def rate_of(path: Path) -> float | None:
     ordered = sorted(set(instants))
     if len(ordered) < 2:
         return None
-    gaps = [round(b - a, 6) for a, b in zip(ordered, ordered[1:], strict=False) if b > a]
+    gaps = [b - a for a, b in zip(ordered, ordered[1:], strict=False) if b > a]
     if not gaps:
         return None
-    step = Counter(gaps).most_common(1)[0][0]
-    return None if step <= 0 else round(1.0 / step, 6)
+    # Group by a rounded key but return the **raw** representative. Rounding the gap itself
+    # made `1/round(1/fps, 6)` disagree with `fps` wherever `1/fps` does not terminate in six
+    # decimals -- 6 Hz inferred as 5.999988, 3 Hz as 3.000003 -- so the guard refused a resume
+    # of a file the run itself had written. Exact at 4 and 8 Hz, which is the only reason it
+    # was not hit (`docs/DECISIONS.md` D066).
+    grouped: dict[float, list[float]] = {}
+    for gap in gaps:
+        grouped.setdefault(round(gap, 6), []).append(gap)
+    step = max(grouped.values(), key=len)[0]
+    return None if step <= 0 else 1.0 / step
 
 
 def rows_per_clip(path: Path) -> dict[str, int]:

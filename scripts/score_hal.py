@@ -108,9 +108,15 @@ def main(argv: list[str] | None = None) -> int:
     # for the clips one invocation happened to see; sharding the pilot across processes gives
     # each of those a partial denominator, and a gate computed on part of the pilot is not the
     # pre-registered gate. This one reads the whole file.
-    total_samples = sum(e.n_samples for e in speeds.values())
-    boxed = sum(e.n_with_box for e in speeds.values())
-    nulls = sum(e.n_flow_null for e in speeds.values())
+    # Only the clips this manifest names. The aggregate summed every record in the file while
+    # completeness became a subset test, so a speeds file holding foreign clips passed as
+    # complete *and* contributed those clips' samples to a gate pre-registered on this pilot
+    # (`docs/DECISIONS.md` D066).
+    wanted_ids = {c.clip_id for c in refs}
+    relevant = [e for cid, e in speeds.items() if cid in wanted_ids]
+    total_samples = sum(e.n_samples for e in relevant)
+    boxed = sum(e.n_with_box for e in relevant)
+    nulls = sum(e.n_flow_null for e in relevant)
     coverage = boxed / total_samples if total_samples else 0.0
     # A rate over no boxed samples is 0.0, which would print PASS on no data at all. An
     # unevaluable gate is not a satisfied one; it reports FAIL and says which it is.
@@ -134,15 +140,13 @@ def main(argv: list[str] | None = None) -> int:
     # A run over 91 of 97 clips wrote HOLDS with nothing to stop it; that the six missing were
     # noticed (D060) was operator discipline and not a check. The card reads this file, so an
     # incomplete run must say UNTESTED rather than a verdict it is not entitled to (D064).
-    wanted = {c.clip_id for c in refs}
-    # By clip id, not by count: a speeds file with a record for a clip outside the manifest and
-    # one manifest clip missing has the same length and would read as complete (D065).
-    complete = wanted <= set(speeds)
-    # And a stage that never ran cannot falsify a hypothesis. Every record being `no_detector`
-    # means no detector was involved at all -- the shape `--record-not-attempted` writes -- and
-    # H2c is then UNTESTED, not FAILED. Reading a coverage of 0.0 as a falsification would let
-    # a placeholder file publish a verdict against a pre-registered gate.
-    measured = any(e.status != "no_detector" for e in speeds.values())
+    complete = wanted_ids <= set(speeds)
+    # `all`, not `any`. A stage that never ran cannot falsify a hypothesis, and with `any` a
+    # single real record re-armed exactly that: pool one measured shard with a
+    # `--record-not-attempted` file and the placeholders' zero coverage drags the aggregate
+    # under the floor, publishing H2c FAILED from clips where no detector ran. That is D065's
+    # own opening paragraph surviving inside its fix (D066).
+    measured = bool(relevant) and all(e.status != "no_detector" for e in relevant)
     h2c_holds = bool(coverage >= COVERAGE_FLOOR and null_evaluable
                      and null_rate <= FLOW_NULL_CEILING)
     if not measured:
