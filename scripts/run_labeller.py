@@ -378,10 +378,28 @@ def main(argv: list[str] | None = None) -> int:
                     "planned": planned, "decoded": len(predictions),
                     "missing": planned - len(predictions), "duration_s": clip.duration_s,
                 })
-            times = times[: len(predictions)]
-            rows, conflicts = label_rows(clip, times, predictions, counts,
+            scored_times = times[: len(predictions)]
+            rows, conflicts = label_rows(clip, scored_times, predictions, counts,
                                          label_rev=label_rev, prompt_variant="none",
                                          fps_sampled=args.fps)
+            # An instant the stream does not reach is an **absence with a reason**, not a row
+            # that simply is not there. The sample plan is computed from the sidecar's
+            # `duration_s`, and the stream can be shorter -- measured: a nominally 1200.0 s clip
+            # whose last frame is at 1199.733 s, against an 8 Hz plan whose last instant is
+            # 1199.75 s. At 4 Hz the plan's quarter-second margin absorbs that; at 8 Hz it does
+            # not, and 31 pilot clips came up one row short.
+            #
+            # Dropping the row makes the clip look incomplete, which is indistinguishable from
+            # a decode that failed. Recording it says which happened (`docs/DECISIONS.md` D068).
+            for t_s in times[len(predictions):]:
+                rows.append({
+                    "clip_id": clip.clip_id, "corpus_rev": clip.corpus_rev,
+                    "t_s": t_s, "fps_sampled": args.fps, "label_source": "probe",
+                    "label_rev": label_rev, "prompt_variant": "none",
+                    "manipulation": None, "hands_visible": None,
+                    "unreadable_reason": ("the stream ends before this instant; the sidecar's "
+                                          "duration overstates it"),
+                })
             for row in rows:
                 handle.write(json.dumps(row) + "\n")
             handle.flush()
