@@ -2199,3 +2199,58 @@ reached. In every case the code looked like it was checking something.
 50 finished clips, so the re-run starts at 51.
 
 **Reverses if:** nothing. This is a defect record.
+
+## D064 — Second fresh-context review: the fixes needed fixing
+
+2026-09-07. A second review, from a context that had not seen the first round, given the diff
+since D052 and pointed specifically at **the fixes** rather than the original code. It returned
+twelve findings. Every one is real; all are addressed. The pattern is the point: a fix is new
+code, and this project's own defect classes reappeared inside the corrections for them.
+
+**Destructive, and live.** `--record-not-attempted` still wrote `flow_null_rate=0.0` with no
+boxes after D054 made that field null-when-nothing-was-boxed. The validator refused the first
+record — *after* the enclosing `with` had opened both output files in mode `"w"` and truncated
+them. At its default `--out-dir` the flag deleted the pilot's 194 records and wrote nothing.
+448 tests and `mypy --strict` were green because nothing exercised the flag.
+
+**The H4 guard was wrong in both directions.** D053 added `evaluable` to stop H4 being confirmed
+by a corpus with no within-factory information, and tested `between_factory > 0` — the
+*numerator*. H4 is a ratio, so what must exist is the denominator. A **measured** within-factory
+variance of zero still gave ratio infinity and **H4 HOLDS**, which is D053's own defect one term
+over; and a measured between-factory variance of zero — a clean falsification — reported NOT
+EVALUABLE. The test that should have caught it built a corpus with identically-valued workers
+and asserted H4 holds, encoding the defect.
+
+**A guard that could not fire.** The new `--fps` flag made resume compute its plan at the
+requested rate while `--out` still defaulted to the 4 Hz file, so `--fps 8` marked every clip
+partial and `drop_partial_clips` kept nothing. The first fix read the `fps_sampled` field —
+added in the same change that created the hazard, so absent from every label file written
+before it. **Tested on a copy, which is the only reason this is a paragraph and not an
+incident**: the copy went from 462,437 rows to 3,467. The rate is now derived from instant
+spacing, which every row has ever carried.
+
+**A verdict from a partial pilot.** `score_hal` wrote `h2c.json` as `HOLDS` over whatever speed
+records it was handed. The 91-of-97 run would have published a pre-registered gate from 94% of
+the pilot; that the six missing were noticed (D060) was operator discipline, not a check. It now
+compares against the manifest and writes `UNTESTED` when short.
+
+**And four more gates that could not fail**, in the same shapes this project keeps producing:
+`count_conflicts`'s only check summed three branches and compared them to their own total — an
+identity, in a file written to close exactly this class; two passes in the labeller spelled out
+`or not clips` and `total == 0 or`; and `verify_labels`'s revision check tripped on
+`len(revisions) > 1`, which an empty set never satisfies, so D058 made the printed line honest
+and left the verdict passing on nothing.
+
+**Also fixed:** the detector's `expected` set was built from one invocation's manifest slice
+rather than the whole manifest, so sharded onto a shared `--out` it would delete other shards'
+completed clips; `CONTRACTS.md` had no v1.5 changelog row and its header claimed a freeze date
+that v1.5 does not have; the validator forbade a transitions estimate's floor but not its peak
+ratio, though the contract forbids both; a `Counter` lookup meant a measured zero was absent
+from the conflicts artifact rather than recorded as zero; and a box dropped under D022 was
+reported as "no detected hand box", attributing a labeller disagreement to the detector.
+
+**What the review found clean, and checked rather than assumed:** the debounce fix (exhaustive
+over every series up to length 9), the unit arithmetic end to end, D056's fix visible in the
+data, and D059/D061/D062 against their artifacts.
+
+**Reverses if:** nothing. This is a defect record.

@@ -185,6 +185,42 @@ def iter_clips(manifest: Path, corpus_rev: str) -> Iterator[ClipRef]:
     yield from clip_refs(rows, corpus_rev=corpus_rev)
 
 
+def rate_of(path: Path) -> float | None:
+    """The analysis rate the rows in a label file were written at, or None if the file is empty.
+
+    Resume compares row counts against a sample plan computed at `--fps`. Point `--fps 8` at a
+    file of 4 Hz labels and every clip looks short, `drop_partial_clips` keeps nothing, and the
+    labels are gone -- 462,437 rows that cost GPU time to make (`docs/DECISIONS.md` D064).
+
+    **Derived from `t_s`, not read from `fps_sampled`.** The first version of this guard read
+    the field, which was added in the same change that created the hazard -- so every label
+    file written before it returned None, the guard did not fire, and the file was deleted
+    anyway. Tested on a copy, which is the only reason that is a paragraph and not an incident.
+    Instant spacing is in every row this project has ever written.
+    """
+    if not path.exists():
+        return None
+    first_clip: str | None = None
+    seen: list[float] = []
+    for line in path.read_text().splitlines():
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        if first_clip is None:
+            first_clip = str(row["clip_id"])
+        if str(row["clip_id"]) != first_clip:
+            break
+        t = float(row["t_s"])
+        if t not in seen:
+            seen.append(t)
+        if len(seen) >= 2:
+            break
+    if len(seen) < 2:
+        return None
+    step = abs(seen[1] - seen[0])
+    return None if step <= 0 else round(1.0 / step, 6)
+
+
 def rows_per_clip(path: Path) -> dict[str, int]:
     """How many rows each clip already has. Not a done-set: a worker killed mid-clip leaves a
     partial clip behind, and a done-set would call it finished and resume past a hole. One of
@@ -247,6 +283,12 @@ def main(argv: list[str] | None = None) -> int:
 
     out = ROOT / args.out
     out.parent.mkdir(parents=True, exist_ok=True)
+    existing_rate = rate_of(out)
+    if existing_rate is not None and existing_rate != args.fps:
+        print(f"REFUSING: {out} holds labels at {existing_rate} Hz and --fps is {args.fps}. "
+              f"Resuming would treat every clip as partial and delete the file. Write the new "
+              f"rate to its own --out.", file=sys.stderr)
+        return 2
     have = rows_per_clip(out)
     every = list(iter_clips(ROOT / args.manifest, args.corpus_rev))
     expected = {c.clip_id: len(sample_times(c.duration_s, fps_sampled=args.fps))
@@ -347,9 +389,15 @@ def main(argv: list[str] | None = None) -> int:
     # the same correction `scripts/score_hal.py` carries for H2c. `scripts/verify_labels.py`
     # reads the whole file against the whole manifest and is what E2 is judged on.
     print("  see scripts/verify_labels.py for the pilot-wide count; this gate is per-run")
-    print(f"  {'PASS' if total or not clips else 'FAIL'}  labels written for every clip")
-    print(f"  {'PASS' if total == 0 or conflicts_total / max(total, 1) < 0.10 else 'FAIL'}  "
-          f"the two heads contradict each other on under 10% of frames")
+    # Neither of these could fail on an empty run: `total or not clips` passes when there is
+    # nothing to do, and `total == 0 or ...` spells the pass-on-no-data out. Two lines above,
+    # the same shape was already converted to NOT EVALUABLE (D064).
+    if not clips:
+        print("  NOT EVALUABLE  this invocation had no clip to label")
+    else:
+        print(f"  {'PASS' if total else 'FAIL'}  labels written for every clip")
+        print(f"  {'PASS' if total and conflicts_total / total < 0.10 else 'FAIL'}  "
+              f"the two heads contradict each other on under 10% of frames")
     return 0
 
 

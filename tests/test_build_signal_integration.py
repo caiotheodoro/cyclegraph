@@ -275,3 +275,30 @@ def test_a_box_the_labeller_contradicts_is_dropped_from_the_speed_path_too(
         (out / "frame_signal.jsonl").read_text().splitlines()[0])
     assert sum(1 for w in signal.hand_box_width_px if w is not None) == pytest.approx(
         half, abs=1)
+
+
+def test_the_not_attempted_writer_still_produces_valid_records(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """`--record-not-attempted` writes the placeholder pair for every clip. It kept
+    `flow_null_rate=0.0` after D054 made that field null-when-nothing-was-boxed, so the
+    validator refused the first record -- *after* the enclosing `with` had truncated both
+    output files in mode "w". At the default `--out-dir` that deleted the pilot's 194 records
+    and wrote nothing (D064).
+
+    Nothing exercised this flag, which is why 448 tests and mypy --strict were both green."""
+    manifest, _, _ = _write_inputs(tmp_path)
+    out = tmp_path / "na"
+    assert build_signal.main([
+        "--manifest", str(manifest), "--detections", "/dev/null", "--labels", "/dev/null",
+        "--record-not-attempted", "--out-dir", str(out), "--corpus-rev", REV,
+    ]) == 0
+
+    signals = [FrameSignal.model_validate_json(line)
+               for line in (out / "frame_signal.jsonl").read_text().splitlines() if line.strip()]
+    speeds = [HandSpeedEstimate.model_validate_json(line)
+              for line in (out / "hand_speed.jsonl").read_text().splitlines() if line.strip()]
+    assert len(signals) == 1 and len(speeds) == 1
+    assert signals[0].status == "not_attempted" and signals[0].label_source is None
+    assert speeds[0].status == "no_detector"
+    assert speeds[0].n_with_box == 0
+    assert speeds[0].flow_null_rate is None   # not 0.0; nothing was boxed

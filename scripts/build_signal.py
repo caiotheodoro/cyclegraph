@@ -127,7 +127,11 @@ def _record_not_attempted(args: argparse.Namespace) -> int:
             speed = HandSpeedEstimate(
                 clip_id=clip.clip_id, corpus_rev=clip.corpus_rev, rms_speed_mm_s=None,
                 n_samples=planned, n_with_box=0, n_flow_null=0, coverage=0.0,
-                flow_null_rate=0.0, hand_breadth_mm=HAND_BREADTH_MM,
+                # Null, not 0.0: D054 made this null exactly when nothing was boxed, and this
+                # writer kept the zero. The validator then refused the first record -- after
+                # the `with` above had already truncated both output files -- so the flag
+                # deleted the pilot's records and wrote nothing in their place (D064).
+                flow_null_rate=None, hand_breadth_mm=HAND_BREADTH_MM,
                 median_box_width_px=None, mask_source=None, flow_method="none",
                 ego_motion="mask_complement_median", status="no_detector",
                 status_reason="no detector ran on this clip",
@@ -281,9 +285,13 @@ def main(argv: list[str] | None = None) -> int:
             # boxes, so a box the contract had discarded was counted in `n_with_box` and an RMS
             # was taken inside it (D056). The raw width stays on `frame_sample` so the conflict
             # is still counted where it is reported.
-            for_speed = [] if box_is_contradicted(label) else boxes
-            return frame_sample, speed_sample(field, for_speed, t_s=t_s, dt_s=dt_s,
-                                              flow_reason=reason)
+            contradicted = box_is_contradicted(label)
+            for_speed = [] if contradicted else boxes
+            return frame_sample, speed_sample(
+                field, for_speed, t_s=t_s, dt_s=dt_s, flow_reason=reason,
+                no_box_reason=("the detector's box was dropped: the labeller reports no "
+                               "visible hand on this frame (D022)") if contradicted and boxes
+                else None)
 
         built_samples: list[FrameSample | None] = [None] * len(times)
         built_speeds: list[SpeedSample | None] = [None] * len(times)

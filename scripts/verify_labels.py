@@ -84,6 +84,12 @@ def main(argv: list[str] | None = None) -> int:
     if len(revisions) > 1:
         ok = False
         print("  FAIL  rows from more than one corpus revision; they are never pooled")
+    elif without_rev:
+        # D058 made the printed line honest and left the verdict where it was: a file whose
+        # rows carry no `corpus_rev` gave an empty set, `len(...) > 1` was false, and the run
+        # passed having checked nothing. An unverifiable provenance is not a verified one.
+        ok = False
+        print("  FAIL  provenance unverifiable: rows carry no corpus_rev to check (D064)")
     if ok:
         print("  PASS  every clip has exactly the rows its sample plan calls for")
     return 0 if ok else 1

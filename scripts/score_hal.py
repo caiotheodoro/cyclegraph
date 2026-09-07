@@ -130,10 +130,22 @@ def main(argv: list[str] | None = None) -> int:
     # H2c was measured and then reported as untested, because the gate printed and persisted
     # nothing (`docs/DECISIONS.md` D062). Both halves must hold: coverage is a floor and the
     # null rate a ceiling, and a run with no boxed sample satisfies neither.
+    # H2c is pre-registered "on the pilot", so a verdict from a partial set is not the gate.
+    # A run over 91 of 97 clips wrote HOLDS with nothing to stop it; that the six missing were
+    # noticed (D060) was operator discipline and not a check. The card reads this file, so an
+    # incomplete run must say UNTESTED rather than a verdict it is not entitled to (D064).
+    complete = len(speeds) == len(refs)
     h2c_holds = bool(coverage >= COVERAGE_FLOOR and null_evaluable
                      and null_rate <= FLOW_NULL_CEILING)
+    if not complete:
+        status = "UNTESTED"
+        print(f"  NOT EVALUABLE  H2c covers {len(speeds)} of {len(refs)} clips; the gate is "
+              f"pre-registered on the pilot and is not computed from part of it")
+    else:
+        status = "HOLDS" if h2c_holds else "FAILED"
     (out_dir / "h2c.json").write_text(json.dumps({
-        "claim": "H2c", "status": "HOLDS" if h2c_holds else "FAILED",
+        "claim": "H2c", "status": status,
+        "clips_scored": len(speeds), "clips_in_manifest": len(refs),
         "corpus_rev": args.corpus_rev,
         "note": ("detector hand-box coverage against its floor and the flow-null rate against "
                  "its ceiling, aggregated over every speed record rather than per shard"),
