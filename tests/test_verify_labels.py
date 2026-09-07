@@ -16,7 +16,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 import verify_labels  # noqa: E402
 
-from cyclegraph.corpus.sampling import sample_times  # noqa: E402
+from cyclegraph.corpus.sampling import ANALYSIS_HZ, sample_times  # noqa: E402
 
 REV = "3e5f87c88c54ce8343865d8e2a8c171f18385a05"
 DURATION_S = 180.0
@@ -36,7 +36,13 @@ def _labels(path: Path, counts: dict[int, int]) -> None:
     lines = []
     for index, n in counts.items():
         cid = f"factory_001/worker_001/{index:06d}"
-        lines += [json.dumps({"clip_id": cid, "corpus_rev": REV, "t_s": float(j)})
+        # The real sample plan's instants, not integer seconds: the verifier infers the
+        # analysis rate from the spacing, and a fixture at 1 Hz described a file no run
+        # produces (D070).
+        # The over-long case writes past the plan, so the instants continue on the same grid
+        # rather than being truncated to it.
+        step = 1.0 / ANALYSIS_HZ
+        lines += [json.dumps({"clip_id": cid, "corpus_rev": REV, "t_s": j * step})
                   for j in range(n)]
     path.write_text("".join(line + "\n" for line in lines))
 
@@ -76,8 +82,9 @@ def test_rows_from_two_corpus_revisions_are_refused(tmp_path: Path) -> None:
     full = len(sample_times(DURATION_S))
     manifest, labels = tmp_path / "m.jsonl", tmp_path / "l.jsonl"
     _manifest(manifest, 1)
+    step = 1.0 / ANALYSIS_HZ
     rows = [{"clip_id": "factory_001/worker_001/000000",
-             "corpus_rev": REV if j else "other", "t_s": float(j)} for j in range(full)]
+             "corpus_rev": REV if j else "other", "t_s": j * step} for j in range(full)]
     labels.write_text("".join(json.dumps(r) + "\n" for r in rows))
     assert verify_labels.main(["--manifest", str(manifest), "--labels", str(labels),
                               "--corpus-rev", REV]) == 1
