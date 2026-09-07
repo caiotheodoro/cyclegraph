@@ -134,10 +134,22 @@ def main(argv: list[str] | None = None) -> int:
     # A run over 91 of 97 clips wrote HOLDS with nothing to stop it; that the six missing were
     # noticed (D060) was operator discipline and not a check. The card reads this file, so an
     # incomplete run must say UNTESTED rather than a verdict it is not entitled to (D064).
-    complete = len(speeds) == len(refs)
+    wanted = {c.clip_id for c in refs}
+    # By clip id, not by count: a speeds file with a record for a clip outside the manifest and
+    # one manifest clip missing has the same length and would read as complete (D065).
+    complete = wanted <= set(speeds)
+    # And a stage that never ran cannot falsify a hypothesis. Every record being `no_detector`
+    # means no detector was involved at all -- the shape `--record-not-attempted` writes -- and
+    # H2c is then UNTESTED, not FAILED. Reading a coverage of 0.0 as a falsification would let
+    # a placeholder file publish a verdict against a pre-registered gate.
+    measured = any(e.status != "no_detector" for e in speeds.values())
     h2c_holds = bool(coverage >= COVERAGE_FLOOR and null_evaluable
                      and null_rate <= FLOW_NULL_CEILING)
-    if not complete:
+    if not measured:
+        status = "UNTESTED"
+        print("  NOT EVALUABLE  H2c: every speed record says no detector ran, so there is "
+              "nothing to judge; a stage that did not run cannot falsify a hypothesis")
+    elif not complete:
         status = "UNTESTED"
         print(f"  NOT EVALUABLE  H2c covers {len(speeds)} of {len(refs)} clips; the gate is "
               f"pre-registered on the pilot and is not computed from part of it")
