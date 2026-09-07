@@ -72,7 +72,8 @@ def main(argv: list[str] | None = None) -> int:
     result = agreement(four, eight, threshold=H1B_SAMPLING_RATE_MAD)
 
     (ROOT / args.out).write_text(json.dumps({
-        "hypothesis": "H1b", "threshold_mad": H1B_SAMPLING_RATE_MAD,
+        "claim": "H1b", "status": "HOLDS" if result.holds else "FAILED",
+        "threshold_mad": H1B_SAMPLING_RATE_MAD,
         "n_pairs": result.n_pairs,
         "mean_absolute_difference": result.mean_absolute_difference,
         "holds": result.holds,

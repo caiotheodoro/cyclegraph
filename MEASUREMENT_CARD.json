@@ -1,6 +1,6 @@
 {
   "verdict": "NOT_VERIFIED",
-  "generated": "2026-09-05T19:11:11.305164Z",
+  "generated": "2026-09-07T04:44:18.695339Z",
   "corpus_rev": "3e5f87c88c54ce8343865d8e2a8c171f18385a05",
   "arm": null,
   "claims": [
@@ -31,7 +31,7 @@
     {
       "id": "H2",
       "statement": "exertion frequency is recoverable without segmenting exertions",
-      "status": "UNTESTED",
+      "status": "FAILED",
       "source": "results/pilot/h2.json",
       "interval": null,
       "pilot_gate": true
@@ -39,7 +39,7 @@
     {
       "id": "H2a",
       "statement": "spectral and transition-counting frequency agree",
-      "status": "UNTESTED",
+      "status": "FAILED",
       "source": "results/pilot/h2a.json",
       "interval": null,
       "pilot_gate": true
@@ -47,7 +47,7 @@
     {
       "id": "H2b",
       "statement": "enough clips carry a resolvable dominant cycle",
-      "status": "UNTESTED",
+      "status": "HOLDS",
       "source": "results/pilot/h2b.json",
       "interval": null,
       "pilot_gate": true
@@ -55,7 +55,7 @@
     {
       "id": "H2c",
       "statement": "detector coverage and flow-null rate clear their bounds",
-      "status": "UNTESTED",
+      "status": "HOLDS",
       "source": "results/pilot/h2c.json",
       "interval": null,
       "pilot_gate": true

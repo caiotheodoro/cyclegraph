@@ -126,6 +126,19 @@ def main(argv: list[str] | None = None) -> int:
           f"H2c: flow-null rate within the pre-registered {FLOW_NULL_CEILING:.0%} ceiling"
           f"{'' if null_evaluable else ' (no boxed sample: not evaluable, not satisfied)'}")
 
+    # The card reads a verdict per claim from `results/` and treats a missing file as UNTESTED.
+    # H2c was measured and then reported as untested, because the gate printed and persisted
+    # nothing (`docs/DECISIONS.md` D062). Both halves must hold: coverage is a floor and the
+    # null rate a ceiling, and a run with no boxed sample satisfies neither.
+    h2c_holds = bool(coverage >= COVERAGE_FLOOR and null_evaluable
+                     and null_rate <= FLOW_NULL_CEILING)
+    (out_dir / "h2c.json").write_text(json.dumps({
+        "claim": "H2c", "status": "HOLDS" if h2c_holds else "FAILED",
+        "corpus_rev": args.corpus_rev,
+        "note": ("detector hand-box coverage against its floor and the flow-null rate against "
+                 "its ceiling, aggregated over every speed record rather than per shard"),
+    }, indent=2) + "\n")
+
     if not args.aggregate:
         return 0 if scored else 1
 

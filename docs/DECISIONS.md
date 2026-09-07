@@ -2135,3 +2135,34 @@ were not computed until all 97 were present.
 
 **Reverses if:** the labels are withdrawn again, on the standard D040 set, or the detector is
 replaced — both would require the coverage number to be re-measured rather than inherited.
+
+## D062 — Measured hypotheses were reporting as UNTESTED, because the gates printed and saved nothing
+
+2026-09-07.
+
+`MEASUREMENT_CARD.json` reads one verdict file per claim from `results/` and treats a missing
+file as `UNTESTED` — which `card/build.py` defends as the truth: *"nothing has produced that
+number"*. It was not the truth. H2a and H2b were measured on 2026-09-06 and re-derived after
+D052; H2c passed on the full pilot the same day. All three read `UNTESTED` on the card, because
+the scripts that evaluate them **print a PASS/FAIL line and persist nothing the card can read**.
+
+So W8's artifact — the one thing in this project a reader is meant to consult — disagreed with
+the project's own results, in the direction of understating what had been done. The card was
+right about its rule and wrong about the world, and nothing connected the two.
+
+**Fixed by writing the verdicts where the card looks.** `estimate_frequency.py` writes `h2a` and
+`h2b`, `score_hal.py` writes `h2c`, `compare_rates.py` writes `h1b`. Each carries a status from
+the closed set `card/build.py` already validates against, so an unknown string is refused rather
+than silently treated as untested.
+
+**H1 and H2 are conjunctions and are rolled up explicitly** by `scripts/roll_up_claims.py`,
+not inferred by the card. The card generates and must compute no verdict of its own, or the
+artifact would depend on logic no measurement produced. A parent whose parts are not all present
+is **UNTESTED and never HOLDS**: a conjunction over an incomplete set is unevaluated, not
+satisfied — the rule D052 and D053 arrived at for gates over absent data, applied to claims.
+
+**The card now reads:** H2 FAILED, from H2a FAILED with H2b and H2c holding; H1 UNTESTED while
+H1b is still running and H1a is unfunded; everything else UNTESTED. Verdict `NOT_VERIFIED`, exit
+nonzero, which is the stage working.
+
+**Reverses if:** nothing. This is a defect record.
