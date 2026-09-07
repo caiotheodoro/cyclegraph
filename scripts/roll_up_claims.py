@@ -8,6 +8,10 @@ compute any, or the artifact it generates would depend on logic that no measurem
 A parent whose parts are not all present is **UNTESTED**, never `HOLDS`: a conjunction over an
 incomplete set is not satisfied, it is unevaluated. That is the same rule D052 and D053 arrived
 at for gates over absent data.
+
+**But a falsified part falsifies the parent, even with another part unmeasured.** The
+pre-registration states H1 as "falsified if *either* bound is exceeded"; a hypothesis already
+shown false is not reopened by a test nobody ran. Only `HOLDS` requires the full set.
 """
 
 from __future__ import annotations
@@ -39,12 +43,19 @@ def main(argv: list[str] | None = None) -> int:
                 statuses[part] = str(json.loads(path.read_text()).get("status", "UNTESTED"))
             else:
                 statuses[part] = "UNTESTED"
-        if any(s == "UNTESTED" for s in statuses.values()):
-            status = "UNTESTED"
+        # FAILED wins over UNTESTED. `docs/PRE-REGISTRATION.md` states H1 as "falsified if
+        # **either** bound is exceeded", so one falsified part falsifies the conjunction
+        # whatever the others are: a hypothesis already shown false is not made open again by
+        # a second test nobody ran. Only HOLDS needs every part present.
+        #
+        # Fixed before H1b's result was known, deliberately. Adjusting a verdict rule after
+        # seeing the number it governs is the move this project exists to refuse (D067).
+        if any(s == "FAILED" for s in statuses.values()):
+            status = "FAILED"
         elif all(s == "HOLDS" for s in statuses.values()):
             status = "HOLDS"
         else:
-            status = "FAILED"
+            status = "UNTESTED"
         (out_dir / f"{parent}.json").write_text(json.dumps({
             "claim": parent.upper(), "status": status, "parts": statuses,
             "note": ("a conjunction: the parent holds only if every part does, and is UNTESTED "
