@@ -154,3 +154,56 @@ def test_a_non_ok_judge_response_is_not_trained_on(tmp_path: Path) -> None:
         {"frame_id": "a", "manipulation": True, "status": "error"}]))
     with pytest.raises(ValueError, match="no frame appears in both"):
         inherited_training_set(tmp_path / "f.json", tmp_path / "l.json")
+
+
+def test_the_rate_is_derived_from_the_instants_not_from_a_field(tmp_path: Path) -> None:
+    """The guard against deleting one rate's labels with another rate's run must work on files
+    written before the `fps_sampled` field existed -- which is every label file this project
+    made before D064. Reading the field returned None for those and the guard did not fire.
+
+    Instant spacing is in every row ever written."""
+    import run_labeller as rl
+
+    four = tmp_path / "four.jsonl"
+    four.write_text("".join(json.dumps({
+        "clip_id": "factory_001/worker_001/000000", "t_s": i * 0.25,
+        "label_source": "probe", "manipulation": True, "hands_visible": 2,
+    }) + "\n" for i in range(6)))
+    assert rl.rate_of(four) == 4.0                      # no fps_sampled field anywhere
+
+    eight = tmp_path / "eight.jsonl"
+    eight.write_text("".join(json.dumps({
+        "clip_id": "factory_001/worker_001/000000", "t_s": i * 0.125,
+        "label_source": "probe", "manipulation": True, "hands_visible": 2,
+    }) + "\n" for i in range(6)))
+    assert rl.rate_of(eight) == 8.0
+
+    assert rl.rate_of(tmp_path / "absent.jsonl") is None
+    empty = tmp_path / "empty.jsonl"
+    empty.write_text("")
+    assert rl.rate_of(empty) is None
+
+
+def test_a_run_at_a_different_rate_refuses_rather_than_deleting_the_file(
+        tmp_path: Path) -> None:
+    """Resume compares row counts against a plan computed at --fps. Point --fps 8 at 4 Hz
+    labels and every clip is short, drop_partial_clips keeps nothing, and the file is gone."""
+    import run_labeller as rl
+
+    out = tmp_path / "labels.jsonl"
+    out.write_text("".join(json.dumps({
+        "clip_id": "factory_001/worker_001/000000", "t_s": i * 0.25,
+        "label_source": "probe", "manipulation": True, "hands_visible": 2,
+    }) + "\n" for i in range(8)))
+    manifest = tmp_path / "m.jsonl"
+    manifest.write_text(json.dumps({
+        "factory_id": "factory_001", "worker_id": "worker_001", "clip_index": 0,
+        "shard": "f/w/p.tar", "byte_start": 1, "byte_end": 2, "duration_s": 180.0,
+        "fps": 30.0, "width": 1920, "height": 1080, "codec": "h264",
+    }) + "\n")
+
+    code = rl.main(["--manifest", str(manifest), "--probe", "results/probe_manipulation.joblib",
+                    "--hand-probe", "../vernier/data/rung1_probe.joblib",
+                    "--out", str(out), "--fps", "8", "--device", "cpu"])
+    assert code == 2
+    assert len(out.read_text().splitlines()) == 8   # untouched

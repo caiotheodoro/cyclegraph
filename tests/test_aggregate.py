@@ -106,9 +106,13 @@ def test_the_pre_registered_b_cannot_be_changed_through_the_back_door() -> None:
 def test_variance_components_separate_sites_from_people() -> None:
     """H4's statistic. A corpus where factories differ and workers within them do not must
     give a ratio above 1; the reverse must give one below."""
-    sites = [ClipObservation(f"factory_{f:03d}", f"worker_{w:03d}", hal=float(f))
+    # Workers within a factory differ *slightly* rather than not at all. Identically-valued
+    # workers give a within-factory variance of exactly 0, and a ratio over zero is not "above
+    # 1" -- it is undefined, and treating it as a pass is what D064 removed. The contrast the
+    # test is about is a large ratio against a small one, which needs both terms to exist.
+    sites = [ClipObservation(f"factory_{f:03d}", f"worker_{w:03d}", hal=float(f) + 0.01 * w)
              for f in range(1, 11) for w in range(1, 9)]
-    people = [ClipObservation(f"factory_{f:03d}", f"worker_{w:03d}", hal=float(w))
+    people = [ClipObservation(f"factory_{f:03d}", f"worker_{w:03d}", hal=float(w) + 0.01 * f)
               for f in range(1, 11) for w in range(1, 9)]
     assert variance_components(sites).holds
     assert not variance_components(people).holds
@@ -186,6 +190,38 @@ def test_a_corpus_with_no_variance_at_all_does_not_confirm_h4_either() -> None:
     assert components.between_factory == 0.0              # but nothing varies
     assert not components.evaluable
     assert not components.holds
+
+
+def test_a_measured_zero_denominator_does_not_confirm_h4() -> None:
+    """The first guard tested the *numerator*. H4 is a ratio, so what must exist is the
+    denominator, and it can be absent two ways: no factory contributed two workers, or every
+    factory that did found no variation between them. The second is a measured 0.0, and it
+    gave ratio infinity and H4 HOLDS -- D053's own defect, one term over (D064)."""
+    within_zero = [ClipObservation("factory_1", "worker_1", 3.0),
+                   ClipObservation("factory_1", "worker_2", 3.0),
+                   ClipObservation("factory_2", "worker_3", 5.0),
+                   ClipObservation("factory_2", "worker_4", 5.0)]
+    components = variance_components(within_zero)
+    assert components.n_factories_with_two_workers == 2      # the data exists
+    assert components.between_worker_within_factory == 0.0   # and measured no variation
+    assert components.ratio == float("inf")
+    assert not components.evaluable
+    assert not components.holds
+
+
+def test_a_measured_zero_between_factory_variance_falsifies_h4_rather_than_excusing_it() -> None:
+    """Workers vary and sites do not: that is H4 failing, not H4 being unevaluable. The first
+    guard reported it as NOT EVALUABLE, which reads as "we could not tell" for a corpus that
+    told us plainly (D064)."""
+    between_zero = [ClipObservation("factory_1", "worker_1", 2.0),
+                    ClipObservation("factory_1", "worker_2", 4.0),
+                    ClipObservation("factory_2", "worker_3", 1.0),
+                    ClipObservation("factory_2", "worker_4", 5.0)]
+    components = variance_components(between_zero)
+    assert components.between_factory == 0.0
+    assert components.between_worker_within_factory > 0.0
+    assert components.evaluable        # the comparison was made
+    assert not components.holds        # and H4 lost it
 
 
 def test_h4_still_evaluates_when_the_data_can_answer_it() -> None:

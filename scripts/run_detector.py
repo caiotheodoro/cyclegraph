@@ -278,7 +278,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     out = ROOT / args.out
     out.parent.mkdir(parents=True, exist_ok=True)
     have = rows_per_clip(out)
-    expected = {c.clip_id: len(sample_times(c.duration_s)) for c in clips}
+    # From the **whole** manifest, not this invocation's slice. Sharded onto one `--out`, a
+    # clip completed by another shard has no entry here, lands in `partial`, and is deleted.
+    # `run_labeller.py` builds it from every clip for exactly this reason; D049 said a named
+    # mechanism speaks to every place it lives and this half was not carried across (D064).
+    every = list(iter_clips(ROOT / args.manifest, args.corpus_rev))
+    expected = {c.clip_id: len(sample_times(c.duration_s)) for c in every}
     complete = {cid for cid, n in have.items() if n == expected.get(cid)}
     partial = set(have) - complete
     if partial:

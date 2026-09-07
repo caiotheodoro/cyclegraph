@@ -112,14 +112,20 @@ def speed_sample(
     t_s: float,
     dt_s: float,
     flow_reason: str | None = None,
+    no_box_reason: str | None = None,
 ) -> SpeedSample:
     """One sample from one frame pair. Every absence is a reason, never a zero."""
     if dt_s <= 0:
         raise ValueError("the pair interval is positive")
     box = largest_box(boxes)
     if box is None:
+        # `no_box_reason` distinguishes "the detector found nothing" from "the detector found
+        # something the labeller contradicted" (D022). Both leave no usable box, and both were
+        # recorded as a detector miss -- which is the confusion `docs/BENCHMARK.md` splits into
+        # two rows precisely so a reader need not guess (D064).
         return SpeedSample(t_s=t_s, px_per_s=None, box_width_px=None,
-                           null_reason="no detected hand box; never a region prior")
+                           null_reason=(no_box_reason
+                                        or "no detected hand box; never a region prior"))
     if flow is None:
         return SpeedSample(t_s=t_s, px_per_s=None, box_width_px=box.width,
                            null_reason=flow_reason or "the flow estimator returned no field")

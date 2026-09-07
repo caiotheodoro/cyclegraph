@@ -313,9 +313,13 @@ class FrequencyEstimate(Record):
         # two-bin minimum -- so it was a floor no clip could ever have had
         # (`docs/DECISIONS.md` D054).
         if self.method == "transitions":
-            if self.resolvability_floor is not None:
+            # Neither, not just the floor. `CONTRACTS.md` v1.5 says "transitions never carries
+            # either", and the `elif` below is unreachable for this branch, so a transitions
+            # estimate carrying a peak ratio validated against a rule that forbade it (D064).
+            if self.resolvability_floor is not None or self.peak_power_ratio is not None:
                 raise ValueError(
-                    "transition-counting is not judged against a spectral floor; it has none"
+                    "transition-counting is not judged against a spectrum; it carries neither "
+                    "a peak-power ratio nor a resolvability floor"
                 )
         elif (self.resolvability_floor is None) != (self.peak_power_ratio is None):
             raise ValueError(

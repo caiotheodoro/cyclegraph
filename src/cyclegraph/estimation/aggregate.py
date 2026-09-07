@@ -84,14 +84,22 @@ class VarianceComponents:
     def evaluable(self) -> bool:
         """Whether H4's comparison was made against anything.
 
-        It compares two variances, and needs both to have been measurable. A corpus where no
-        factory contributed two workers has **no** within-factory information: `within` is an
-        empty list, its mean defaults to 0.0, `ratio` short-circuits to infinity and H4 would
-        otherwise be confirmed by a corpus containing no evidence about the thing it is about.
-        That is the defect `docs/DECISIONS.md` D034 corrected for H2b -- a hypothesis
-        satisfiable by data that cannot bear on it -- one hypothesis over (D053).
+        It compares two variances as a **ratio**, so what has to exist is the *denominator*.
+        Two ways it can be absent, and only the second was caught at first:
+
+        - No factory contributed two workers, so `within` is an empty list and its mean
+          defaults to 0.0. Nothing was measured.
+        - Every factory that did contribute two workers found no variation between them, so
+          `within` is a measured 0.0.
+
+        Either way `ratio` short-circuits to infinity and H4 would be **confirmed by a zero
+        denominator**. The first guard tested `between_factory > 0` instead -- the numerator --
+        which let the second case through and, worse, reported a measured between-factory
+        variance of zero as NOT EVALUABLE when it is a clean falsification: ratio 0.0 is at or
+        below 1 and H4 is falsified, which the record should say (D064).
         """
-        return self.n_factories_with_two_workers > 0 and self.between_factory > 0.0
+        return (self.n_factories_with_two_workers > 0
+                and self.between_worker_within_factory > 0.0)
 
     @property
     def holds(self) -> bool:
