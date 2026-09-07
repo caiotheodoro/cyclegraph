@@ -105,3 +105,26 @@ def test_a_clip_this_manifest_does_not_name_is_left_alone(tmp_path: Path) -> Non
     assert complete == {mine}
     assert partial == set()                       # the foreign clip is not deleted
     assert foreign in have
+
+
+def test_a_falsified_part_falsifies_the_conjunction_even_with_a_part_unmeasured(
+        tmp_path: Path) -> None:
+    """`docs/PRE-REGISTRATION.md` states H1 as "falsified if *either* bound is exceeded". The
+    first roll-up returned UNTESTED whenever any part was, which would have reported H1 as open
+    on a corpus that had already falsified it -- and H1's failure is what selects Arm B.
+
+    Fixed before H1b's result existed; adjusting it afterwards would have been the post-hoc
+    move this project refuses (D067)."""
+    import roll_up_claims
+
+    def verdicts(h1a: str, h1b: str) -> str:
+        for name, status in (("h1a", h1a), ("h1b", h1b)):
+            (tmp_path / f"{name}.json").write_text(json.dumps({"status": status}))
+        roll_up_claims.main(["--dir", str(tmp_path)])
+        return str(json.loads((tmp_path / "h1.json").read_text())["status"])
+
+    assert verdicts("UNTESTED", "FAILED") == "FAILED"    # one bound exceeded is enough
+    assert verdicts("FAILED", "UNTESTED") == "FAILED"
+    assert verdicts("UNTESTED", "HOLDS") == "UNTESTED"   # holding needs the whole set
+    assert verdicts("HOLDS", "HOLDS") == "HOLDS"
+    assert verdicts("HOLDS", "FAILED") == "FAILED"
