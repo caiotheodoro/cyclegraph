@@ -66,17 +66,33 @@ records are written for the pilot and every one of them says so: `FrameSignal` a
 3. **The negative control, before H3.** Ego4D and EPIC-KITCHENS-100, unchanged and still
    non-negotiable in that order.
 
-**The failure mode this project keeps producing, named so the next reader can look for it.**
-Three times a decision record identified a general mechanism and only the instance was fixed:
-D043's resume defect stayed in the detector (D049 claimed to have generalised it and had not),
-D034's "satisfiable by data that cannot bear on it" stayed in H4 (D053), and D054's
-absence-as-zero was fixed in two fields and left in a third. A fresh context found all three.
-When an entry names a mechanism, grep for it.
+**The five failure shapes this project keeps producing.** Four fresh-context reviews found 42
+defects between them, and every round found its defects inside the previous round's *fixes*.
+Density rose per line each time — 14 in ~6,200 lines, 12 in ~1,200, 8 in ~500, 8 in ~330 —
+because a fix is denser in risk than the code it repairs. Grep for these before writing new
+ones:
 
-The second recurring one is subtler: **reading an absent or constant signal as confirmation.**
-A `make validate` failure was read as success because the signal was a missing line; a
-permanently-failing H2c gate was read as "no detector has run" because no detector had. Both
-looked exactly like the expected state.
+1. **A gate that cannot fail.** `conflicts_total >= 0`; a sum of three branches compared to
+   their own total; `total == 0 or rate < bound`. Ask of every gate: what input makes this FAIL?
+2. **A check over absent data.** A rate with an empty denominator; H4 confirmed by a corpus with
+   no within-factory information; a `corpus_rev` set built from a field no row carries. An
+   unevaluable gate is not a satisfied one.
+3. **A rule fixed at one of its consumers.** D043's resume left in the detector; D034's H2b
+   guard left out of H4; D054's absence-as-zero left in a third field; D022's drop applied to
+   `FrameSignal` and not to the speed path. When an entry names a mechanism, grep for it.
+4. **A claim the artifact does not support.** Measured hypotheses reading UNTESTED because
+   nothing wrote the verdict; a fitted range quoted from tabulation points; a `corpus_rev`
+   check reported as passing; and this very sentence, which claimed all five shapes were here
+   when two were (D065, corrected 2026-09-07).
+5. **A repair that reads its own diagnosis too narrowly.** D064 fixed "wrote nothing in their
+   place" and left "deleted the records", turning a loud crash into a silent overwrite that
+   published a false verdict. Only a second look at a fix finds this one.
+
+And the sixth, which is not a defect in code but in reading it: **an absent or constant signal
+taken as confirmation.** A `make validate` failure read as success because the signal was a
+missing line; a permanently-failing H2c gate read as "no detector has run"; a decode hung for
+eleven hours looking exactly like slow work. A false refusal is equally a defect — a guard that
+blocks correct work is not conservative, it is broken.
 
 **Read `docs/DECISIONS.md` D044 first if you touch the speed path.** At the baseline the
 pipeline used until 2026-09-06, both flow estimators recovered 0.18 of a working hand's motion
