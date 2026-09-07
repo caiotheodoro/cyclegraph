@@ -2308,3 +2308,55 @@ the artifact does not support; and — the one only a second look at a fix can f
 that reads its own diagnosis too narrowly**.
 
 **Reverses if:** nothing. This is a defect record.
+
+## D066 — Fourth review, and the stopping rule that ended the cycle
+
+2026-09-07. A stopping rule was declared **before** the fourth review ran: it would be the last
+unless it returned something BLOCKING. It returned four SERIOUS and four MINOR findings and
+**nothing blocking**, so the review cycle ends here. The rule governed reviewing, not repair —
+the SERIOUS findings are fixed below, and no fifth review was dispatched.
+
+Declaring it in advance mattered, and for the reason this project declares anything in advance:
+a reviewer told it is the last one has an incentive to inflate severity to justify another
+round, and an author who has just been shown three rounds of his own defects has an incentive to
+keep going until a round comes back clean — which, at rising per-line defect density, it may
+never do.
+
+**The one that re-armed D065's own headline.** `score_hal`'s `measured` guard used `any`. Pool
+one measured shard with a `--record-not-attempted` file and `any` is satisfied by the real
+records, while the placeholders' zero coverage drags the aggregate under the floor — publishing
+H2c **FAILED** from clips where no detector ran. That is the defect D065 opens with, surviving
+inside D065's fix for it. Now `all`, over the manifest's clips only.
+
+**A subset test that opened the other half.** Completeness became `wanted <= set(speeds)`, which
+fixed the missing-clip case and permitted a file holding *foreign* clips to pass as complete —
+while the aggregate still summed every record in the file. A per-factory sub-manifest against
+the pooled pilot would have published a gate computed over clips it does not name. The aggregate
+is now taken over the manifest's clips.
+
+**A guard that refused correct work.** `rate_of`'s modal-gap rewrite rounded the gap, so
+`1/round(1/fps, 6)` disagreed with `fps` wherever the period does not terminate in six decimals:
+6 Hz inferred as 5.999988, 3 Hz as 3.000003. The guard then refused to resume a file the run
+itself had written. It is exact at 4 and 8 Hz, which is the only reason the pilot never hit it.
+
+**A guard that refused itself.** `--record-not-attempted` tested file *size*, so it refused its
+own placeholders, and the remedy it printed — "use a different `--out-dir`" — is wrong, because
+`results/pilot` is where the card reads. It now inspects the records: overwriting placeholders
+with placeholders is the flag working; overwriting a measurement is not.
+
+**Five of six behaviours had shipped untested**, and two of the four SERIOUS findings were in
+those paths. `tests/test_guards.py` closes that: each guard is exercised, including the
+non-dyadic rates and the foreign-clip rule.
+
+**Recorded and not fixed**, per the stopping rule: the provenance gate keys on the substring
+"detection" anywhere in the filename, so `labels_detection_test.jsonl` would skip the check; the
+undecidable-rate refusal blocks the one state resume exists for rather than dropping that clip
+and re-reading; and `rate_of` reads only the first clip, which a shared output file now makes
+write-order dependent. None changes a published number.
+
+**Four reviews, 42 findings, every round inside the previous round's fixes.** The density rose
+per line each time — 14 in ~6,200 lines, 12 in ~1,200, 8 in ~500, 8 in ~330 — because a fix is
+denser in risk than the code it repairs. That is the number worth carrying forward, not the
+total.
+
+**Reverses if:** nothing. This is a defect record.

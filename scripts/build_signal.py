@@ -105,11 +105,22 @@ def _refuse_to_overwrite(out_dir: Path) -> str | None:
     boxes and publishes H2c as **FAILED**: a pre-registered hypothesis falsified by a stage
     that never ran. A silent success is worse than the crash it replaced (D065).
     """
-    for name in ("frame_signal.jsonl", "hand_speed.jsonl"):
+    for name, placeholder in (("frame_signal.jsonl", "not_attempted"),
+                              ("hand_speed.jsonl", "no_detector")):
         path = out_dir / name
-        if path.exists() and path.stat().st_size > 0:
-            return (f"{path} already holds records. This flag writes placeholders that say no "
-                    f"stage ran, and would overwrite them. Use a different --out-dir.")
+        if not path.exists() or path.stat().st_size == 0:
+            continue
+        # Size alone made the flag non-idempotent: it refused its own placeholders, and the
+        # remedy it printed ("a different --out-dir") is wrong, because `results/pilot` is
+        # where the card reads. What must not be destroyed is a *measurement*; overwriting one
+        # placeholder set with another is the flag doing its job (`docs/DECISIONS.md` D066).
+        for line in path.read_text().splitlines():
+            if not line.strip():
+                continue
+            if json.loads(line).get("status") != placeholder:
+                return (f"{path} holds records from a stage that ran. This flag writes "
+                        f"placeholders saying no stage ran, and would overwrite them. Write to "
+                        f"a different --out-dir, or move these aside deliberately.")
     return None
 
 
