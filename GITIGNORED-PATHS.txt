@@ -23,3 +23,7 @@ results/pilot/detections.jsonl
 results/pilot/labels.jsonl
 results/pilot/frame_signal.jsonl
 results/pilot/hand_speed.jsonl
+
+# The Space's payload, built from results/ by scripts/export_space_data.py. Derived, so it is
+# not tracked; space/index.html fetches it at runtime and the docs cite it.
+space/data.json
