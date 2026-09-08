@@ -3,8 +3,8 @@
 The resume point. A fresh session should be able to continue from this file without
 re-deriving anything.
 
-**Last updated: 2026-09-05 — pre-registration v1.4.0; contracts v1.2; W2 landed and
-reviewed (D020). W3's code is landed and its corpus gates pass: the manifest reconciles
+**Last updated: 2026-09-08 — pre-registration v1.5.0; rubric v1.5.0; contracts v1.5; W2
+landed and reviewed (D020); W9 landed and published the synthetic instrument work (D071). W3's code is landed and its corpus gates pass: the manifest reconciles
 three ways (D027), the decode gate passes (D023, `results/decode_probe.json`), and the A14
 floor is measured and published (D026), and the fresh-context review is complete with all five
 findings addressed (D030, superseding D029). W3 is not closed: it has two external
@@ -41,7 +41,7 @@ records are written for the pilot and every one of them says so: `FrameSignal` a
 | Docs | 19 files under `docs/`, spine complete, tightened after W1 |
 | `PRE-REGISTRATION.md` | v1.5.0, D013–D055, hashed; the version gate walks the chain of prior versions |
 | `CONTRACTS.md` | v1.5: three fields that could not say "not measured" now can — `HALScore.duty_cycle`, `FrequencyEstimate.resolvability_floor`, `HandSpeedEstimate.flow_null_rate` (D054). v1.3: `FrameSignal.status` gains `not_attempted` with null provenance (D032); v1.2: provenance on every record, `HALScore` recomputed from its mapping, `pilot_gate`, split dominance shares |
-| Code | W2 and W3 landed: `models.py`, `exposure/hal.py`, `estimation/bootstrap.py`, `corpus/` (ports, manifest, sampling, shards, decode), `signal/` (ports, frames, speed, synthetic with a renderer, flow_farneback, stores), `cycles/`, `exposure/`, `estimation/`; 444 tests; `mypy --strict` clean |
+| Code | W2 and W3 landed: `models.py`, `exposure/hal.py`, `estimation/bootstrap.py`, `corpus/` (ports, manifest, sampling, shards, decode), `signal/` (ports, frames, speed, synthetic with a renderer, flow_farneback, stores), `cycles/`, `exposure/`, `estimation/`, `signal/gain.py` (the published harness); 482 tests; `mypy --strict` clean |
 | Novelty gate | **Cleared 2026-09-05, narrowly.** `docs/SURVEY.md` S1–S6 answered |
 | Corpus access | HF token in `.env` on the author's machine (gitignored, `chmod 600`); rotate after use |
 | Compute | Measured, not estimated. The **labeller is not a GPU stage** — the A10G idled at 0% while the work was decode-bound, and a laptop's MPS matched four paid workers. The **detector is** — 10 frames/s per worker, 30 with three. `docs/METHOD.md` E3 |
@@ -55,6 +55,13 @@ anything. Its first line is the one most easily missed — the Ego4D negative co
 a licence acceptance, not a budget, and `docs/WAVES.md` puts it before H3 in sequence.
 
 ## The next three things
+
+0. **Publish W9.** The dataset, the Space and the essay are built and gated; what is missing is
+   a write-scoped Hugging Face token. `scripts/export_hf_dataset.py` writes `hf/dataset/` and
+   `scripts/export_space_data.py` writes `space/data.json`, both derived and gitignored, both
+   regenerated from `results/` so neither can drift from the other. `README.md` already links
+   the two Hugging Face repositories and those links 404 until the push happens. The old token
+   was owed rotation anyway (`docs/REPRODUCTION.md`); issue the replacement write-scoped.
 
 1. **Finish the speed path's first real run.** EgoHOS is adopted (D047) and its boxes are the
    bounding box of a hand mask's largest connected component (D048); the adapter is written and
