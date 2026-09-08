@@ -45,51 +45,13 @@ from cyclegraph.signal.synthetic import (  # noqa: E402
     render_pair,
 )
 
-SEED = 11
-# Camera translations, in metres per pair interval, chosen to sweep the hand-box displacement
-# through and past the range a working hand produces. Translating the camera is how a static
-# scene is given relative hand motion here; the hand plane is nearer than the background, so
-# the box moves further than its surroundings, which is also what makes the depth
-# discontinuity this measures.
-TRANSLATIONS_M = (0.005, 0.01, 0.02, 0.03, 0.04, 0.06, 0.08, 0.12, 0.15)
-
-
-def _scaled_camera(width: int) -> Camera:
-    c = CORPUS_CAMERA
-    s = width / c.width
-    return Camera(width=int(c.width * s), height=int(c.height * s), fx=c.fx * s, fy=c.fy * s,
-                  cx=c.cx * s, cy=c.cy * s, k=c.k)
+# The sweep itself lives in `src/cyclegraph/signal/gain.py` so this script and the published
+# harness run the same code rather than two copies that can drift.
+from cyclegraph.signal.gain import SEED, TRANSLATIONS_M, sweep  # noqa: E402,F401
 
 
 def measure(width: int, estimator: FlowEstimator, pair_interval_s: float) -> dict[str, Any]:
-    cam = _scaled_camera(width)
-    scene = Scene(camera=cam, hand_box=hand_box_for(cam))
-    mask = box_mask((cam.height, cam.width), [scene.hand_box])
-    mm_per_px = HAND_BREADTH_MM / scene.hand_box.width
-    dt = pair_interval_s
-    rows = []
-    for metres in TRANSLATIONS_M:
-        truth = analytic_flow(scene, translation_m=(metres, 0.0, 0.0))
-        first, second = render_pair(scene, translation_m=(metres, 0.0, 0.0), seed=SEED)
-        field = estimator.flow(first, second)
-        true_px = float(np.median(np.linalg.norm(truth[mask], axis=-1)))
-        got_px = (float(np.median(np.linalg.norm(field[mask], axis=-1)))
-                  if field is not None else None)
-        rows.append({
-            "translation_m_per_pair": metres,
-            "hand_displacement_px": round(true_px, 3),
-            "true_speed_mm_s": round(true_px * mm_per_px / dt, 1),
-            "recovered_px": None if got_px is None else round(got_px, 3),
-            "gain": None if got_px is None else round(got_px / true_px, 4),
-            "flow_returned_none": field is None,
-        })
-    return {
-        "frame_size": [cam.width, cam.height],
-        "hand_box_width_px": round(scene.hand_box.width, 3),
-        "mm_per_px": round(mm_per_px, 5),
-        "pair_interval_s": dt,
-        "rows": rows,
-    }
+    return sweep(width, estimator, pair_interval_s)
 
 
 def main(argv: list[str] | None = None) -> int:
