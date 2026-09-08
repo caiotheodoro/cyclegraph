@@ -11,6 +11,11 @@ Nothing here touches a corpus, a token, a network or a GPU.
 
 **Passing is not gain near 1.0 everywhere.** No dense estimator does that. Passing is the knee
 sitting outside the displacements your work produces, which is the number you have to supply.
+
+The sweep moves the **camera** over a static scene, so the hand box's displacement comes from
+ego-motion and the background is moving too, at the depth ratio. That is why a lost hand lands
+on 0.18 rather than on zero. If your motion is a hand moving independently of a still camera,
+the knee still applies and the floor's value does not.
 """
 
 from __future__ import annotations
@@ -56,7 +61,7 @@ def main(argv: list[str] | None = None) -> int:
                         help="module:factory returning your estimator; omit for Farneback")
     parser.add_argument("--width", type=int, default=960, help="decode width to test at")
     parser.add_argument("--operating-displacement-px", type=float, default=None,
-                        help="the hand displacement your work actually produces")
+                        help="the hand-box displacement between your frame pairs, in pixels")
     args = parser.parse_args(argv)
 
     estimator = _load_estimator(args.estimator) if args.estimator else _reference()

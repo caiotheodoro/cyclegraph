@@ -49,8 +49,12 @@ REPO_URL = "https://github.com/caiotheodoro/cyclegraph"
 DOC_COPIES = {
     "docs/BENCHMARK_CARD.md": "BENCHMARK_CARD.md",
     "docs/ETHICS.md": "ETHICS.md",
-    "docs/RUBRIC.md": "RUBRIC.md",
 }
+# `docs/RUBRIC.md` is deliberately NOT copied. Its v1.5.0 amendment carries a measurement over
+# 120 decoded pilot frames, and its D045 entry names the corpus's actual clip durations. Both
+# are pilot values, which `docs/ETHICS.md` and D018 forbid publishing, and a verbatim copy
+# would have carried them into a release whose own card says no pilot value appears in it.
+# Found by the W9 fresh-context review.
 
 # The harness, flattened out of the package. `speed.py` is not copied: it pulls pydantic in for
 # contract records the harness never touches, and the only thing it contributes here is one
@@ -109,24 +113,32 @@ def _gain_rows(doc: dict[str, Any], source: str) -> list[dict[str, Any]]:
 
 
 def _benchmark_rows(doc: dict[str, Any]) -> list[dict[str, Any]]:
+    """Only the synthetic columns of `flow_benchmark.json`.
+
+    `scripts/bench_flow.py` measures throughput and the flow-null rate over 200 **decoded pilot
+    pairs** from 20 pilot clips (`docs/DECISIONS.md` D059), so `pairs`, `pairs_per_s`,
+    `pairs_per_s_unbatched`, `pairs_per_s_batched_8`, `flow_null_rate` and `device` are pilot
+    values and none of them may be published (D018, `docs/ETHICS.md`). `clears_null_ceiling` is
+    the pass/fail the ethics document does permit, and it is the only thing carried out of that
+    group.
+
+    The A14 residual columns are computed by `_a14_residuals` on a rendered scene with
+    `analytic_flow` and `render_pair` at seed 11 -- no corpus frame is involved -- so they are
+    publishable and are what the release's claim about under-recovery rests on.
+    """
     out: list[dict[str, Any]] = []
     for name, arm in doc["arms"].items():
         width, height = arm["frame_size"]
         out.append({
             "estimator": name,
-            "pairs": arm["pairs"],
-            "pairs_per_s": arm["pairs_per_s"],
-            "flow_null_rate": arm["flow_null_rate"],
-            "clears_null_ceiling": arm["clears_null_ceiling"],
             "a14_rotation_residual_px": arm["a14_rotation_residual_px"],
             "a14_rotation_residual_geometry_only_px":
                 arm["a14_rotation_residual_geometry_only_px"],
+            "clears_null_ceiling": arm["clears_null_ceiling"],
             "frame_width": width,
             "frame_height": height,
-            "device": arm["device"],
             "declared_dependency_cost": arm["declared_dependency_cost"],
-            "seed": doc["seed"],
-            "source_file": "flow_benchmark.json",
+            "source_file": "flow_benchmark.json (synthetic columns only)",
         })
     return out
 
@@ -296,7 +308,7 @@ estimator would leave, which is under-recovery rather than accuracy.
 | `displacement_gain` | {counts['displacement_gain']} | farneback, one decode scale and displacement, {fb['pair_interval_s']} s baseline |
 | `displacement_gain_raft` | {counts['displacement_gain_raft']} | raft-small, same sweep and baseline |
 | `gain_by_resolution` | {counts['gain_by_resolution']} | farneback across four decode sizes, {byres['pair_interval_s']} s baseline |
-| `estimator_benchmark` | {counts['estimator_benchmark']} | one estimator: throughput, null rate, A14 residual |
+| `estimator_benchmark` | {counts['estimator_benchmark']} | one estimator: its A14 rotation residual against the exact-geometry floor |
 | `geometry_floor` | {counts['geometry_floor']} | closed-form apparent speed under one camera motion |
 
 **On baselines.** `displacement_gain` and `displacement_gain_raft` use the
@@ -393,9 +405,11 @@ def export(out_dir: Path) -> dict[str, int]:
 
     raw = out_dir / "results"
     raw.mkdir(parents=True, exist_ok=True)
+    # `flow_benchmark.json` is not copied: its throughput and null-rate columns are measured
+    # over decoded pilot pairs (D059). The synthetic A14 columns reach the release through
+    # `_benchmark_rows` instead.
     for name in ("flow_displacement_gain.json", "flow_gain_raft.json",
-                 "flow_gain_by_resolution.json", "flow_benchmark.json",
-                 "a14_translation_floor.json"):
+                 "flow_gain_by_resolution.json", "a14_translation_floor.json"):
         shutil.copyfile(RESULTS / name, raw / name)
 
     for src, dst in DOC_COPIES.items():

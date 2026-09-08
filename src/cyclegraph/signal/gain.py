@@ -7,9 +7,16 @@ numbers that matter rather than a table to interpret.
 
 The three numbers:
 
-    knee_px               the largest displacement at which gain still holds above KNEE_GAIN
+    knee_px               the last displacement above KNEE_GAIN before the first collapse
     floor_gain            the gain the estimator settles on once it has lost the hand
     floor_ratio_expected  hand distance over background distance
+
+**What gain does not test.** It is a ratio of median magnitudes over the hand box, so it says
+nothing about direction -- an estimator returning the exact field negated scores identically to
+a perfect one -- nothing about endpoint error, and nothing about a field that is right in half
+the box and wrong in the other half, because a median hides that. It is a test for one specific
+failure: the estimator quietly swapping which object it reports. Use it alongside an endpoint
+error, not instead of one.
 
 **Passing is not gain near 1.0 everywhere.** No dense estimator does that. Passing is the knee
 sitting outside the displacements the work actually produces, which is why `verdict()` takes
@@ -64,6 +71,15 @@ BACKGROUND_TOLERANCE: Final[float] = 0.25
 
 #: Seed and camera translations are the published sweep's, so a third party's curve is
 #: comparable to `results/flow_gain_by_resolution.json` rather than merely similar in shape.
+#:
+#: These translate the **camera** over a static scene, which is how a static hand is given
+#: relative motion here. Because the hand plane is nearer than the background, its projection
+#: moves further, and that difference is the depth discontinuity the measurement is about. It
+#: is also why `floor_ratio_expected` is the depth ratio: past the knee the estimator reports
+#: the background, which under camera translation is moving at that fraction of the hand's
+#: apparent speed. Under a static camera and an independently moving hand the background does
+#: not move at all, the estimator falls back toward zero rather than toward the ratio, and
+#: `tracks_background` will not fire. The knee is unaffected; the floor's value is not.
 SEED: Final[int] = 11
 TRANSLATIONS_M: Final[tuple[float, ...]] = (0.005, 0.01, 0.02, 0.03, 0.04, 0.06, 0.08, 0.12, 0.15)
 
@@ -107,10 +123,15 @@ class GainCurve:
     def verdict(self, operating_displacement_px: float) -> str:
         """PASS, FAIL or UNTESTED for a stated working displacement.
 
-        UNTESTED rather than PASS when the sweep never reaches the displacement asked about --
-        a test that has not seen a case does not get to clear it.
+        UNTESTED, never PASS, when the sweep does not bracket the displacement asked about --
+        a test that has not seen a case does not get to clear it. That applies below the
+        smallest displacement measured as well as above the largest: RAFT-small really does
+        under-recover small motions, scoring gain 0.3019 at 2.849 px at 480x270 in
+        `results/flow_gain_raft.json`, so a curve measured from 5.7 px upward says nothing
+        about 1 px and must not pretend otherwise.
         """
-        if operating_displacement_px > max(r.hand_displacement_px for r in self.rows):
+        measured = [r.hand_displacement_px for r in self.rows]
+        if not (min(measured) <= operating_displacement_px <= max(measured)):
             return "UNTESTED"
         if self.knee_px is None:
             return "FAIL"
@@ -129,13 +150,17 @@ def curve_from_rows(rows: list[dict[str, Any]], floor_ratio_expected: float) -> 
     )
     scored = [r for r in parsed if r.gain is not None]
 
-    above = [r.hand_displacement_px for r in scored if r.gain is not None and r.gain >= KNEE_GAIN]
+    # The knee is the last displacement above KNEE_GAIN *before the first collapse*, not the
+    # largest anywhere in the sweep. Taking a plain max lets a curve that collapses at 20 px and
+    # recovers at 60 px report a knee of 60 and PASS at 20 -- a real shape for a multi-scale
+    # estimator whose pyramid levels disagree, and one the harness must not clear.
+    first_collapse = next((r.hand_displacement_px for r in scored
+                           if r.gain is not None and r.gain < COLLAPSE_GAIN), None)
+    above = [r.hand_displacement_px for r in scored
+             if r.gain is not None and r.gain >= KNEE_GAIN
+             and (first_collapse is None or r.hand_displacement_px < first_collapse)]
     knee = max(above) if above else None
-
-    below = [r.hand_displacement_px for r in scored
-             if r.gain is not None and r.gain < COLLAPSE_GAIN
-             and (knee is None or r.hand_displacement_px > knee)]
-    collapse = min(below) if below else None
+    collapse = first_collapse
 
     # Regime one only: collapsed, but not so far collapsed that the estimator has stopped
     # tracking anything (D070).

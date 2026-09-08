@@ -28,17 +28,20 @@ The floor is `0.45 / 2.5 = 0.18`, the ratio of the two depths. Past the knee the
 stopped reporting the hand and started reporting the background, scaled by how much further away
 the background is.
 
-| estimator | decode | last displacement above 0.97 | first displacement below 0.25 |
+| estimator | decode | last displacement above 0.90 | first displacement below 0.50 |
 |---|---|---|---|
 | farneback-cv2 | 960x540 | 22.794 px | 34.181 px |
 | raft-small | 960x540 | 34.181 px | 45.539 px |
 
 **The knee belongs to the estimator. The floor belongs to the geometry.** RAFT-small holds gain
-0.9738 at a displacement where Farneback has already collapsed to 0.2024 — roughly one more
-doubling of usable range. It buys a later knee and it does not move the floor: RAFT's collapsed
-gains at 960x540 are 0.172, 0.177, 0.180, 0.184, and Farneback's across scales sit in the same
-band. Swapping estimators is a real improvement to where the cliff is and no improvement at all
-to what is below it.
+0.9738 at a displacement where Farneback has already collapsed to 0.2024 — one sweep step
+further out, which on this nine-point grid bounds the true ratio only between 1.0 and 2.0. It
+buys a later knee and it does not move the floor. Taking the same four displacements for both
+arms at 960x540 — 68.025, 90.136, 132.883 and 163.312 px — RAFT gives 0.172, 0.177, 0.180,
+0.184 and Farneback gives 0.177, 0.187, 0.196, 0.055. Farneback's last value is regime two, not
+the floor: at that displacement it has exceeded its search range and is tracking nothing, which
+is why it is excluded from the floor rather than averaged into it. Swapping estimators is a real
+improvement to where the cliff is and no improvement at all to what is below it.
 
 **Higher decode resolution is not better, and past a point it is worse.** At the same
 box-relative displacement — 0.236 of the hand box width — gain runs:
@@ -109,13 +112,32 @@ Every published row carries its own `pair_interval_s` so this cannot be got wron
   floor.
 - **Whether synthetic texture behaves like factory video.** The rendered scene has the corpus's
   lens and not its content.
+- **How a real depth boundary behaves.** Both planes carry one texture, the hand plane sits in a
+  box that does not move between the frames, the warp is backward and first-order — accurate to
+  a fraction of a pixel only where the field is smooth, which it is not at the boundary this
+  result is about — and there is no occlusion or disocclusion. The mechanism the prose names,
+  an estimator smoothing across a depth discontinuity, is inferred from the gain rather than
+  simulated in the render.
+- **Anything about the causes of real flow failure.** No motion blur, no rolling shutter, no
+  sensor noise, no illumination change. Those four are what `docs/RED-TEAM.md` A15 names, and
+  the estimator is being given an easier problem here than a factory would give it.
+- **Direction.** Gain is a ratio of median magnitudes over the box, so an estimator returning the
+  exact field negated scores identically to a perfect one, and a median hides a field that is
+  right in half the box and wrong in the other half. This is a test for one failure, not an
+  accuracy measure.
 
 ## Reproduction
 
 ```
 pip install -e ".[dev,signal]"
-python3 scripts/measure_flow_gain.py --estimator farneback --widths 480,960,1440,1920
+python3 scripts/measure_flow_gain.py --estimator farneback --widths 480,960,1440,1920 \
+  --pair-interval-s 0.0333333 --out results/flow_gain_by_resolution.json
 ```
+
+Both flags are load-bearing. The script defaults to the 0.25 s interval and to
+`results/flow_displacement_gain.json`, so omitting them reproduces the gains under the wrong
+baseline and overwrites a different published file. Verified: with them, the command reproduces
+`results/flow_gain_by_resolution.json` exactly — four decode scales, 36 rows, zero diffs.
 
 Seed 11, deterministic. The RAFT arm needs `torch` and a GPU is optional. The Farneback arm needs
 neither a GPU nor a network nor a corpus token, which is the point: every claim on this card is
@@ -123,9 +145,15 @@ checkable by a stranger for nothing.
 
 ## Provenance and terms
 
-The lens calibration is the corpus's published per-worker `intrinsics.json`, identical for all
-2,144 shipped workers (`docs/DECISIONS.md` D025). It is the only corpus-derived input anywhere in
-this release. Everything else is rendered.
+The lens calibration is the corpus's published per-worker `intrinsics.json`. The corpus ships
+2,144 of them; sixteen were drawn at an even stride across the sorted list, landing in sixteen
+different factories, and all sixteen are byte-identical (`docs/DECISIONS.md` D025). The
+remaining files are assumed identical, not checked. D025's other half matters as much: a
+calibration replicated across every worker is not a real per-camera calibration, so this is a
+floor for the nominal lens and not for the fleet.
+
+That model is the only corpus-derived input anywhere in this release. Everything else is
+rendered, and no corpus frame was decoded for any published figure.
 
 `builddotai/Egocentric-10K` is released by its vendor under Apache-2.0, and this repository is
 Apache-2.0. `docs/ETHICS.md` records the limit of what that settles:

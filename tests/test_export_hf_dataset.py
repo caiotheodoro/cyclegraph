@@ -5,8 +5,11 @@ publish numbers that no longer match the files they cite. And the generated card
 nothing by hand -- the rule `MEASUREMENT_CARD.json` is built under, applied to prose, because a
 card whose numbers drifted from its data is exactly the failure this project exists to describe.
 
-The third property is the one the ethics documents demand: no identifier, no pilot value, in any
-shipped byte.
+Identifier hygiene on the built tree is checked here only for filenames and literal identifier
+strings. The pilot-value question is a different and harder one -- a number measured over decoded
+pilot frames carries nothing to grep for -- and it lives in `tests/test_release_leakage.py`,
+which names the fields and figures that are known to be pilot-derived and checks both release
+trees. This file does not establish that no pilot value ships, and it used to say it did.
 """
 
 from __future__ import annotations

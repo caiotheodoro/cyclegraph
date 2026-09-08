@@ -2478,3 +2478,55 @@ case W9's scope is superseded by a release that reports it — this synthetic wo
 reported alongside as the instrument check it is, not replaced by it. Also reverses if
 `../vernier`'s redistribution question is settled in writing, which would reopen the probe on
 its own merits against `docs/MODEL_CARD.md`.
+
+## D072 — W9's fresh-context review: two pilot leaks, and what the release actually ships
+
+2026-09-08. The review `docs/WAVES.md` requires ran against the built release rather than
+against the plan, and returned 22 findings. Two were leaks of the kind D018 exists to prevent,
+and both were inside D071 — the entry written three commits earlier to fix this exact scope.
+That is failure shape 5 in `docs/HANDOFF.md`: a repair read too narrowly.
+
+**Leak 1: `docs/RUBRIC.md` was copied verbatim into the release.** Its v1.5.0 amendment reads
+"measured on 120 pilot frames it reached 676 px at 960x540", and its D045 entry names the
+corpus's actual clip durations. Both are pilot values. The file is no longer copied; the
+benchmark card carries the argument and needs none of it.
+
+**Leak 2: `results/flow_benchmark.json` is a pilot measurement.** `scripts/bench_flow.py`
+defaults its manifest to `results/pilot/clips_factory_001.jsonl` and decodes real shards, and
+D059 records the run as "200 real pilot pairs from 20 clips". So `pairs`, `pairs_per_s`,
+`pairs_per_s_unbatched`, `pairs_per_s_batched_8`, `flow_null_rate` and `device` are pilot values.
+They shipped in three places: a verbatim copy of the file, a dataset config, and a block in
+`space/data.json` that `space/index.html` never referenced — a leak with no reader.
+
+The file is no longer copied and the config now carries only the A14 residual columns, which
+`bench_flow.py:_a14_residuals` computes on a rendered scene at seed 11 with no corpus frame.
+`clears_null_ceiling` stays, because a pass/fail is what `docs/ETHICS.md` permits the pilot to
+publish; the rate behind it does not.
+
+**The gate that should have caught both did not exist.** `scripts/validate.py`'s identifier gate
+runs over git-tracked `results/`, and both release trees are gitignored because they are derived,
+so `docs/WAVES.md`'s W9 exit condition — "every shipped byte passes the identifier gate" — was
+true of nothing. `tests/test_release_leakage.py` now builds both trees and checks them. It
+catches identifiers, which were never the problem, and pilot **values**, which are the problem
+and cannot be recognised by shape: it names the fields and figures known to be pilot-derived.
+Verified against the pre-fix bytes — the gate fires on `676` and `120 pilot` in `RUBRIC.md` and
+on four field names and two figures in `flow_benchmark.json`.
+
+**What W9 ships, corrected and complete.** D071 listed five result JSONs plus `synthetic.py` and
+the sweep; the release also ships `signal/gain.py`, `signal/ports.py`, `scripts/run_gain_test.py`
+and copies of `docs/BENCHMARK_CARD.md` and `docs/ETHICS.md`. It does **not** ship
+`docs/RUBRIC.md`, `results/flow_benchmark.json`, `results/decode_probe.json`, the manipulation
+probe, or any pilot value.
+
+**Findings worth recording beyond the leaks.** The knee was taken as the largest displacement
+above threshold anywhere in the sweep, so a curve collapsing at 20 px and recovering at 60 px
+was passed at 20; it is now the last point before the first collapse. `verdict()` returned
+UNTESTED above the sweep but PASS below it, though raft-small really does under-recover small
+motion — gain 0.3019 at 2.849 px. The sweep translates the **camera**, and every surface said
+the hand moved; the distinction is load-bearing, because the 0.18 floor is the background's
+speed under ego-motion and a static camera with an independently moving hand would put the floor
+near zero instead. The comment that said so was deleted when the sweep moved into `gain.py`.
+
+**Reverses if:** a later review shows a published figure here is still pilot-derived, in which
+case the release is withdrawn rather than patched — the leak would then be the second of its
+kind and the scope, not the bytes, would be what is wrong.

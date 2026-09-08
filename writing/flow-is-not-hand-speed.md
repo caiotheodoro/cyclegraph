@@ -54,8 +54,8 @@ Then I ran the estimators.
 
 ## The number that would not move
 
-I rendered frame pairs under the same fisheye, with a hand plane at 0.45 m and a background plane
-at 2.5 m, and swept one variable: how far the hand moves between the two frames. Because the
+I rendered frame pairs under the same fisheye, with a hand plane at 0.45 m and a background
+plane at 2.5 m. Then I swept one variable: how far the hand box moves between the two frames. Because the
 scene is synthetic the true flow field is known exactly. That is the only reason any of this is
 measurable.
 
@@ -108,8 +108,9 @@ RAFT is better, and it is better in a way that does not help.
 | 68.025 px | 0.1773 | 0.1724 |
 | 132.883 px | 0.1964 | 0.1801 |
 
-RAFT holds full gain at 34.2 px, where Farneback has already fallen. It buys roughly one more
-doubling of usable displacement. Then it falls to the same shelf: 0.172, 0.177, 0.180, 0.184
+RAFT holds full gain at 34.2 px, where Farneback has already fallen. It buys one more step of
+the sweep, which on a nine-point grid means somewhere between one and two times the usable
+displacement; the grid cannot say where in that range. Then it falls to the same shelf: 0.172, 0.177, 0.180, 0.184
 against Farneback's 0.177, 0.187, 0.196.
 
 ```
@@ -137,9 +138,9 @@ box-relative displacement, 0.236 of the hand box width:
 |---|---|---|---|---|
 | gain | 0.7656 | 0.9925 | 0.2036 | 0.1978 |
 
-960x540 is a measured optimum. 1920x1080 does worse than 480x270 — four times the pixels, four
-times the decode cost, and it has already fallen off the cliff at a displacement where 960x540 is
-still recovering 99% of the motion.
+960x540 is a measured optimum. 1920x1080 does worse than 480x270 — sixteen times the pixels, and
+it has already fallen off the cliff at a displacement where 960x540 is still recovering 99% of
+the motion.
 
 I do not have a clean account of why. The knee is not fixed in absolute pixels, and it is not
 fixed as a fraction of the hand box either; both readings are contradicted by a row in that table.
@@ -160,32 +161,68 @@ signal it was meant to clean.
 
 Two failures, pointing the same way, cancelling. The residual that comes out is small. It is also
 plausible: a hand moving slowly, at a factory workstation, is not a suspicious reading. Nothing
-throws, nothing nulls, no rate crosses a ceiling. In the run that produced these numbers the
-flow-null rate was 0.0 across 200 pairs on both estimators. Every frame returned a clean answer.
+throws and nothing nulls. Every pair in the sweep returned a finite, well-formed flow field.
+`flow_returned_none` is false on all 54 distinct estimator, decode and displacement
+measurements published here. No contract check and no null-rate ceiling anywhere downstream has
+anything to fire on.
 
 An error that fails loudly costs you a day. An error that fails quietly gets published.
 
 ## Honest limits
 
-This is synthetic. That is deliberate — ground-truth flow has to be known exactly for a gain to
-exist at all — but it means the texture is rendered, not factory video. The lens is the corpus's
-real published model. The content is not.
+**The camera moves, not the hand.** The sweep translates the camera over a static scene, which is
+how a static hand is given relative motion in a render. That matters for what the shelf means.
+Under camera translation the background is moving too, at the depth ratio, so an estimator that
+loses the hand and locks onto the background lands on 0.18. Under a static camera and a hand
+moving on its own, the background is not moving at all, and the same estimator falling back to it
+would land near zero instead. The knee is unchanged either way. The shelf's *value* is a fact
+about ego-motion-dominated frames, and head-mounted factory video is ego-motion-dominated, but
+that is an argument rather than a measurement.
+
+**The renderer does not simulate what the prose describes.** Both planes carry one texture, the
+hand plane sits in a box that does not move between the frames, and the warp is backward and
+first-order. That warp is accurate to a fraction of a pixel where the flow field is smooth. It
+is not smooth at the boundary this whole result is about. There is no occlusion, no
+disocclusion, no motion blur, no rolling shutter, no sensor noise and no illumination change. The last four are what
+the project's own red-team document names as the causes of real flow failure. The estimator here
+is being given an easier problem than a factory would — and it still fails.
+
+**The lens is verified on sixteen workers, not 2,144.** The corpus ships a per-worker
+`intrinsics.json` and sixteen were drawn at an even stride and found byte-identical; the rest are
+assumed, not checked. The corpus also has no real per-camera calibration, so this is a floor for
+the nominal lens rather than for the fleet.
 
 The two depth planes are stated assumptions about workstation geometry, not measurements. 0.45 m
-and 2.5 m are reasonable for a bench, and the shelf sits at their ratio, so a different workstation
-gives a different shelf. That is a prediction; it is testable; I have not tested it.
+and 2.5 m are reasonable for a bench, and the shelf sits at their ratio, so a different
+workstation gives a different shelf. That is a prediction; it is testable; I have not tested it.
 
-I have not measured the corpus's own ego-motion distribution, because that needs frames decoded
-and the corpus stages of this project are blocked on cost. Everything above is an instrument
-check. The measurement cyclegraph exists to make has not run, and nothing here brings it closer.
+**The tables above are on the superseded pair interval.** Both estimator sweeps use 0.25 s
+between the two frames, which is what reading the rubric's pair at the 4 Hz analysis rate gives.
+The project later re-specified the pair to the clip's own frame rate, about 0.033 s. Gain against
+pixel displacement is unaffected, because the interval only rescales the speeds. But at the
+native rate an assumed corpus median of 612.4 mm/s is roughly 23 px at 960x540. That sits *at*
+the Farneback knee rather than comfortably past it. It is a narrower margin than the 0.25 s
+framing suggests, and it cuts against me.
 
-The far tail has a second regime I am not making claims about. Past roughly 1.4 hand-box widths
-of displacement, gain falls below the depth ratio toward zero, because the estimator has exceeded
-its search range and is tracking nothing at all. Those points are not on the shelf and must not be
-averaged with the ones that are.
+The far tail has a second regime I am not making claims about. Gain falls below the depth ratio
+toward zero once the estimator has exceeded its search range and is tracking nothing. It arrives
+earlier at higher resolution: unambiguously by 0.93 of a hand-box width at 1920x1080, against
+1.69 at 960x540. One point sits between the regimes and I will not assign it — 0.1056 at 0.47
+box widths, too low to be the shelf and too high to be nothing. Regime-two points are not on the
+shelf and must not be averaged with the ones that are.
 
-And two estimators is two. Farneback and RAFT-small agree, which is weak evidence about dense
-optical flow in general and no evidence at all about a method that models depth.
+Two estimators is two. Farneback and RAFT-small agree, which is weak evidence about dense optical
+flow in general and no evidence at all about a method that models depth.
+
+**And the metric is magnitude-only.** Gain is a ratio of median magnitudes inside the box, so it
+is blind to direction. An estimator returning the exact field negated scores identically to a
+perfect one, and a median hides a field that is right in half the box and wrong in the other
+half. It is a test for one specific failure and it is not an accuracy measure.
+
+**Nothing here says the instrument works.** No ergonomist has scored this corpus, force is
+unobservable from the video at all, and every record this project has written carries
+`tlv_evaluable` false. Any summary claiming cyclegraph applies the TLV is wrong, and this piece
+is about one input to it behaving badly, not about the index being sound.
 
 ## What to do with this
 
@@ -193,10 +230,10 @@ Do not take my displacement numbers and apply them to your setup. The knee moves
 estimator, the decode resolution, the frame interval and the geometry; I have shown all four
 moving it.
 
-Run it instead. The generator and the sweep are published, they need no corpus, no token and no
-GPU for the Farneback arm, and the harness takes your estimator as an argument and reports three
-things: the displacement where your gain leaves 1.0, the shelf it lands on, and the depth ratio
-that shelf should equal if it has silently switched to the background.
+Run it instead. The generator and the sweep are published, and the Farneback arm needs no
+corpus, no token and no GPU. The harness takes your estimator as an argument and reports three
+things — the displacement where your gain leaves 1.0, the shelf it lands on, and the depth ratio
+that shelf should equal if it has switched to the background.
 
 Passing is not gain near 1.0 everywhere. Nothing does that. Passing is your knee sitting outside
 the displacements your work actually produces, and the harness tells you which side of it you

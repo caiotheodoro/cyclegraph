@@ -28,7 +28,13 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from cyclegraph.signal.flow_farneback import FarnebackFlow  # noqa: E402
-from cyclegraph.signal.gain import scaled_camera  # noqa: E402
+from cyclegraph.signal.gain import (  # noqa: E402
+    BACKGROUND_TOLERANCE,
+    COLLAPSE_GAIN,
+    KNEE_GAIN,
+    REGIME_TWO_FRACTION,
+    scaled_camera,
+)
 from cyclegraph.signal.ports import box_mask  # noqa: E402
 from cyclegraph.signal.synthetic import (  # noqa: E402
     BACKGROUND_DISTANCE_M,
@@ -155,7 +161,23 @@ def build() -> dict[str, Any]:
             "raft_025": _sweep(_load("flow_gain_raft.json")),
             "farneback_native": _sweep(_load("flow_gain_by_resolution.json")),
         },
-        "benchmark": bench["arms"],
+        # `flow_benchmark.json`'s throughput and null-rate columns are measured over decoded
+        # pilot pairs (D059) and must not be published; only the A14 residuals are synthetic.
+        # The page never referenced the rest, so it was a leak with no reader.
+        "a14_residuals": {
+            name: {
+                "with_estimator_px": arm["a14_rotation_residual_px"],
+                "geometry_only_px": arm["a14_rotation_residual_geometry_only_px"],
+            } for name, arm in bench["arms"].items()
+        },
+        # The page classifies knee and floor with the same thresholds `signal/gain.py` uses.
+        # They travel in the payload so the two cannot drift; the page must not re-type them.
+        "thresholds": {
+            "knee_gain": KNEE_GAIN,
+            "collapse_gain": COLLAPSE_GAIN,
+            "regime_two_fraction": REGIME_TWO_FRACTION,
+            "background_tolerance": BACKGROUND_TOLERANCE,
+        },
         "geometry_floor": {
             "rotation_corpus": floor["rotation_only_corpus_lens"],
             "rotation_narrow": floor["rotation_only_narrow_lens_control"],

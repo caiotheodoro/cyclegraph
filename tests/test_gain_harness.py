@@ -163,3 +163,59 @@ def test_gain_curve_runs_end_to_end_against_a_stub_estimator() -> None:
     assert curve.knee_px is None
     assert curve.floor_gain is None
     assert curve.tracks_background is False
+
+
+def test_a_curve_that_recovers_after_collapsing_is_not_passed() -> None:
+    """Found by the W9 fresh-context review.
+
+    An estimator whose pyramid levels disagree can collapse at one displacement and recover at a
+    larger one. Taking the knee as the largest displacement anywhere above the threshold reported
+    60.0 here and PASSed at 20.0, where the curve had already fallen to 0.15.
+    """
+    curve = curve_from_rows(
+        _rows([(5.0, 0.99), (10.0, 0.99), (20.0, 0.15), (40.0, 0.16), (60.0, 0.95)]), RATIO)
+    assert curve.knee_px == 10.0
+    assert curve.collapse_px == 20.0
+    assert curve.verdict(operating_displacement_px=20.0) == "FAIL"
+    assert curve.verdict(operating_displacement_px=10.0) == "PASS"
+
+
+def test_a_displacement_below_the_sweep_is_untested_not_passed() -> None:
+    """Also from that review. Small-displacement failure is real, not hypothetical.
+
+    `results/flow_gain_raft.json` has raft-small at gain 0.3019 at 2.849 px on the 480x270
+    decode, so a curve that starts at 5.7 px genuinely does not know what happens at 1 px.
+    """
+    curve = curve_from_rows(_rows([(5.7, 0.99), (11.4, 0.99), (22.8, 0.99)]), RATIO)
+    assert curve.verdict(operating_displacement_px=0.5) == "UNTESTED"
+    assert curve.verdict(operating_displacement_px=5.7) == "PASS"
+
+    raft = _published("flow_gain_raft.json", [480, 270])
+    smallest = min(raft, key=lambda r: r["hand_displacement_px"])
+    assert smallest["gain"] == 0.3019, "the small-displacement failure this guards is gone"
+
+
+def test_gain_is_magnitude_only_and_the_docstring_says_so() -> None:
+    """A negated field scores identically to a perfect one. A real limit, not a bug.
+
+    Gain is a ratio of median magnitudes, and magnitude is sign-blind, so an estimator whose
+    field points exactly the wrong way is indistinguishable from a correct one here. The metric
+    exists to catch one failure -- the estimator swapping which object it reports -- and a
+    reader has to be told what it therefore cannot catch.
+    """
+    import cyclegraph.signal.gain as gain_module
+    from cyclegraph.signal.ports import box_mask
+    from cyclegraph.signal.synthetic import Scene, analytic_flow, hand_box_for
+
+    doc = " ".join((gain_module.__doc__ or "").split())
+    assert "says nothing about direction" in doc
+
+    cam = gain_module.scaled_camera(480)
+    scene = Scene(camera=cam, hand_box=hand_box_for(cam))
+    mask = box_mask((cam.height, cam.width), [scene.hand_box])
+    truth = analytic_flow(scene, translation_m=(0.005, 0.0, 0.0))
+
+    correct = float(np.median(np.linalg.norm(truth[mask], axis=-1)))
+    negated = float(np.median(np.linalg.norm((-truth)[mask], axis=-1)))
+    assert correct > 0.0
+    assert correct == negated, "if these ever differ, gain has become direction-aware"

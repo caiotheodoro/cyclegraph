@@ -6,6 +6,13 @@ gitignored, and every number in it must trace to a file under `results/`.
 
 **Nothing is published yet.** W0 is documentation only.
 
+**Not to be confused with the W9 release.** `hf/dataset/` and the Hugging Face dataset
+`caiotheodoro/cyclegraph-flow-gain` are built by `scripts/export_hf_dataset.py` from
+`docs/BENCHMARK_CARD.md`, and they carry the synthetic flow-gain benchmark, not the exposure
+records described below. None of the four configs this document proposes exists. When the
+corpus stages unblock and these records are real, the two releases stay separate
+(`docs/DECISIONS.md` D071, D072).
+
 ## What would be released
 
 Derived exposure records — never frames, never clips, never media of any kind.

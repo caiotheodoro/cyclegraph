@@ -100,3 +100,48 @@ def test_the_page_reads_only_the_exported_payload() -> None:
     for literal in ("0.9925", "0.2024", "34.181", "10.0916", "0.1801", "1.1461"):
         assert literal not in body, f"{literal} is hard-coded in the page"
     assert 'fetch("data.json")' in body
+
+
+def test_the_page_classifies_with_the_harness_s_own_thresholds(payload: dict[str, Any]) -> None:
+    """The page duplicates `gain.py`'s knee/floor rule in JavaScript, which can drift.
+
+    Flagged by the W9 fresh-context review: the page had 0.9, 0.5 and 0.5 * ratio retyped as
+    literals, so changing a constant in `gain.py` would have left the Space silently
+    disagreeing with the harness a reader downloads. The thresholds now travel in the payload
+    and the page must read them from there.
+    """
+    from cyclegraph.signal.gain import (
+        BACKGROUND_TOLERANCE,
+        COLLAPSE_GAIN,
+        KNEE_GAIN,
+        REGIME_TWO_FRACTION,
+    )
+
+    assert payload["thresholds"] == {
+        "knee_gain": KNEE_GAIN,
+        "collapse_gain": COLLAPSE_GAIN,
+        "regime_two_fraction": REGIME_TWO_FRACTION,
+        "background_tolerance": BACKGROUND_TOLERANCE,
+    }
+
+    body = (ROOT / "space" / "index.html").read_text()
+    body = body[body.index("<body>"):]
+    assert "const TH = D.thresholds" in body
+    for literal in ("r.gain >= 0.9", "r.gain < 0.5", "0.5 * RATIO", "[0, 0.18,"):
+        assert literal not in body, f"{literal} is retyped in the page"
+
+
+def test_the_space_publishes_no_pilot_column(payload: dict[str, Any]) -> None:
+    """`flow_benchmark.json`'s throughput and null-rate columns are pilot measurements (D059).
+
+    They shipped in `space/data.json` under a `benchmark` key the page never referenced -- a
+    leak with no reader. Only the synthetic A14 residuals remain.
+    """
+    import json as _json
+
+    text = _json.dumps(payload)
+    for field in ("pairs_per_s", "flow_null_rate", "pairs_per_s_batched_8"):
+        assert field not in text, field
+    assert set(payload["a14_residuals"]) == {"farneback-cv2", "raft-small"}
+    for arm in payload["a14_residuals"].values():
+        assert set(arm) == {"with_estimator_px", "geometry_only_px"}

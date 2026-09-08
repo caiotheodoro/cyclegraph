@@ -10,7 +10,8 @@ docs/private/
 
 # Regenerated release staging, derived from results/ and docs/.
 hf/dataset/README.md
-hf/dataset/CONTRACTS.md
+hf/dataset/BENCHMARK_CARD.md
+hf/dataset/ETHICS.md
 
 # Real credentials. .env.example is tracked; .env is not.
 .env

@@ -90,7 +90,7 @@ footer a{margin-right:20px}
 <header>
   <h1>The hand box was measuring the wall</h1>
   <p class="lede">A dense optical flow estimator, asked for a hand's speed, answers correctly
-  until the hand moves further than it can follow. Then it reports the <b>background</b> —
+  until the hand box moves further than it can follow. Then it reports the <b>background</b> —
   and the correction that should catch this subtracts the background, so the error cancels
   into a small plausible number.</p>
   <div class="key">
@@ -102,9 +102,11 @@ footer a{margin-right:20px}
 
 <section id="hero">
   <h2>Three displacements</h2>
-  <p class="sub">The same rendered scene, the same estimator, one variable: how far the hand
-  moves between the two frames. Inside the outlined box the pale arrows are the hand's real
-  motion and the coloured arrows are what the estimator recovered. Watch them separate.</p>
+  <p class="sub">The same rendered scene, the same estimator, one variable: how far the hand box
+  moves between the two frames. The camera translates over a static scene, so the near hand plane
+  moves further than the far background — that difference is the whole subject. Inside the
+  outlined box the pale arrows are the true motion and the coloured arrows are what the estimator
+  recovered. Watch them separate.</p>
   <div class="panels" id="panels"></div>
 </section>
 
@@ -181,6 +183,9 @@ const fmt = (v, d = 4) => v === null || v === undefined ? "—" : Number(v).toFi
 
 fetch("data.json").then(r => r.json()).then(D => {
   const RATIO = D.depth_ratio;
+  // Read from the payload, never retyped: signal/gain.py owns these and the page
+  // must not be able to disagree with the harness a reader downloads.
+  const TH = D.thresholds;
 
   document.getElementById("lensnote").textContent =
     `${D.lens.model} · ${D.lens.max_half_angle_deg}° half-angle`;
@@ -203,7 +208,7 @@ fetch("data.json").then(r => r.json()).then(D => {
     const cv = document.createElement("canvas");
     div.appendChild(cv);
 
-    const past = q.gain < 0.5;
+    const past = q.gain < TH.collapse_gain;
     const cap = document.createElement("div");
     cap.className = "cap";
     cap.innerHTML =
@@ -278,7 +283,7 @@ fetch("data.json").then(r => r.json()).then(D => {
   const el = (n, a) => { const e = document.createElementNS(NS, n);
                          for (const k in a) e.setAttribute(k, a[k]); return e; };
 
-  [0, 0.18, 0.5, 1.0].forEach(g => {
+  [0, RATIO, TH.collapse_gain, 1.0].forEach(g => {
     svg.appendChild(el("line", {x1: M.l, x2: M.l + PW, y1: Y(g), y2: Y(g),
                                 stroke: "#262b33", "stroke-width": 1}));
     const t = el("text", {x: M.l - 10, y: Y(g) + 4, "text-anchor": "end"});
@@ -315,9 +320,11 @@ fetch("data.json").then(r => r.json()).then(D => {
 
   /* ---------- knee table ---------- */
   const knee = rows => {
-    const good = rows.filter(r => r.gain !== null && r.gain >= 0.9);
-    const bad = rows.filter(r => r.gain !== null && r.gain < 0.5);
-    const collapsed = bad.map(r => r.gain).filter(g => g >= 0.5 * RATIO).sort((a, b) => a - b);
+    const good = rows.filter(r => r.gain !== null && r.gain >= TH.knee_gain);
+    const bad = rows.filter(r => r.gain !== null && r.gain < TH.collapse_gain);
+    const collapsed = bad.map(r => r.gain)
+                         .filter(g => g >= TH.regime_two_fraction * RATIO)
+                         .sort((a, b) => a - b);
     const mid = collapsed.length ? (collapsed.length % 2
       ? collapsed[(collapsed.length - 1) / 2]
       : (collapsed[collapsed.length / 2 - 1] + collapsed[collapsed.length / 2]) / 2) : null;
@@ -338,11 +345,19 @@ fetch("data.json").then(r => r.json()).then(D => {
     `Both sweeps use the ${fb.pair_interval_s} s pair interval, so they compare directly. ` +
     `RAFT-small holds full gain one sweep step further out than Farneback and then lands on ` +
     `the same floor. A better estimator moves where the cliff is; it does not touch what is ` +
-    `underneath it. The horizontal axis is square-rooted because the knee sits low in the range.`;
+    `underneath it. The horizontal axis is square-rooted because the knee sits low in the ` +
+    `range. The farneback line dips below the depth ratio at its last point: past the knee ` +
+    `there are two regimes, and once displacement exceeds the estimator's search range ` +
+    `outright it tracks nothing at all and gain falls toward zero. Those points are drawn ` +
+    `but are excluded from the floor rather than averaged into it.`;
 
   /* ---------- resolution ---------- */
   const res = D.sweeps.farneback_native;
-  const idx = 2;
+  // The comparison index is found, not hard-coded: it is the last sweep step at which the best
+  // scale still holds full gain, which is where the scales genuinely disagree.
+  const best0 = res.reduce((a, c) => c.rows.filter(r => r.gain >= TH.knee_gain).length >
+                                     a.rows.filter(r => r.gain >= TH.knee_gain).length ? c : a);
+  const idx = best0.rows.filter(r => r.gain >= TH.knee_gain).length - 1;
   const overBox = res[0].rows[idx].over_box;
   let head = `<thead><tr><th>decode</th>`, row = `<tbody><tr><td>gain</td>`;
   res.forEach(s => {
@@ -356,9 +371,12 @@ fetch("data.json").then(r => r.json()).then(D => {
     `The same physical camera translation at four decode sizes, compared at ` +
     `${overBox} of the hand box width. ` +
     `<b style="color:var(--trace);font-weight:500">${best.frame_size[0]}×${best.frame_size[1]} ` +
-    `is a measured optimum</b>, and ${res[3].frame_size[0]}×${res[3].frame_size[1]} scores ` +
-    `below ${res[0].frame_size[0]}×${res[0].frame_size[1]} — four times the pixels, four times ` +
-    `the decode cost, already over the cliff.`;
+    `is a measured optimum</b>, and ${res[res.length - 1].frame_size[0]}×` +
+    `${res[res.length - 1].frame_size[1]} scores ` +
+    `below ${res[0].frame_size[0]}×${res[0].frame_size[1]} — ` +
+    `${((res[res.length - 1].frame_size[0] * res[res.length - 1].frame_size[1]) /
+        (res[0].frame_size[0] * res[0].frame_size[1])).toFixed(0)} times the pixels, ` +
+    `already over the cliff.`;
 
   /* ---------- lens table ---------- */
   const gf = D.geometry_floor;
