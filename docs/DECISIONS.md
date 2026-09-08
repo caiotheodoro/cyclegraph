@@ -2394,3 +2394,40 @@ use, and the diagnosis that followed is D068.
 
 **Reverses if:** the labels are withdrawn on the D040 standard, or a judge lands and H1a
 falsifies H1 — in which case H1b's holding is a fact about sampling that survives H1's failure.
+
+## D070 — The 0.18 plateau is a stage, not an asymptote
+
+2026-09-07. Found while checking whether D044's finding is solid enough to publish outside this
+repository — which is the standard a claim should meet before it is offered to anyone else.
+
+D044 and D059 say both estimators "land on `hand_distance / background_distance`" above the
+tracking knee. The tables are literally correct — each figure names the scale it was measured at
+— but the prose overstates where it holds. Reading every collapsed gain in
+`results/flow_gain_by_resolution.json` and `results/flow_gain_raft.json`:
+
+| decode | collapsed gains, increasing displacement |
+|---|---|
+| 480x270 | 0.221 0.171 0.185 0.194 0.168 0.181 |
+| 960x540 | 0.202 0.232 0.177 0.187 0.196 **0.055** |
+| 1440x810 | 0.204 0.199 0.153 0.190 0.175 **0.075 0.045** |
+| 1920x1080 | 0.198 0.194 0.106 0.163 **0.071 0.035 0.039** |
+
+The depth ratio is 0.18, and the gains sit on it for a *range* of displacements — then fall
+below it as displacement grows further. So there are two regimes past the knee, not one:
+
+1. **The estimator tracks the background instead of the hand.** Gain ≈ 0.18, because the
+   background is what the window sees once it smooths across the depth discontinuity. This is
+   the regime the pilot's speeds sit in and the one the finding is about.
+2. **The estimator tracks nothing.** Gain falls toward zero, well below the depth ratio,
+   once the displacement exceeds its search range outright.
+
+The mean-of-last-three figures quoted in D044's table are therefore not comparable across rows:
+480x270's average lands on the plateau because that row never reaches regime 2, while 960x540's
+would be dragged to 0.146 by a single point that has. **Each is right about its own scale and
+they should not be read against each other**, which the table's phrasing invited.
+
+**Nothing downstream moves.** D050's decode choice was made on where the *knee* is, not on the
+plateau's value, and the knee is unchanged. D059 chose Farneback on cost and on the A14 column,
+neither of which uses the plateau. The pilot's speeds sit in regime 1 throughout.
+
+**Reverses if:** nothing. This is a precision correction to two entries' prose.
