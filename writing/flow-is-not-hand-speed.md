@@ -113,7 +113,7 @@ the sweep, which on a nine-point grid means somewhere between one and two times 
 displacement; the grid cannot say where in that range. Then it falls to the same shelf: 0.172, 0.177, 0.180, 0.184
 against Farneback's 0.177, 0.187, 0.196.
 
-```
+```json
 // cv-chart
 {"type":"bars","title":"Recovered flow over true flow, inside the hand box, against hand displacement","series":[{"key":"farneback","label":"farneback-cv2","color":0},{"key":"raft","label":"raft-small","color":1}],"domain":[0,1],"data":[{"label":"5.7","farneback":0.9973,"raft":0.9953},{"label":"11.399","farneback":0.9973,"raft":0.9832},{"label":"22.794","farneback":0.9925,"raft":0.9946},{"label":"34.181","farneback":0.2024,"raft":0.9738},{"label":"45.539","farneback":0.2323,"raft":0.32},{"label":"68.025","farneback":0.1773,"raft":0.1724},{"label":"90.136","farneback":0.1869,"raft":0.1765},{"label":"132.883","farneback":0.1964,"raft":0.1801},{"label":"163.312","farneback":0.0552,"raft":0.184}],"caption":"Both arms are the 960x540 decode at the same 0.25 s pair interval, so they are comparable. Gain 1.0 recovers the hand's motion. The floor both land on is 0.18, which is the hand plane over the background plane: 0.45 m over 2.5 m. RAFT-small holds one step further out and lands on the same floor. The last farneback bar sits below the floor because at that displacement the estimator has exceeded its search range and is tracking nothing at all, which is a different failure and is not averaged with the others."}
 ```
@@ -239,6 +239,6 @@ Passing is not gain near 1.0 everywhere. Nothing does that. Passing is your knee
 the displacements your work actually produces, and the harness tells you which side of it you
 are on.
 
-- Benchmark and harness: <https://huggingface.co/datasets/caiotheodoro/cyclegraph-flow-gain>
-- The data behind every table above: <https://huggingface.co/spaces/caiotheodoro/cyclegraph>
-- Repository, including what is blocked and why: <https://github.com/caiotheodoro/cyclegraph>
+- Benchmark and harness: [huggingface.co/datasets/caiotheodoro/cyclegraph-flow-gain](https://huggingface.co/datasets/caiotheodoro/cyclegraph-flow-gain)
+- The data behind every table above: [huggingface.co/spaces/caiotheodoro/cyclegraph](https://huggingface.co/spaces/caiotheodoro/cyclegraph)
+- Repository, including what is blocked and why: [github.com/caiotheodoro/cyclegraph](https://github.com/caiotheodoro/cyclegraph)
