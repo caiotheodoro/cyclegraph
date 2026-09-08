@@ -94,12 +94,34 @@ def test_the_quiver_panels_show_the_collapse(payload: dict[str, Any]) -> None:
 
 
 def test_the_page_reads_only_the_exported_payload() -> None:
-    """No measured figure may be typed into the HTML; the page has to ask for it."""
+    """No measured figure may be typed into the page; it has to ask data.json for every one.
+
+    Covers the markup and the script, because the behaviour moved out to `space/app.js` when
+    the page gained its controls and a test that only read the HTML would have stopped
+    checking the half where the numbers actually live.
+    """
     html = (ROOT / "space" / "index.html").read_text()
     body = html[html.index("<body>"):]
-    for literal in ("0.9925", "0.2024", "34.181", "10.0916", "0.1801", "1.1461"):
-        assert literal not in body, f"{literal} is hard-coded in the page"
-    assert 'fetch("data.json")' in body
+    js = (ROOT / "space" / "app.js").read_text()
+    for literal in ("0.9925", "0.2024", "34.181", "22.794", "10.0916", "0.1801", "1.1461",
+                    "0.7656", "0.1964"):
+        assert literal not in body, f"{literal} is hard-coded in index.html"
+        assert literal not in js, f"{literal} is hard-coded in app.js"
+    assert 'fetch("data.json")' in js
+    assert '<script src="app.js">' in body
+
+
+def test_every_series_carries_a_direct_value_label() -> None:
+    """The CV design system's accessibility rule, which this page has to keep.
+
+    `src/lib/diagramTheme.ts` records that the palette's worst colour-vision pair sits at
+    dE 7.1 protan, inside the 6-8 band, which is only legal when identity is carried by
+    something other than colour. So every point gets its value and every line its name.
+    """
+    js = (ROOT / "space" / "app.js").read_text()
+    assert "Direct value label on every point" in js
+    assert "vl.textContent = cvFmt(r.gain)" in js
+    assert "nameEl.textContent = s.label" in js
 
 
 def test_the_page_classifies_with_the_harness_s_own_thresholds(payload: dict[str, Any]) -> None:
@@ -124,11 +146,10 @@ def test_the_page_classifies_with_the_harness_s_own_thresholds(payload: dict[str
         "background_tolerance": BACKGROUND_TOLERANCE,
     }
 
-    body = (ROOT / "space" / "index.html").read_text()
-    body = body[body.index("<body>"):]
-    assert "const TH = D.thresholds" in body
+    js = (ROOT / "space" / "app.js").read_text()
+    assert "const TH = D.thresholds" in js
     for literal in ("r.gain >= 0.9", "r.gain < 0.5", "0.5 * RATIO", "[0, 0.18,"):
-        assert literal not in body, f"{literal} is retyped in the page"
+        assert literal not in js, f"{literal} is retyped in the page"
 
 
 def test_the_space_publishes_no_pilot_column(payload: dict[str, Any]) -> None:

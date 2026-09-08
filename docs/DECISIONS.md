@@ -2552,3 +2552,51 @@ two files that actually survived and asserts a rebuild removes them.
 **Reverses if:** the staging directory ever needs to hold something the exporter does not
 generate, which would make a wipe destructive. Nothing does today, and a release directory that
 holds hand-placed files is not reproducible anyway.
+
+## D074 — The Space adopts the CV design system, and becomes interactive rather than static
+
+2026-09-08. Caio's call: the Spaces should read as one family, and the family is the design
+system behind `caio.theodoro.dev` that `../vernier/space` already follows. This supersedes the
+visual direction taken when the Space was first built, which deliberately avoided vernier's
+palette in favour of a dark plate — a defensible choice for a page seen alone, and the wrong one
+for a page seen next to its siblings.
+
+**What the system fixes.** One light theme, no dark mode and no toggle. White ground under a
+36px graph-paper grid fading to solid over the bottom half. Plus Jakarta Sans throughout with
+Geist Mono for data; hierarchy comes from weight and letter-spacing, not from a second family.
+Series palette `#c93d1e`, `#4361ee`, `#1f7a3d` with `#a3a3a3` for a reference that carries no
+identity.
+
+**The semantic mapping.** vernier's rule is vendor numbers in ink, measurements in signal. The
+analogue here: the reference is neutral and the measurement is signal, so **true flow is ink,
+recovered flow is `#c93d1e`, the second estimator is `#4361ee`, and the depth ratio is the
+neutral grey reference line**.
+
+**One rule of the system was being broken.** `../../cv-related/cv/src/lib/diagramTheme.ts`
+records that the palette's worst colour-vision pair sits at ΔE 7.1 protan, inside the 6–8 band,
+and states that identity is therefore never carried by colour alone — every series must carry a
+direct value label. The first version of the gain chart distinguished the two estimators by
+colour and a legend. Every point now carries its value in the system's own number format, and
+every line its name at the line end. A test asserts it, because this is an accessibility floor
+rather than a preference.
+
+**What is deliberately not copied.** The CV site defines no `:focus-visible` styles and respects
+no `prefers-reduced-motion`; both are kept here, as the source's own reading suggests. And its
+number format strips the leading zero below one, which is used for chart ticks and value labels
+and **not** for tables or readouts: a figure a reader might trace back to `results/` is shown at
+full precision rather than rounded for style.
+
+**Interactivity, which is the other half of the brief.** Five controls, each answering a question
+the static page could only assert: a scrubber over all nine displacements with a live gain
+readout, so the divergence is watched rather than described; estimator toggles and a decode
+selector on the curve, with per-point tooltips; a calculator taking hand distance, background
+distance and operating displacement and returning the harness's own PASS/FAIL/UNTESTED verdict;
+a resolution table whose rows drive the curve; and a rotation slider reporting what a given head
+motion spends of the pre-registered error budget.
+
+The quiver export now covers every translation in the published sweep rather than three sampled
+ones, which is what makes the scrubber possible; `space/data.json` grows to 388 kB and stays
+derived and gitignored.
+
+**Reverses if:** the CV system changes, in which case this page follows it rather than keeping a
+fork — the whole point of the decision is that these pages are read together.

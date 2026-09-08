@@ -29,6 +29,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from cyclegraph.signal.flow_farneback import FarnebackFlow  # noqa: E402
 from cyclegraph.signal.gain import (  # noqa: E402
+    TRANSLATIONS_M,
     BACKGROUND_TOLERANCE,
     COLLAPSE_GAIN,
     KNEE_GAIN,
@@ -50,11 +51,14 @@ SEED = 11
 
 # One displacement below the knee, one at it, one well past. Picked from the published sweep's
 # own translations so the quiver panels line up with rows a reader can look up.
-QUIVER_TRANSLATIONS_M = (0.01, 0.03, 0.08)
+# Every translation the published sweep uses, so the page can scrub the whole curve rather
+# than showing three sampled points of it. The strides are coarser than a single static panel
+# would want, because nine panels of vectors is what has to fit in one payload.
+QUIVER_TRANSLATIONS_M = TRANSLATIONS_M
 QUIVER_WIDTH = 960
-QUIVER_STRIDE = 30      # px between sampled vectors over the frame
-QUIVER_BOX_STRIDE = 14  # finer inside the hand box, where the whole argument happens: at the
-                        # frame stride the box holds 16 arrows, too few to read as a field
+QUIVER_STRIDE = 42      # px between sampled vectors over the frame
+QUIVER_BOX_STRIDE = 11  # finer inside the hand box, where the whole argument happens: at the
+                        # frame stride the box holds too few arrows to read as a field
 
 
 def _load(name: str) -> dict[str, Any]:
