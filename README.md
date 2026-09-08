@@ -1,7 +1,11 @@
 # cyclegraph
 
 **A dataset vendor's quality metric is, dimensionally, an occupational-exposure metric.
-This measures what happens when you read it that way.**
+This measures what happens when you read it that way.** The corpus measurement is blocked on
+cost; what has shipped is the instrument check, and it found that dense optical flow inside a
+hand box stops reporting the hand well before anyone would notice — the
+[flow-gain result](writing/flow-is-not-hand-speed.md), reproducible with no corpus, no token
+and no GPU.
 
 Build AI sells 10,000 hours of egocentric factory video and publishes a per-frame quality
 figure: what fraction of frames show *active manipulation* — hands visibly working on a
@@ -68,8 +72,9 @@ be neutral either.
 
 ## Status
 
-**Pre-registration v1.3.0; contracts v1.2; W2 landed and reviewed (D020); W3's code landed
-and its corpus gates passed.** The clip manifest reconciles against two independent scans and
+**Pre-registration v1.5.0; rubric v1.5.0; contracts v1.5; W2 landed and reviewed (D020);
+W3's code landed and its corpus gates passed; W9 published the synthetic instrument work
+(D071).** The clip manifest reconciles against two independent scans and
 confirms the vendor's published worker count is nine too high (`docs/DECISIONS.md` D027); the
 A14 residual floor is measured and published as a motion budget that is tighter than ordinary
 head movement (D026). No exposure number exists yet: the hand detector and the manipulation
@@ -101,5 +106,16 @@ not be opened and stay `[S]`; nothing rests on them.
 | What is inherited, and from where | `docs/LINEAGE.md` |
 | Decisions and what would reverse them | `docs/DECISIONS.md` |
 | Where the work stands | `docs/HANDOFF.md` |
+| What is blocked, and on what | `docs/BLOCKED.md` |
+| The flow-gain benchmark, and what it cannot tell you | `docs/BENCHMARK_CARD.md` |
+| The essay | `writing/flow-is-not-hand-speed.md` |
+| The published dataset and harness | [huggingface.co/datasets/caiotheodoro/cyclegraph-flow-gain](https://huggingface.co/datasets/caiotheodoro/cyclegraph-flow-gain) |
+| The Space, with the quiver panels and the gain curve | [huggingface.co/spaces/caiotheodoro/cyclegraph](https://huggingface.co/spaces/caiotheodoro/cyclegraph) |
+
+**What the release deliberately withholds**, and each for its own reason: every pilot value
+(D018); `results/decode_probe.json`, whose rates are over pilot-factory clips; and the
+manipulation probe, because `docs/MODEL_CARD.md` says no model ships and because nothing in
+either repository states whether `../vernier`'s judge labels may be redistributed. No
+permission and no prohibition is an open question, not a licence. `docs/DECISIONS.md` D071.
 
 Apache-2.0.
