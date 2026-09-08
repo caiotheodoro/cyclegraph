@@ -373,6 +373,9 @@ def _vendor_harness(out_dir: Path) -> list[str]:
         f"HAND_BREADTH_MM: Final[float] = {breadth.group(1)}\n")
     written.append("_constants.py")
 
+    for cache in pkg.rglob("__pycache__"):
+        shutil.rmtree(cache)
+
     (pkg / "__init__.py").write_text(
         '"""The cyclegraph flow-gain test.\n\n'
         "Point `gain_curve` at your own estimator and it reports where your gain leaves 1.0,\n"
@@ -386,6 +389,15 @@ def _vendor_harness(out_dir: Path) -> list[str]:
 
 
 def export(out_dir: Path) -> dict[str, int]:
+    # The staging directory is rebuilt, never updated in place. Writing into a previous build
+    # leaves whatever that build shipped: the W9 review removed `docs/RUBRIC.md` and
+    # `results/flow_benchmark.json` from the release for carrying pilot values, and both
+    # survived in `hf/dataset/` afterwards because nothing deleted them. The tests did not
+    # catch it -- they build into a fresh tmp_path, which is exactly the case that cannot fail.
+    if out_dir.exists():
+        shutil.rmtree(out_dir)
+    out_dir.mkdir(parents=True)
+
     data = out_dir / "data"
     counts = {
         "displacement_gain": _write_jsonl(

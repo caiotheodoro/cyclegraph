@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import re
 import sys
+import pathlib
 from pathlib import Path
 
 import pytest
@@ -111,3 +112,25 @@ def test_the_release_claim_matches_what_the_gate_checks(trees: list[Path]) -> No
     """The card asserts this in prose; the prose must not outrun the check."""
     readme = (trees[0] / "README.md").read_text()
     assert "No frame, no worker, no factory and no pilot value appears in this release" in readme
+
+
+def test_a_rebuild_removes_what_a_previous_build_shipped(tmp_path: pathlib.Path) -> None:
+    """The staging directory is rebuilt, not updated in place.
+
+    Found by listing the real `hf/dataset/` after the review fixes landed: `RUBRIC.md` and
+    `results/flow_benchmark.json` were still there, because the exporter only ever wrote files
+    and never removed them. Every test built into a fresh directory, so none of them could see
+    it. Publishing from that directory would have shipped both pilot leaks with the fix in
+    place and the tests green.
+    """
+    stale_doc = tmp_path / "RUBRIC.md"
+    stale_result = tmp_path / "results" / "flow_benchmark.json"
+    stale_result.parent.mkdir(parents=True)
+    stale_doc.write_text("measured on 120 pilot frames it reached 676 px")
+    stale_result.write_text('{"arms": {"farneback-cv2": {"pairs_per_s": 7.568}}}')
+
+    hf.export(tmp_path)
+
+    assert not stale_doc.exists(), "a stale doc survived the rebuild"
+    assert not stale_result.exists(), "a stale result survived the rebuild"
+    assert not list(tmp_path.rglob("__pycache__")), "bytecode shipped"

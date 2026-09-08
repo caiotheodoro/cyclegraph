@@ -2530,3 +2530,25 @@ near zero instead. The comment that said so was deleted when the sweep moved int
 **Reverses if:** a later review shows a published figure here is still pilot-derived, in which
 case the release is withdrawn rather than patched — the leak would then be the second of its
 kind and the scope, not the bytes, would be what is wrong.
+
+## D073 — The release directory is rebuilt, not updated, and the tests could not have found that
+
+2026-09-08. D072 removed `docs/RUBRIC.md` and `results/flow_benchmark.json` from the release for
+carrying pilot values. Listing the real `hf/dataset/` afterwards, both files were still in it.
+
+`export()` only ever wrote files. It never removed one, so everything a previous build shipped
+survived every later build. Publishing from that directory would have carried both pilot leaks
+out with the fix landed and the suite green.
+
+**Every test missed it, and the reason is the interesting part.** They build into a fresh
+`tmp_path`, where a stale file cannot exist. That is failure shape 1 in `docs/HANDOFF.md` —
+a gate that cannot fail — arriving through the fixture rather than through the assertion, which
+is a shape this project had not seen before. The test now seeds the output directory with the
+two files that actually survived and asserts a rebuild removes them.
+
+`export()` now `rmtree`s its output directory first, and the vendoring step deletes the
+`__pycache__` the harness import produced, which was also shipping.
+
+**Reverses if:** the staging directory ever needs to hold something the exporter does not
+generate, which would make a wipe destructive. Nothing does today, and a release directory that
+holds hand-placed files is not reproducible anyway.
