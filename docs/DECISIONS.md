@@ -2600,3 +2600,35 @@ derived and gitignored.
 
 **Reverses if:** the CV system changes, in which case this page follows it rather than keeping a
 fork — the whole point of the decision is that these pages are read together.
+
+## D075 — The repository's hard wrap became a paragraph break every ninety characters
+
+2026-09-08. The published article's spacing was wrong, and the cause is a mismatch nothing in the
+publish path could see. `writing/flow-is-not-hand-speed.md` is hard-wrapped at about 95
+characters, which is right for a file reviewed as a diff. `ntn pages create` makes **one Notion
+block per source line**. So a paragraph wrapped over four lines became four Notion paragraphs,
+and a sentence that ended just past the wrap column left a block holding one word: "signal.",
+"crosses.".
+
+Every check passed. The markdown was valid, the structure survived — 9 H2s, 4 tables, the chart
+block — and every number in it traced to `results/`. The defect was in none of those, which is
+why reading the retrieved markdown did not show it either: `ntn pages get` prints blocks one per
+line, so a body of correct paragraphs and a body of shredded ones look identical coming back.
+Only the block list showed it.
+
+**The wrap is undone at publish time rather than removed from the source.**
+`scripts/export_notion_body.py` joins prose into one line per paragraph and leaves every
+line-structured block alone — headings, table rows, fenced code, list items and blockquotes —
+because joining any of those destroys it. It also drops the H1, since the Blog data source's
+`Title` property carries it and leaving it in prints the title twice.
+
+**The regression test had to be written twice.** The first version flagged any short paragraph,
+which failed on three the essay wants — including the one-line beat "0.18." that opens a section.
+A short paragraph is not the bug. The bug is a *continuation*: the tail of a sentence broken at
+the wrap column, which starts mid-sentence and therefore in lowercase. The test now asserts the
+raw source still contains continuations, so that it proves something, and that the exported body
+contains none.
+
+**Reverses if:** `ntn` starts folding hard-wrapped lines into paragraphs itself, in which case
+the unwrap becomes a no-op rather than a fix, and the script should be deleted rather than left
+to run on input it no longer changes.
