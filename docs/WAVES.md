@@ -36,6 +36,7 @@ fan-out → re-verify. A re-read in the same context is not a review.
 | **W6** | Negative control | Ego4D duty-cycle gap ≥0.25 and HAL gap ≥1.0; EPIC speed-path HAL gap ≥0.5 |
 | **W7** | `exposure` + `estimation` | H3, H4, H5 with clustered intervals over `factory_id/worker_id`; strata above the D019 floor, suppressed rows printed as such |
 | **W8** | The card | `make card` regenerates; verdict `NOT_VERIFIED` with `docs/COVERAGE.md`'s gaps enumerated |
+| **W9** | Release | The flow-gain dataset, Space and essay publish; every shipped byte passes the identifier gate; no corpus-derived value and no model ships (`docs/DECISIONS.md` D071) |
 
 ## Per-unit review checklist
 

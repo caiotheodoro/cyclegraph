@@ -15,3 +15,7 @@ results/bootstrap_replicates.json
 
 # W9 -- release
 scripts/export_hf_dataset.py
+scripts/export_space_data.py
+docs/BENCHMARK_CARD.md
+writing/flow-is-not-hand-speed.md
+space/SPEC.md

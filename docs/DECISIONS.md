@@ -2431,3 +2431,50 @@ plateau's value, and the knee is unchanged. D059 chose Farneback on cost and on 
 neither of which uses the plateau. The pilot's speeds sit in regime 1 throughout.
 
 **Reverses if:** nothing. This is a precision correction to two entries' prose.
+
+## D071 — W9 releases the synthetic instrument work only, while the corpus stages stay blocked
+
+2026-09-08. `PLANNED-PATHS.txt` has carried a `# W9 -- release` comment since W0, but
+`docs/WAVES.md`'s table stops at W8 and no wave ever defined what a release contains. Deciding
+that now, with the corpus blocked, is the honest order: the scope is fixed before the
+publication exists rather than drawn around whatever happened to be finished.
+
+**Decision.** W9 publishes the flow-gain measurement and the generator that produces it, and
+nothing derived from the corpus. Concretely it ships `results/a14_translation_floor.json`,
+`flow_benchmark.json`, `flow_displacement_gain.json`, `flow_gain_raft.json` and
+`flow_gain_by_resolution.json`, plus `src/cyclegraph/signal/synthetic.py` and the sweep in
+`scripts/measure_flow_gain.py`, as a Hugging Face dataset, a static Space and one essay.
+
+**What it does not ship, and why each is a separate reason.**
+
+- `results/decode_probe.json` holds rates over pilot-factory clips. No identifier appears in it,
+  but `docs/ETHICS.md` says the pilot's gates publish pass or fail only, and this file publishes
+  values. The edge is not worth standing on.
+- `results/probe_manipulation.joblib` and `results/probe_fidelity.json` are withheld for two
+  independent reasons, either of which is sufficient. `docs/MODEL_CARD.md` states that cyclegraph
+  releases no model and v1 will not; publishing would contradict a standing document rather than
+  amend it. And nothing in this repository or in `../vernier` states whether that sibling's judge
+  labels or their derivatives may be redistributed — `docs/LINEAGE.md` records what is inherited
+  and is silent on onward distribution. No permission and no prohibition is an unaddressed
+  question, not a licence.
+- Every pilot number, per D018.
+
+**The release must say what it is not.** The corpus result does not exist. A reader who finds a
+Hugging Face dataset under this project's name will reasonably assume the measurement ran, so
+each surface states plainly that the corpus stages are blocked on cost and on one human step
+(`docs/BLOCKED.md`) and that what is published is an instrument check.
+
+**One thing the export has to get right.** `flow_displacement_gain.json` and
+`flow_gain_raft.json` were measured on the 0.25 s pair baseline that D045 replaced;
+`flow_gain_by_resolution.json` is on the clip's own rate. The pixel displacements and gains are
+identical either way — the interval only rescales the `true_speed_mm_s` column, by 7.5x — so the
+two estimators are comparable on displacement and are **not** comparable on mm/s.
+`flow_benchmark.json` already warns that a result without a `pair_baseline` field is not
+comparable. The published tables are therefore keyed on `hand_displacement_px`, carry
+`pair_interval_s` on every row, and the card says which files share a baseline.
+
+**Reverses if:** the corpus stages unblock and a real measurement exists to publish, in which
+case W9's scope is superseded by a release that reports it — this synthetic work would then be
+reported alongside as the instrument check it is, not replaced by it. Also reverses if
+`../vernier`'s redistribution question is settled in writing, which would reopen the probe on
+its own merits against `docs/MODEL_CARD.md`.
