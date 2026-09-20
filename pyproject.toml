@@ -52,5 +52,6 @@ strict = true
 # module in `docs/ARCHITECTURE.md` and an extra for them would be the drift this file warns
 # about.
 module = ["scipy", "scipy.*", "cv2", "cv2.*", "sklearn", "sklearn.*", "joblib", "joblib.*",
-          "torchvision", "torchvision.*", "mmseg", "mmseg.*"]
+          "torch", "torch.*", "torchvision", "torchvision.*", "transformers", "transformers.*",
+          "mmseg", "mmseg.*"]
 ignore_missing_imports = true
