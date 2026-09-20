@@ -184,11 +184,26 @@ def test_the_rate_is_derived_from_the_instants_not_from_a_field(tmp_path: Path) 
     assert rl.rate_of(empty) is None
 
 
+def _synthetic_hand_probe(path: Path) -> None:
+    """Minimal head so rate-guard tests do not depend on the vernier sibling checkout."""
+    from sklearn.linear_model import LogisticRegression
+
+    import joblib
+
+    model = LogisticRegression(max_iter=1000)
+    x = np.random.default_rng(0).normal(size=(6, FEATURE_DIM))
+    model.fit(x, [0, 1, 2, 0, 1, 2])
+    joblib.dump(model, path)
+
+
 def test_a_run_at_a_different_rate_refuses_rather_than_deleting_the_file(
         tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     """Resume compares row counts against a plan computed at --fps. Point --fps 8 at 4 Hz
     labels and every clip is short, drop_partial_clips keeps nothing, and the file is gone."""
     import run_labeller as rl
+
+    hand_probe = tmp_path / "hand.joblib"
+    _synthetic_hand_probe(hand_probe)
 
     out = tmp_path / "labels.jsonl"
     out.write_text("".join(json.dumps({
@@ -203,7 +218,7 @@ def test_a_run_at_a_different_rate_refuses_rather_than_deleting_the_file(
     }) + "\n")
 
     code = rl.main(["--manifest", str(manifest), "--probe", "results/probe_manipulation.joblib",
-                    "--hand-probe", "../vernier/data/rung1_probe.joblib",
+                    "--hand-probe", str(hand_probe),
                     "--out", str(out), "--fps", "8", "--device", "cpu"])
     assert code == 2
     # `main` also returns 2 for a missing probe, and `--hand-probe` defaults outside this

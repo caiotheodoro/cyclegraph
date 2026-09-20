@@ -21,7 +21,9 @@ signal     = ["numpy>=1.26", "opencv-python-headless>=4.9"]
 cycles     = ["numpy>=1.26", "scipy>=1.11"]
 exposure   = ["numpy>=1.26"]
 estimation = ["numpy>=1.26", "scipy>=1.11"]
-dev        = ["pytest>=8.0", "mypy>=1.10", "ruff>=0.5"]
+# scikit-learn/joblib: script runtimes for the labeller (`docs/DECISIONS.md` D022), not
+# packaged under `src/`. Pulled into dev so CI can exercise the probe tests offline.
+dev        = ["pytest>=8.0", "mypy>=1.10", "ruff>=0.5", "scikit-learn>=1.4"]
 
 [build-system]
 requires = ["hatchling"]

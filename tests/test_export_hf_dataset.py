@@ -15,6 +15,7 @@ trees. This file does not establish that no pilot value ships, and it used to sa
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -146,18 +147,17 @@ def test_no_identifier_and_no_pilot_file_ships(built: tuple[Path, dict[str, int]
 def test_the_vendored_harness_runs_on_numpy_alone(built: tuple[Path, dict[str, int]]) -> None:
     """The release's central promise: a stranger runs this without the repo and without a GPU.
 
-    Run in a subprocess with the repo's `src/` off the path, so an accidental fallback to the
-    installed package would fail rather than silently pass.
+    Run in a subprocess with only the built tree on ``PYTHONPATH``. CI installs the repo
+    editable, so refusing to import ``cyclegraph`` would fail for the wrong reason; what has
+    to hold is that ``cyclegraph_flow_gain`` resolves under the release directory.
     """
     out, _ = built
     script = """
 import sys, numpy as np
-sys.path.insert(0, %r)
-try:
-    import cyclegraph
-    raise SystemExit("repo package was importable; this test proves nothing")
-except ModuleNotFoundError:
-    pass
+root = %r
+sys.path.insert(0, root)
+import cyclegraph_flow_gain as pkg
+assert str(root) in (pkg.__file__ or ""), pkg.__file__
 from cyclegraph_flow_gain import gain_curve
 
 class BackgroundTracker:
@@ -174,9 +174,9 @@ for m in ("pydantic", "cv2", "torch"):
     assert m not in sys.modules, m
 print("ok")
 """ % str(out)
-    env_root = str(ROOT)
+    env = {**os.environ, "PYTHONPATH": str(out)}
     proc = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True,
-                          cwd=str(out), env={"PATH": "/usr/bin:/bin", "HOME": env_root})
+                          cwd=str(out), env=env)
     assert proc.returncode == 0, proc.stderr
     assert "ok" in proc.stdout
 
