@@ -17,8 +17,11 @@
 ../vernier/CONTRACTS.md
 ../vernier/src/vernier/estimation/bootstrap.py
 ../vernier/scripts/inspect_raw_shard.py
+../vernier/scripts/distill_rung1.py
+../vernier/space
 ../assay/docs/METHOD.md
 ../vernier
+../../cv-related/cv/src/lib/diagramTheme.ts
 
 # W4 -- the labeller. Judge labels, cached backbone features and the trained hand-count
 # head, all inherited rather than regenerated (docs/DECISIONS.md D038).

@@ -9,6 +9,7 @@
 docs/private/
 
 # Regenerated release staging, derived from results/ and docs/.
+hf/dataset
 hf/dataset/README.md
 hf/dataset/BENCHMARK_CARD.md
 hf/dataset/ETHICS.md
@@ -20,6 +21,8 @@ hf/dataset/ETHICS.md
 # these carries a per-factory identifier in its clip_id and none may ever be tracked
 # (docs/DECISIONS.md D018, docs/ETHICS.md). The gate on results/ would catch it; this
 # declares them so the cited-path gate does not fail on a promise the docs make.
+results/pilot
+results/pilot/clips_factory_001.jsonl
 results/pilot/detections.jsonl
 results/pilot/labels.jsonl
 results/pilot/frame_signal.jsonl
