@@ -131,8 +131,8 @@ permission and no prohibition is an open question, not a licence. `docs/DECISION
 - The flow-gain dataset and the Space are on Hugging Face (linked in the map above). Their single-seed
   tables are corrected by `results/flow_gain_seeds.json`; the hosted copies were not edited.
 - The paper (`paper/cyclegraph.tex`, v2.0, PDF and `.bbl` committed, built with `tectonic`) is
-  `CC BY 4.0`, set in `.zenodo.json` and `CITATION.cff`, and v1 is deposited on
-  [Zenodo](https://doi.org/10.5281/zenodo.24455090) (D077; v2 revamp and v2 experiments in D078--D081). It is not peer reviewed.
+  `CC BY 4.0`, set in `.zenodo.json` and `CITATION.cff`, and v2 is deposited on
+  [Zenodo](https://doi.org/10.5281/zenodo.24481779) (D082; v1 was D077, v2 revamp and experiments in D078--D081). It is not peer reviewed.
 - Reproduce the paper's numbers with no corpus, no token and no GPU:
   `python3 scripts/measure_flow_gain_seeds.py --raft-seeds 0` (the RAFT arms need torch) and
   `python3 scripts/measure_flow_gain_v2.py`, then `python3 scripts/export_paper_tables.py`;

@@ -12,8 +12,8 @@ authors:
     affiliation: "Avenza Labs"
     orcid: "https://orcid.org/0009-0001-4061-4117"
 date-released: 2026-09-08
-doi: 10.5281/zenodo.24455090
-url: "https://doi.org/10.5281/zenodo.24455090"
+doi: 10.5281/zenodo.24481779
+url: "https://doi.org/10.5281/zenodo.24481779"
 license: Apache-2.0
 repository-code: "https://github.com/caiotheodoro/cyclegraph"
 keywords:

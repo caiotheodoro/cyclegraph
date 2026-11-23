@@ -2885,3 +2885,17 @@ publication date is set to **2026-09-08**, the date the flow-gain essay was firs
 **Reverses if:** the owner directs a different release date for the Zenodo deposit, in which case
 `CITATION.cff`, `scripts/export_zenodo_metadata.py`, and `paper/cyclegraph.tex` are updated under a
 later entry.
+
+## D082 — Paper v2 deposited as a new Zenodo version; the deposit is not the registration clock
+
+2026-11-23. The v2 PDF (`paper/cyclegraph.pdf`, md5 `f35054772c83bc0df5a9e979b39f9314`, built from `b96ad78`) is deposited as a new version of the Zenodo record that holds v1 (D077).
+
+- **New record.** Record `24481779`, DOI `10.5281/zenodo.24481779`, created 2026-11-23 20:42 UTC, published the same day.
+- **Concept DOI.** `10.5281/zenodo.24455089`, unchanged across versions.
+- **Publication date on the record.** 2026-09-08, the date the flow-gain essay was first published (D081). The record date is the date of first public reporting, not the deposit date.
+- **Deposit is not the registration clock.** The Zenodo timestamp records when the version was deposited (2026-11-23). It does not establish when the work was first made public or when its claims were fixed; that is the 2026-09-08 publication and the git history.
+- **What cannot change.** The PDF file is fixed at deposit. The metadata (title, creators, description, keywords, related works, version) can be edited on later versions.
+- **Known gap.** The `.zenodo.json` notes field did not persist as an additional description through the Zenodo form. The record carries the description and the version string but not the notes text; the notes remain in `.zenodo.json`.
+- **Repo pointers.** `README.md` and `CITATION.cff` now name the v2 DOI. The v1 DOI `10.5281/zenodo.24455090` remains on its own record.
+
+**Reverses if:** the owner withdraws the v2 deposit or directs a different publication date, in which case the record is edited (metadata only) and this entry is superseded by a later one.
