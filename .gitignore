@@ -20,6 +20,7 @@ results/*
 !results/flow_gain_by_resolution.json
 !results/flow_benchmark.json
 !results/flow_gain_seeds.json
+!results/flow_gain_v2.json
 !results/vendor_claim.json
 !results/provenance.json
 !results/decode_probe.json
