@@ -1,0 +1,45 @@
+{
+  "what_this_is": "What the vendor's own public pages state about the per-frame active-manipulation figure, copied from the pages on the retrieval date. Nothing here is measured by this project.",
+  "retrieved": "2026-11-23",
+  "pages": {
+    "evaluation_card": {
+      "url": "https://huggingface.co/datasets/builddotai/Egocentric-10K-Evaluation",
+      "raw_readme_sha256": "abd4a65bf97dbec146411f1042006d1a4031cca17725134cac3a4f96077c2e88",
+      "licence_metadata": "apache-2.0"
+    },
+    "corpus_page": {
+      "url": "https://huggingface.co/datasets/builddotai/Egocentric-10K",
+      "note": "gated; the facts below are from the page text as retrieved, not from the files"
+    }
+  },
+  "sampling_sentence": "we randomly sample 10k frames from each dataset and run them through a gemini-2.5-flash",
+  "frames_sampled": 10000,
+  "labeller": "gemini-2.5-flash",
+  "prompt_task": "determine whether the camera-wearer is actively manipulating an object at this exact moment",
+  "definition": "\"Active Manpulation\" means the wearer is visibly using their hands to work on, modify, assemble, process, or handle physical objects, materials, components in pursuit of a specific goal",
+  "rules": [
+    "Do not infer actions that are not visible in the frame.",
+    "If the action is ambiguous or not clearly happening, respond \"no.\"",
+    "Ignore objects held by other people.",
+    "Respond only with: \"yes\" or \"no.\""
+  ],
+  "published_percent": {
+    "egocentric_10k": 91.66,
+    "ego4d": 50.07,
+    "epic_kitchens": 85.04
+  },
+  "table_column_name": "Active Labor",
+  "corpus_hours": 10000,
+  "corpus_factories": 85,
+  "corpus_licence": "Apache-2.0",
+  "sibling_audit": {
+    "what_this_is": "Numbers quoted from the abstract of the author's own sibling audit of the same published figures. They are not measured in this repository and cannot be re-derived here; the source is the cited paper.",
+    "citation": "Theodoro, C. Asymmetric Judge Error and Clustered Frames. Zenodo, doi:10.5281/zenodo.24453957",
+    "manipulation_judge_over_calls": 10,
+    "manipulation_over_call_possible": 33,
+    "manipulation_judge_under_calls": 2,
+    "manipulation_under_call_possible": 120,
+    "human_labels": 153,
+    "raters": 1
+  }
+}

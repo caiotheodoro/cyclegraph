@@ -19,6 +19,9 @@ results/*
 !results/flow_gain_raft.json
 !results/flow_gain_by_resolution.json
 !results/flow_benchmark.json
+!results/flow_gain_seeds.json
+!results/vendor_claim.json
+!results/provenance.json
 !results/decode_probe.json
 !results/probe_fidelity.json
 !results/probe_manipulation.joblib
@@ -48,3 +51,9 @@ build/
 
 # --- os ---
 .DS_Store
+
+# --- paper build intermediates (the PDF and .bbl are tracked) ---
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.blg

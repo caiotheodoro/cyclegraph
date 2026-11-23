@@ -1,0 +1,59 @@
+{
+  "what_this_is": "Facts about this repository's own history and about a re-run of the novelty gate, recorded on 2026-11-23 so the paper can state them without typing them. None is a measurement of the corpus.",
+  "recorded": "2026-11-23",
+  "preregistration": {
+    "freeze_commit": "e459aa3679a86fb3cf6f7a2ed9279192c2d71b9f",
+    "freeze_commit_message": "Freeze pre-registration v1.0.0 and rubric v1.0.0 before any code",
+    "first_src_commit": "556f1551be3b6d53be850820a71056991ff5e398",
+    "freeze_is_ancestor_of_every_src_commit": true,
+    "current_version": "1.5.0",
+    "amendments": 5,
+    "note": "Ancestry is checked by scripts/validate.py gate_docs_before_code. Commit dates are the author's own and are not evidence."
+  },
+  "github": {
+    "repository_created_utc": "2026-09-08T03:32:04Z",
+    "queried_with": "gh api repos/caiotheodoro/cyclegraph",
+    "note": "The first public copy of the freeze dates from this day, after the one-factory pilot of docs/DECISIONS.md D061 and D069 had run. No signed tag, no external registry and no third-party timestamp exists for the freeze."
+  },
+  "novelty_gate_rerun": {
+    "survey_original_date": "2026-09-05",
+    "rerun_date": "2026-11-23",
+    "pubmed": [
+      {
+        "query": "\"hand activity level\" AND (egocentric OR \"first-person\" OR \"head-mounted\" OR \"wearable camera\")",
+        "hits_original": 0,
+        "hits_rerun": 0
+      },
+      {
+        "query": "(egocentric OR \"first-person\" OR \"head-mounted\" OR \"wearable camera\") AND (ergonomic* OR musculoskeletal) AND video AND (hand OR wrist) AND (repetiti* OR \"duty cycle\" OR exertion)",
+        "hits_original": 1,
+        "hits_rerun": 1,
+        "note": "the same single paper both times: PMID 40890863, sEMG, not video"
+      },
+      {
+        "query": "\"hand activity level\" AND (video OR \"computer vision\") AND (automat* OR tracking)",
+        "hits_original": 7,
+        "hits_rerun": 7
+      }
+    ],
+    "arxiv": [
+      {
+        "query": "all:\"hand activity level\"",
+        "hits_rerun": 0
+      },
+      {
+        "query": "all:egocentric AND all:ergonomic",
+        "hits_rerun": 6,
+        "note": "none scores an ergonomic index or a duty cycle from egocentric video"
+      }
+    ],
+    "verdict": "No work found that scores Hand Activity Level, or a duty cycle for it, from a head-mounted camera. A search result, not a proof of absence."
+  },
+  "lens_check": {
+    "source": "docs/DECISIONS.md D025",
+    "workers_shipped": 2144,
+    "calibration_files_compared": 16,
+    "byte_identical": 16,
+    "note": "The other files are assumed identical, not checked. A calibration replicated across every worker is not a per-camera calibration."
+  }
+}
