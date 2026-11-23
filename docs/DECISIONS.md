@@ -2721,3 +2721,62 @@ registration outside GitHub is still owed.
 found wrong, and a corrected paper goes up as a new version under the concept DOI, with the earlier
 version left in place and the reason recorded here. If a published figure is found to be wrong, the
 correction goes in `docs/RETRACTIONS.md` first.
+
+## D078 — Post-hoc v2 instrument-check experiments planned before running
+
+2026-11-23. Nothing in `docs/PRE-REGISTRATION.md` changes, and no earlier entry or result artifact is
+edited. Every experiment below is post hoc, synthetic, zero-spend, and touches no corpus frame and no
+pilot value (D018, `docs/ETHICS.md`).
+
+**Why.** A structured critique of `paper/cyclegraph.tex` (v1) identified five concrete gaps in the
+instrument check that are testable locally without corpus access or GPU spend: (1) v1 inferred
+background capture from the box-median gain landing on the depth ratio rather than observing and
+quantifying the pixel-level flow field inside the hand box; (2) v1 tested only camera translation over
+a static scene and lacked a static-camera, moving-hand control; (3) v1 varied only texture seed while
+leaving depth ratio, hand bounding-box size, motion blur, and sensor noise fixed; (4) v1 tested only
+two estimators (Farneback and RAFT-small); and (5) real egocentric clip displacement distributions
+were unmeasured.
+
+**What is run (`scripts/measure_flow_gain_v2.py`, writing `results/flow_gain_v2.json`), fixed before
+seeing any outcome:**
+
+- **Experiment A — Direct flow-field observation.** At 960×540 under the nominal corpus lens
+  (`Z_hand = 0.45 m`, `Z_bg = 2.50 m`), evaluate all four estimators below at `t ∈ {0.01, 0.02, 0.03,
+  0.06} m` (11.4, 22.8, 34.2, 68.0 px) over 20 texture seeds for classical estimators (`0..19`) and 11
+  seeds for neural estimators (`0..9, 11`). Inside the hand box, record: (i) fraction of pixels whose
+  estimated flow vector is closer in L2 distance to the true background flow than to the true hand flow
+  (`frac_closer_to_bg`), (ii) fraction strictly within `0.25 × ||v_hand - v_bg||` of the background
+  vector (`frac_locked_bg`) and of the hand vector (`frac_locked_hand`), (iii) median cosine similarity
+  to true hand flow (closing v1's direction-blindness gap), (iv) median endpoint error against hand
+  and background truth, and (v) the actual pipeline ego-motion-subtracted residual RMS (`ego_motion` +
+  `residual_rms_px`) relative to true residual. Save seed-11 1D centerline profiles and 2D vector grids
+  at 11.4, 34.2, and 68.0 px for direct visualization.
+- **Experiment B — Moving-hand, static-camera arm.** Matched backward-warped pairs at 960×540 on the
+  nine-point displacement grid (`TRANSLATIONS_M`), identical hand displacement inside the box, and
+  stationary background `(0, 0)` outside, across all four estimators and the same seed counts.
+  *Prediction written before running:* once an estimator loses the hand under a static camera, post-knee
+  gain falls toward `0` rather than `0.18`, isolating ego-motion background capture from generic
+  large-displacement collapse.
+- **Experiment C — Additional estimators and multi-seed A14 residuals.** Add two distinct estimators:
+  OpenCV Dense Inverse Search (`DISOpticalFlow_create(PRESET_MEDIUM)`, Kroeger et al. 2016; 20 seeds on
+  the 9-point grid and fine grid) and `torchvision`'s `raft_large` (`Raft_Large_Weights.DEFAULT`,
+  Teed & Deng 2020; 11 seeds on the 9-point grid). Record a CPU-vs-MPS parity check for RAFT-small on
+  seed 11. Measure the 1° A14 rotation residual at 960×540 over 11 seeds (`0..9, 11`) for all four
+  estimators against exact geometry.
+- **Experiment D — Controlled parameter sweeps (960×540, ego-motion, Farneback and DIS over 10 seeds
+  `0..9`, RAFT-small over 5 seeds `0..4`).**
+  1. *Depth ratio:* `Z_hand = 0.45 m`, `Z_bg ∈ {0.90, 1.50, 2.50, 4.50} m` (ratios `0.50, 0.30, 0.18,
+     0.10`). *Prediction:* post-knee shelf tracks `Z_hand / Z_bg` linearly across all four ratios.
+  2. *Hand bounding-box size:* scale factor `{0.5, 0.75, 1.0, 1.5, 2.0}` × 85 mm hand breadth.
+     *Prediction:* larger boxes delay the half-crossing displacement and smaller boxes collapse earlier.
+  3. *Motion blur:* horizontal 1D box-car kernel `{0, 5, 11, 21}` px applied to both frames.
+  4. *Sensor noise:* additive i.i.d. Gaussian noise `σ ∈ {0, 5, 15, 30}` (intensity levels 0–255).
+
+**What is NOT run here, and why.** A check of the local workspace confirms zero publishable real
+egocentric video clips exist on disk; pilot-factory clips remain strictly withheld under D018 and
+`docs/ETHICS.md`. Measuring empirical inter-frame displacement distributions on real egocentric footage
+is therefore deferred and specified in `docs/DESIGN-V2.md`.
+
+**Reverses if:** a rendering or metric defect is found in `scripts/measure_flow_gain_v2.py`, in which
+case `results/flow_gain_v2.json` is regenerated or superseded under a later entry and every affected
+figure and table in the paper is rebuilt from it.

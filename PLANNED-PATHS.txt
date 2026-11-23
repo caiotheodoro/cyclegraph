@@ -15,3 +15,7 @@ results/bootstrap_replicates.json
 
 # W9 -- release. Every path this section promised has landed; the section stays as the
 # place a future release path is declared before it is written.
+
+# Paper v2 post-hoc experiments (D078).
+results/flow_gain_v2.json
+docs/DESIGN-V2.md
