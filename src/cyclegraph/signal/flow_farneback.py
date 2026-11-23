@@ -50,7 +50,7 @@ class FarnebackFlow:
             return None
         # cv2's own stubs type `flow` as required, but the documented API takes None for
         # "allocate one". Passing an empty array instead would be a different call.
-        field = cv2.calcOpticalFlowFarneback(  # type: ignore[call-overload]
+        field = cv2.calcOpticalFlowFarneback(  # type: ignore[call-overload,unused-ignore]
             first, second, None, self.pyr_scale, self.levels, self.winsize,
             self.iterations, self.poly_n, self.poly_sigma, 0,
         )
