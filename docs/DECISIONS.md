@@ -2868,7 +2868,7 @@ remains untouched as the prior deposited version.
 
 ## D081 — Publication date follows first public reporting (2026-09-08), on the owner's instruction
 
-2026-11-23. Following the owner's instruction recorded in `../lacuna/docs/DECISIONS.md` D114 ("blog
+2026-11-23. Following the owner's instruction recorded in lacuna's decision log, entry D114 ("blog
 posts are the correct ones" for publication dates across the five deposits), this repository's
 publication date is set to **2026-09-08**, the date the flow-gain essay was first published at
 `https://caio.theodoro.dev/blog/cyclegraph-flow-is-not-hand-speed`.
