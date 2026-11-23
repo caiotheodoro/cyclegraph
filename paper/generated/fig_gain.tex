@@ -1,0 +1,18 @@
+\begin{tikzpicture}
+\begin{axis}[width=0.92\linewidth,height=6.4cm,xmode=log,xlabel={hand displacement between the two frames (px)},ylabel={gain: recovered / true flow},ymin=0,ymax=1.15,xmin=5,xmax=180,legend style={at={(0.02,0.02)},anchor=south west,font=\small,draw=none,fill=none},grid=both,grid style={gray!15}]
+\addplot[name path=fl,draw=none,forget plot] coordinates {(5.7,0.9954) (11.399,0.9921) (22.794,0.5807) (34.181,0.1415) (45.539,0.1654) (68.025,0.1312) (90.136,0.101) (132.883,0.1594) (163.312,0.0552)};
+\addplot[name path=fh,draw=none,forget plot] coordinates {(5.7,0.9975) (11.399,0.9973) (22.794,0.9925) (34.181,0.4165) (45.539,0.2711) (68.025,0.2713) (90.136,0.2381) (132.883,0.2096) (163.312,0.1921)};
+\addplot[blue!25,forget plot] fill between[of=fl and fh];
+\addplot[name path=rl,draw=none,forget plot] coordinates {(5.7,0.9191) (11.399,0.9637) (22.794,0.9856) (34.181,0.5843) (45.539,0.1763) (68.025,0.1724) (90.136,0.1758) (132.883,0.1801) (163.312,0.1839)};
+\addplot[name path=rh,draw=none,forget plot] coordinates {(5.7,1.0034) (11.399,0.997) (22.794,0.9977) (34.181,0.9739) (45.539,0.4094) (68.025,0.1779) (90.136,0.1769) (132.883,0.181) (163.312,0.1849)};
+\addplot[orange!30,forget plot] fill between[of=rl and rh];
+\addplot[blue!80!black,thick,mark=*,mark size=1.4pt] coordinates {(5.7,0.9964) (11.399,0.9952) (22.794,0.8812) (34.181,0.2487) (45.539,0.2113) (68.025,0.196) (90.136,0.1785) (132.883,0.1804) (163.312,0.124)};
+\addlegendentry{Farneback, mean of seeds}
+\addplot[orange!85!black,thick,mark=square*,mark size=1.4pt] coordinates {(5.7,0.9758) (11.399,0.9809) (22.794,0.9923) (34.181,0.7978) (45.539,0.2619) (68.025,0.1745) (90.136,0.1766) (132.883,0.1807) (163.312,0.1844)};
+\addlegendentry{RAFT-small, mean of seeds}
+\addplot[black,dashed,thin,mark=x,mark size=1.6pt] coordinates {(5.7,0.9973) (11.399,0.9973) (22.794,0.9925) (34.181,0.2024) (45.539,0.2323) (68.025,0.1773) (90.136,0.1869) (132.883,0.1964) (163.312,0.0552)};
+\addlegendentry{Farneback, the one published seed}
+\addplot[gray,dotted,thick] coordinates {(5,0.18)(180,0.18)};
+\addlegendentry{hand distance / background distance}
+\end{axis}
+\end{tikzpicture}

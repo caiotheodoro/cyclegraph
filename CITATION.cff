@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use this work, please cite the paper."
+title: "When Dense Optical Flow Stops Reporting the Hand: An Instrument Check for Reading Egocentric Factory Video as Hand Activity Level"
+type: article
+authors:
+  - family-names: Theodoro
+    given-names: Caio
+    orcid: "https://orcid.org/0009-0005-7343-981X"
+date-released: 2026-11-23
+license: Apache-2.0
+repository-code: "https://github.com/caiotheodoro/cyclegraph"
+keywords:
+  - egocentric video
+  - optical flow
+  - hand activity level
+  - occupational ergonomics
+  - pre-registration
+abstract: >-
+  An instrument check on one input to reading a dataset vendor's per-frame manipulation
+  figure as Hand Activity Level: whether dense optical flow inside a hand box reports hand
+  speed, on rendered scenes under the corpus's fisheye lens. The corpus measurement has not
+  run. The code is Apache-2.0, the paper CC BY 4.0, and the paper is not peer reviewed.

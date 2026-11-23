@@ -6,7 +6,7 @@
 NOT_YET = @echo "not yet implemented -- see docs/HANDOFF.md for the wave that lands this" >&2 && exit 1
 
 .PHONY: help validate privacy-gate check-placeholders check-claims test typecheck lock \
-        survey manifest signal cycles hal estimate card
+        survey manifest signal cycles hal estimate card paper paper-check
 
 help:  ## This list.
 	grep -E '^[a-z-]+:.*?## .*$$' $(MAKEFILE_LIST) | sed 's/:.*## /\t/'
@@ -54,6 +54,18 @@ typecheck:  ## mypy --strict over tests and scripts, and over src once it exists
 
 lock:  ## Regenerate constraints from pyproject.
 	uv pip compile --all-extras --universal --python-version 3.11 -o constraints.txt pyproject.toml
+
+# --- the short paper -----------------------------------------------------------
+
+paper:  ## Regenerate the paper's tables, rebuild the PDF with tectonic, regenerate .zenodo.json.
+	python3 scripts/export_paper_tables.py
+	cd paper && tectonic --keep-intermediates cyclegraph.tex
+	python3 scripts/export_zenodo_metadata.py
+
+paper-check:  ## The paper's numbers, citations and PDF text against the artifacts.
+	python3 scripts/export_paper_tables.py --check
+	python3 scripts/export_zenodo_metadata.py --check
+	python3 -m pytest tests/test_paper.py tests/test_zenodo_metadata.py -q
 
 # --- stages, in the order docs/WAVES.md fixes ---------------------------------
 

@@ -2632,3 +2632,63 @@ contains none.
 **Reverses if:** `ntn` starts folding hard-wrapped lines into paragraphs itself, in which case
 the unwrap becomes a no-op rather than a fix, and the script should be deleted rather than left
 to run on input it no longer changes.
+
+## D076 — The instrument check goes out as a short paper, with a seed spread, and three single-seed claims are retracted
+
+2026-11-23. Nothing in `docs/PRE-REGISTRATION.md` changes, and no earlier entry is edited.
+
+**What was done.** `paper/cyclegraph.tex` (built with `tectonic`; the PDF and `.bbl` are committed
+and the source builds on arXiv's toolchain) reports the flow-gain instrument check and nothing
+about the corpus. Every number in it is a macro written by `scripts/export_paper_tables.py` from
+the committed result files, the measurement card or a code constant; `tests/test_paper.py` fails on a stale
+generated file, a bare number in the prose, an undefined macro, a doubled backslash, an uncited
+reference, and, when `pdftotext` is present, a PDF whose text has lost a number, a citation, a table
+or a figure. The last class is the one that cost vernier an abstract while its build stayed green.
+
+**What the seeds found, and what it retracts.** The published curves were one texture seed. The
+sweep was repeated over 20 seeds (11 for RAFT-small) by `scripts/measure_flow_gain_seeds.py`, into
+`results/flow_gain_seeds.json`; seed 11 reproduces the published files exactly. The shelf at the
+depth ratio survives for both estimators. Three readings of seed 11 do not, and
+`docs/RETRACTIONS.md` R1 to R3 carry them: a cliff that is really a transition whose location moves
+with the texture; a "measured optimum" at 960x540 that the seed ranges do not separate from 480x270;
+and RAFT-small "holding full gain" at 34.2 px. D050's choice of 960x540 stands where it rests on the
+physical speed at which the larger decodes collapse, and does not stand where it rests on 960x540
+beating 480x270. The published essay, Hugging Face dataset card and Space still carry the single-seed
+reading; the essay and the repository's card now say so, and the hosted copies were not edited.
+
+**What was found wrong elsewhere, and fixed.**
+
+- `README.md`, `AGENTS.md` and `docs/HANDOFF.md` said the detector and labeller had not run and that
+  no exposure number exists. The pilot ran (D061, D069). No exposure value exists; the card carries
+  the verdicts. The README also listed a corpus distribution and a set of verifiable results as what
+  the project claims, where one is not produced and most are untested. Both corrected.
+- The README and essay called the vendor's number a per-frame figure. The vendor's own card
+  publishes one aggregate over 10,000 randomly sampled frames labelled once by `gemini-2.5-flash`,
+  with no interval and no human label. `results/vendor_claim.json` records what the page says, with
+  the retrieval date and the card's hash. Statements about the vendor are scoped to that.
+- `mypy --strict` failed on a fresh install, because current OpenCV ships types and the `type:
+  ignore` in `flow_farneback.py` became unused. The last CI run was green on 2026-09-20 against an
+  older install; a rerun would have been red. The ignore now tolerates both.
+- The pre-registration's ordering is evidenced by commit ancestry only. The repository became public
+  on 2026-09-08, after the one-factory pilot, and there is no signed tag, registry entry or
+  third-party timestamp. `results/provenance.json` records this and the paper says it. A signed tag on
+  the freeze commit now would date the tag, not the freeze, and is not made.
+- The novelty gate (`docs/SURVEY.md`, run 2026-09-05) was rerun on 2026-11-23: the three PubMed
+  queries return the same counts and an arXiv phrase query for "hand activity level" returns none.
+  Still a search result, not a proof of absence.
+
+**The deposit.** A Zenodo draft of the paper was prepared on 2026-11-23 and left unpublished; the
+owner publishes it. When it is published, its Zenodo created time is the real date and a later entry
+records the DOI. The publication date field reads 2026-11-23, the day the paper was first public on
+`main`. The deposit is a deposit of a paper. It is not the registration clock: it dates nothing about
+`docs/PRE-REGISTRATION.md`, and the deposit of the registration outside GitHub is still owed.
+`.zenodo.json` is generated from the paper by `scripts/export_zenodo_metadata.py` and a test holds
+the two together. No release or tag exists for the paper.
+
+**Not done, and why.** The corpus measurement (blocked on cost, `docs/BLOCKED.md`), the Ego4D control
+(a licence acceptance), any expert score (permanently blocked), and any real-video test of the flow
+check, which needs decoded corpus frames. Nothing here is a claim about the corpus.
+
+**Reverses if:** the seed arm is shown to differ from the published sweep other than by texture (the
+two would then be re-measured under one definition), or the paper is withdrawn from Zenodo, in which
+case the repository's copy stays and says it was withdrawn.
