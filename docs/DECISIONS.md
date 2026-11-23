@@ -2835,3 +2835,53 @@ field. RAFT-small on MPS reproduced CPU on seed 11 with a maximum absolute gain 
 **Reverses if:** a defect is found in `scripts/measure_flow_gain_v2.py` or a rerun changes any metric
 beyond numerical tolerance, in which case `results/flow_gain_v2.json` is regenerated and recorded
 under a later entry.
+
+## D080 — Paper v2: lead with silent background capture, integrate v2 experiments, state each limit once, and move housekeeping to Appendix A
+
+2026-11-23. `paper/cyclegraph.tex` is revised in place as v2 (`paper-v2.0`); the deposited v1 file
+remains preserved at tag `paper-v1.0` (D077). Nothing in `docs/PRE-REGISTRATION.md` changes.
+
+- **Title.** *When Dense Optical Flow Measures the Background Instead of the Hand: Silent Object
+  Switching Under Egocentric Camera Motion* (replacing the v1 "An Instrument Check..." title).
+- **Framing and cuts.** Removed the confessional abstract ("this note makes no claim about...",
+  "Not peer reviewed", essay retractions), cut Section 1 ("What this note does not show") and
+  "Objections I expect", eliminated the word "note" throughout, replaced the vendor-drama opening
+  with egocentric hand-speed measurement motivated concisely by occupational ergonomics, stated each
+  caveat once in `\section{Limitations}`, and consolidated pre-registration status, pilot card,
+  vendor context, and single-seed essay retractions in Appendix A.
+- **New figures, tables, and literature.** Added a vector scene-geometry schematic (Figure 1),
+  direct flow-field centerline profiles and 2D quiver panels at 68.0 px (Figure 2) with pixel-level
+  capture and pipeline residual table (Table 1), four-estimator ego-motion vs static-camera
+  comparison (Figure 3, Table 2), four-panel geometry/blur/noise sweep figure and table (Figure 4,
+  Table 3), and verified primary-source citations for Brox & Malik (2011), Kroeger et al. (2016,
+  DIS), and Xu et al. (2022, GMFlow).
+- **Deferred work.** Real egocentric clip displacement validation (zero publishable clips locally;
+  pilot values withheld under D018) and corpus-scale exposure measurement are specified cleanly in
+  `docs/DESIGN-V2.md`.
+- **Gates.** `scripts/export_paper_tables.py` generates all 5 vector figures, 7 tables, and macros;
+  `tests/test_paper.py`, `tests/test_zenodo_metadata.py`, and `tests/test_flow_gain_v2.py` enforce
+  zero bare measurements in prose, full PDF float/citation survival, and v2 artifact invariants.
+
+**Reverses if:** any figure, table, or statement in `paper/cyclegraph.tex` is found wrong against
+its artifact, in which case the artifact or paper is corrected under a later entry; `paper-v1.0`
+remains untouched as the prior deposited version.
+
+## D081 — Publication date follows first public reporting (2026-09-08), on the owner's instruction
+
+2026-11-23. Following the owner's instruction recorded in `../lacuna/docs/DECISIONS.md` D114 ("blog
+posts are the correct ones" for publication dates across the five deposits), this repository's
+publication date is set to **2026-09-08**, the date the flow-gain essay was first published at
+`https://caio.theodoro.dev/blog/cyclegraph-flow-is-not-hand-speed`.
+
+- `CITATION.cff` `date-released` reads `2026-09-08`.
+- `.zenodo.json` `publication_date` reads `2026-09-08`, `version` reads `paper-v2.0`, and `notes`
+  records both dates ("First published on 8 September 2026 ... This version, paper-v2.0, is of 23
+  November 2026.").
+- `paper/cyclegraph.tex` prints `First version 8 September 2026; this version 23 November 2026` and
+  notes both dates in the availability section.
+- Nothing on Zenodo is modified by this commit; a future deposit uploads v2 as a new version under
+  the concept DOI `10.5281/zenodo.24455089`.
+
+**Reverses if:** the owner directs a different release date for the Zenodo deposit, in which case
+`CITATION.cff`, `scripts/export_zenodo_metadata.py`, and `paper/cyclegraph.tex` are updated under a
+later entry.

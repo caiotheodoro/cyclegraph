@@ -1,0 +1,51 @@
+\begin{minipage}{0.49\linewidth}
+\begin{tikzpicture}
+\begin{axis}[width=0.95\linewidth,height=5.6cm,xmode=log,title={\footnotesize\textbf{(a) Moving camera, static scene (ego-motion)}},xlabel={\footnotesize hand displacement (px)},ylabel={\footnotesize gain (recovered / true)},ymin=-0.03,ymax=1.12,xmin=5,xmax=180,legend style={at={(0.02,0.02)},anchor=south west,font=\tiny,draw=none,fill=white,fill opacity=0.85,inner sep=1.5pt},grid=both,grid style={gray!15},tick label style={font=\scriptsize}]
+\addplot[name path=lo0,draw=none,forget plot] coordinates {(5.700,0.9954) (11.399,0.9921) (22.794,0.5807) (34.181,0.1415) (45.539,0.1654) (68.025,0.1312) (90.136,0.1010) (132.883,0.1594) (163.312,0.0552)};
+\addplot[name path=hi0,draw=none,forget plot] coordinates {(5.700,0.9975) (11.399,0.9973) (22.794,0.9925) (34.181,0.4165) (45.539,0.2711) (68.025,0.2713) (90.136,0.2381) (132.883,0.2096) (163.312,0.1921)};
+\addplot[blue!80!black!18,forget plot] fill between[of=lo0 and hi0];
+\addplot[name path=lo1,draw=none,forget plot] coordinates {(5.700,0.9860) (11.399,0.9930) (22.794,0.9910) (34.181,0.1529) (45.539,0.1761) (68.025,0.1062) (90.136,0.0983) (132.883,0.1621) (163.312,0.1682)};
+\addplot[name path=hi1,draw=none,forget plot] coordinates {(5.700,0.9916) (11.399,0.9956) (22.794,0.9954) (34.181,0.9878) (45.539,0.9279) (68.025,0.3212) (90.136,0.3079) (132.883,0.2854) (163.312,0.2608)};
+\addplot[green!55!black!18,forget plot] fill between[of=lo1 and hi1];
+\addplot[name path=lo2,draw=none,forget plot] coordinates {(5.700,0.9191) (11.399,0.9637) (22.794,0.9856) (34.181,0.5843) (45.539,0.1763) (68.025,0.1724) (90.136,0.1758) (132.883,0.1801) (163.312,0.1839)};
+\addplot[name path=hi2,draw=none,forget plot] coordinates {(5.700,1.0034) (11.399,0.9970) (22.794,0.9977) (34.181,0.9739) (45.539,0.4094) (68.025,0.1779) (90.136,0.1769) (132.883,0.1810) (163.312,0.1849)};
+\addplot[orange!85!black!18,forget plot] fill between[of=lo2 and hi2];
+\addplot[name path=lo3,draw=none,forget plot] coordinates {(5.700,0.9879) (11.399,0.9879) (22.794,0.9932) (34.181,0.2923) (45.539,0.1790) (68.025,0.1788) (90.136,0.1805) (132.883,0.1838) (163.312,0.1864)};
+\addplot[name path=hi3,draw=none,forget plot] coordinates {(5.700,1.0162) (11.399,0.9995) (22.794,1.0028) (34.181,0.9861) (45.539,0.1841) (68.025,0.1804) (90.136,0.1819) (132.883,0.1847) (163.312,0.1872)};
+\addplot[red!75!black!18,forget plot] fill between[of=lo3 and hi3];
+\addplot[blue!80!black,thick,mark=*,mark size=1.4pt] coordinates {(5.700,0.9964) (11.399,0.9952) (22.794,0.8812) (34.181,0.2487) (45.539,0.2113) (68.025,0.1960) (90.136,0.1785) (132.883,0.1804) (163.312,0.1240)};
+\addlegendentry{Farneback (20 seeds)}
+\addplot[green!55!black,thick,mark=triangle*,mark size=1.4pt] coordinates {(5.700,0.9892) (11.399,0.9942) (22.794,0.9932) (34.181,0.8661) (45.539,0.3273) (68.025,0.2054) (90.136,0.1957) (132.883,0.1919) (163.312,0.1960)};
+\addlegendentry{DIS-medium (20 seeds)}
+\addplot[orange!85!black,thick,mark=square*,mark size=1.4pt] coordinates {(5.700,0.9758) (11.399,0.9809) (22.794,0.9923) (34.181,0.7978) (45.539,0.2619) (68.025,0.1745) (90.136,0.1766) (132.883,0.1807) (163.312,0.1844)};
+\addlegendentry{RAFT-small (11 seeds)}
+\addplot[red!75!black,thick,mark=diamond*,mark size=1.4pt] coordinates {(5.700,0.9962) (11.399,0.9951) (22.794,0.9977) (34.181,0.9114) (45.539,0.1813) (68.025,0.1795) (90.136,0.1813) (132.883,0.1842) (163.312,0.1868)};
+\addlegendentry{RAFT-large (11 seeds)}
+\addplot[black!60,dotted,thick] coordinates {(5,0.1800)(180,0.1800)};
+\addlegendentry{depth ratio (0.18)}
+\end{axis}
+\end{tikzpicture}
+\end{minipage}\hfill
+\begin{minipage}{0.49\linewidth}
+\begin{tikzpicture}
+\begin{axis}[width=0.95\linewidth,height=5.6cm,xmode=log,title={\footnotesize\textbf{(b) Static camera, moving hand (control)}},xlabel={\footnotesize hand displacement (px)},ylabel={\footnotesize gain (recovered / true)},ymin=-0.03,ymax=1.12,xmin=5,xmax=180,grid=both,grid style={gray!15},tick label style={font=\scriptsize}]
+\addplot[name path=lo0,draw=none,forget plot] coordinates {(5.700,0.9953) (11.399,0.9856) (22.794,0.2462) (34.181,0.1080) (45.539,0.0807) (68.025,0.0500) (90.136,0.0428) (132.883,0.0305) (163.312,0.0206)};
+\addplot[name path=hi0,draw=none,forget plot] coordinates {(5.700,0.9974) (11.399,0.9972) (22.794,0.9888) (34.181,0.2638) (45.539,0.1737) (68.025,0.1379) (90.136,0.1061) (132.883,0.1038) (163.312,0.0638)};
+\addplot[blue!80!black!18,forget plot] fill between[of=lo0 and hi0];
+\addplot[name path=lo1,draw=none,forget plot] coordinates {(5.700,0.9865) (11.399,0.9925) (22.794,0.4504) (34.181,0.1198) (45.539,0.1096) (68.025,0.0876) (90.136,0.0516) (132.883,0.0401) (163.312,0.0289)};
+\addplot[name path=hi1,draw=none,forget plot] coordinates {(5.700,0.9920) (11.399,0.9955) (22.794,0.9965) (34.181,0.9812) (45.539,0.9448) (68.025,0.2267) (90.136,0.2735) (132.883,0.1571) (163.312,0.1058)};
+\addplot[green!55!black!18,forget plot] fill between[of=lo1 and hi1];
+\addplot[name path=lo2,draw=none,forget plot] coordinates {(5.700,0.9269) (11.399,0.9732) (22.794,0.9852) (34.181,0.5288) (45.539,0.0223) (68.025,0.0008) (90.136,0.0005) (132.883,0.0004) (163.312,0.0003)};
+\addplot[name path=hi2,draw=none,forget plot] coordinates {(5.700,1.0110) (11.399,0.9965) (22.794,0.9978) (34.181,0.9641) (45.539,0.3813) (68.025,0.2431) (90.136,0.0014) (132.883,0.0011) (163.312,0.0007)};
+\addplot[orange!85!black!18,forget plot] fill between[of=lo2 and hi2];
+\addplot[name path=lo3,draw=none,forget plot] coordinates {(5.700,0.9865) (11.399,0.9882) (22.794,0.9426) (34.181,0.0027) (45.539,0.0009) (68.025,0.0003) (90.136,0.0002) (132.883,0.0001) (163.312,0.0001)};
+\addplot[name path=hi3,draw=none,forget plot] coordinates {(5.700,1.0130) (11.399,1.0003) (22.794,1.0003) (34.181,0.8755) (45.539,0.0037) (68.025,0.0005) (90.136,0.0003) (132.883,0.0002) (163.312,0.0001)};
+\addplot[red!75!black!18,forget plot] fill between[of=lo3 and hi3];
+\addplot[blue!80!black,thick,mark=*,mark size=1.4pt] coordinates {(5.700,0.9964) (11.399,0.9937) (22.794,0.6048) (34.181,0.1623) (45.539,0.1224) (68.025,0.0918) (90.136,0.0651) (132.883,0.0506) (163.312,0.0353)};
+\addplot[green!55!black,thick,mark=triangle*,mark size=1.4pt] coordinates {(5.700,0.9895) (11.399,0.9939) (22.794,0.9658) (34.181,0.4848) (45.539,0.2667) (68.025,0.1459) (90.136,0.1005) (132.883,0.0811) (163.312,0.0565)};
+\addplot[orange!85!black,thick,mark=square*,mark size=1.4pt] coordinates {(5.700,0.9796) (11.399,0.9830) (22.794,0.9920) (34.181,0.7502) (45.539,0.1868) (68.025,0.0233) (90.136,0.0009) (132.883,0.0006) (163.312,0.0005)};
+\addplot[red!75!black,thick,mark=diamond*,mark size=1.4pt] coordinates {(5.700,0.9958) (11.399,0.9948) (22.794,0.9900) (34.181,0.2454) (45.539,0.0018) (68.025,0.0004) (90.136,0.0002) (132.883,0.0002) (163.312,0.0001)};
+\addplot[black!60,dotted,thick] coordinates {(5,0)(180,0)};
+\end{axis}
+\end{tikzpicture}
+\end{minipage}

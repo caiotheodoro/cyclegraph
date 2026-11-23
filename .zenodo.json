@@ -1,22 +1,30 @@
 {
-  "title": "When Dense Optical Flow Stops Reporting the Hand: An Instrument Check for Reading Egocentric Factory Video as Hand Activity Level",
+  "title": "When Dense Optical Flow Measures the Background Instead of the Hand: Silent Object Switching Under Egocentric Camera Motion",
   "upload_type": "publication",
   "publication_type": "preprint",
   "creators": [
     {
       "name": "Theodoro, Caio",
+      "affiliation": "Avenza Labs",
       "orcid": "0009-0005-7343-981X"
+    },
+    {
+      "name": "Theodoro, Matheus",
+      "affiliation": "Avenza Labs",
+      "orcid": "0009-0001-4061-4117"
     }
   ],
-  "publication_date": "2026-11-23",
+  "publication_date": "2026-09-08",
   "license": "cc-by-4.0",
-  "description": "Build AI publishes that 91.66% of 10,000 sampled frames of its Egocentric-10K factory corpus show the camera wearer actively manipulating an object, as labelled by a vision-language model. A share of time spent working with the hands is a duty cycle, and duty cycle is one of the two inputs to the ACGIH Hand Activity Level (HAL). I pre-registered a measurement of the corpus as HAL before writing code. It has not run, because of cost, and no ergonomist has scored anything. So this note makes no claim about the corpus, about the vendor's figure, or about whether the instrument is accurate. It reports the one check that needs no corpus: whether dense optical flow inside a hand box reports hand speed, tested on rendered scenes under the corpus's published fisheye lens, with a moving camera over a static hand plane, where the true flow is known. Over 20 texture seeds, the ratio of recovered to true flow stays near one up to about 22.8 px of hand motion between the two frames, falls through one half at 29.4 px on a nine-point grid, and settles at 0.19 (sd 0.01), the ratio of the two assumed scene depths (0.18): in this scene, past the crossing the estimator reports the background. RAFT-small crosses later, at 40.4 px over 11 seeds, and lands on the same shelf. At the corpus median speed the pre-registration assumes, and the clip's own frame interval, the hand moves 23 px. That is the edge of the transition, where mean gain is 0.88 (range 0.58 to 0.99) against an error budget of 4.4% of speed. The location of the crossing belongs to this scene and may not transfer: the scene is one geometry with no occlusion, blur or noise, two estimators were tried at their defaults, and the registered pair spacing was changed after this check failed. Three claims in an essay I published earlier from a single seed did not survive the seeds, and are corrected here. Not peer reviewed. Code and data: https://github.com/caiotheodoro/cyclegraph",
+  "description": "Box-median dense optical flow inside a detected hand box under egocentric camera motion silently switches from tracking the hand to tracking the background. On rendered two-plane scenes under a calibrated fisheye lens (hand at 0.45 m, background at 2.5 m, depth ratio 0.18), OpenCV Farneback at 960x540 crosses half gain at 28.2 px (sd 2.7 over 20 texture seeds; 29.4 px on a nine-point grid) and settles on a shelf at 0.19 (sd 0.01), equal to the depth ratio. Three distinct estimators—OpenCV DIS (42.2 px, shelf 0.19), RAFT-small (40.4 px, shelf 0.18), and five-times-larger RAFT-large (40.0 px, shelf 0.18)—shift the crossing and land on the same geometric shelf, while all 6,213 seeded measurements across every sweep return finite, non-null fields. Direct pixel-level inspection at 68.0 px confirms the mechanism: 89.4% to 98.0% of inside-box pixels lie closer to background flow than hand flow (RAFT-large locks onto the background to within 0.1 px median endpoint error), collapsing the pipeline's ego-motion-subtracted residual to 6.5%-21.1% of true relative speed. A matched static-camera, moving-hand control eliminates the 0.18 shelf (post-68.0 px gain falls to 0.0002-0.092) and shifts every estimator's crossing earlier by 3%-23%, showing that the shelf is an ego-motion property and the crossing is governed by the velocity discontinuity across the hand-box boundary. Controlled multi-seed sweeps confirm that the shelf tracks the depth ratio across 0.10 to 0.50, that larger boxes delay collapse for RAFT-small (20.1 to 108.7 px) while Farneback saturates (19.3 to 34.5 px), that additive Gaussian noise degrades low-displacement gain and shifts crossings earlier, and that horizontal motion blur trades fine-scale accuracy for reduced spatial aliasing. Under the wide-angle lens alone, scalar-median ego-motion subtraction leaves a rotational residual 76x larger than on a narrow lens, exhausting a 0.25 HAL (4.4% speed) error budget at 26.5 deg/s of head rotation or 3.1 cm/s of translation. This study is synthetic, with no corpus exposure measurement or expert ergonomic validation; it isolates a reproducible, silent failure mode of egocentric box-median flow pipelines. Not peer reviewed. Code and data: https://github.com/caiotheodoro/cyclegraph",
+  "notes": "First published on 8 September 2026 (https://caio.theodoro.dev/blog/cyclegraph-flow-is-not-hand-speed). This version, paper-v2.0, is of 23 November 2026.",
   "keywords": [
     "egocentric video",
     "optical flow",
+    "hand speed",
+    "background capture",
     "hand activity level",
-    "occupational ergonomics",
-    "pre-registration"
+    "occupational ergonomics"
   ],
   "language": "eng",
   "related_identifiers": [
@@ -30,6 +38,12 @@
       "relation": "isSupplementedBy",
       "identifier": "https://huggingface.co/datasets/caiotheodoro/cyclegraph-flow-gain",
       "resource_type": "dataset",
+      "scheme": "url"
+    },
+    {
+      "relation": "isSupplementedBy",
+      "identifier": "https://caio.theodoro.dev/blog/cyclegraph-flow-is-not-hand-speed",
+      "resource_type": "other",
       "scheme": "url"
     },
     {
@@ -76,36 +90,51 @@
     },
     {
       "relation": "cites",
+      "identifier": "arXiv:1603.03590",
+      "resource_type": "publication-preprint",
+      "scheme": "arxiv"
+    },
+    {
+      "relation": "cites",
       "identifier": "arXiv:2003.12039",
+      "resource_type": "publication-preprint",
+      "scheme": "arxiv"
+    },
+    {
+      "relation": "cites",
+      "identifier": "arXiv:2111.13680",
       "resource_type": "publication-preprint",
       "scheme": "arxiv"
     }
   ],
   "references": [
-    "Caio Theodoro. The hand box was measuring the wall. Essay, published 2026-09-08; source in the repository at writing/flow-is-not-hand-speed.md, 2026a.",
     "W. A. Latko, T. J. Armstrong, J. A. Foulke, G. D. Herrin, R. A. Rabourn, and S. S. Ulin. Development and evaluation of an observational method for assessing repetition in hand tasks. American Industrial Hygiene Association Journal, 58 (4): 278-285, 1997.",
+    "J. M. Kapellusch, F. E. Gerr, E. J. Malloy, A. Garg, C. Harris-Adamson, S. S. Bao, S. E. Burt, A. M. Dale, et al. Exposure-response relationships for the ACGIH threshold limit value for hand-activity level: Results from a pooled data study of carpal tunnel syndrome. Scandinavian Journal of Work, Environment & Health, 40 (6): 610-620, 2014.",
     "R. G. Radwin, D. P. Azari, M. J. Lindstrom, S. S. Ulin, T. J. Armstrong, and D. Rempel. A frequency-duty cycle equation for the ACGIH hand activity level. Ergonomics, 58 (2): 173-183, 2015.",
     "O. Akkas, D. P. Azari, C.-H. E. Chen, Y. H. Hu, S. S. Ulin, T. J. Armstrong, D. Rempel, and R. G. Radwin. A hand speed-duty cycle equation for estimating the ACGIH hand activity level rating. Ergonomics, 58 (2): 184-194, 2015.",
-    "J. M. Kapellusch, F. E. Gerr, E. J. Malloy, A. Garg, C. Harris-Adamson, S. S. Bao, S. E. Burt, A. M. Dale, et al. Exposure-response relationships for the ACGIH threshold limit value for hand-activity level: Results from a pooled data study of carpal tunnel syndrome. Scandinavian Journal of Work, Environment & Health, 40 (6): 610-620, 2014.",
-    "Build AI. Egocentric-10K-Evaluation: dataset card. Hugging Face dataset card, builddotai/Egocentric-10K-Evaluation, 2025a. Accessed 2026-11-23. The card's metadata states the Apache-2.0 licence.",
+    "C. H. Chen, Y. H. Hu, T. Y. Yen, and R. G. Radwin. Automated video exposure assessment of repetitive hand activity level for a load transfer task. Human Factors, 55 (2): 298-308, 2013. Read as an abstract only.",
+    "T. Agostinelli, A. Generosi, S. Ceccacci, and M. Mengoni. Validation of computer vision-based ergonomic risk assessment tools for real manufacturing environments. Scientific Reports, 14: 27785, 2024.",
     "Kristen Grauman, Andrew Westbury, Eugene Byrne, Zachary Chavis, Antonino Furnari, Rohit Girdhar, Jackson Hamburger, Hao Jiang, Miao Liu, Xingyu Liu, et al. Ego4d: Around the world in 3,000 hours of egocentric video. In IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), 2022. arXiv:2110.07058.",
     "Dima Damen, Hazel Doughty, Giovanni Maria Farinella, Antonino Furnari, Evangelos Kazakos, Jian Ma, Davide Moltisanti, Jonathan Munro, Toby Perrett, Will Price, and Michael Wray. Rescaling egocentric vision: Collection, pipeline and challenges for EPIC-KITCHENS-100. International Journal of Computer Vision, 130: 33-55, 2022. arXiv:2006.13256.",
-    "Build AI. Egocentric-10K. Hugging Face dataset, builddotai/Egocentric-10K (gated), 2025b. Accessed 2026-11-23.",
-    "Caio Theodoro. Asymmetric judge error and clustered frames: A pre-registered audit of a commercial dataset quality claim. Zenodo preprint, doi:10.5281/zenodo.24453957, 2026b.",
-    "C. H. Chen, Y. H. Hu, T. Y. Yen, and R. G. Radwin. Automated video exposure assessment of repetitive hand activity level for a load transfer task. Human Factors, 55 (2): 298-308, 2013. Read as an abstract only.",
+    "Build AI. Egocentric-10K. Hugging Face dataset, builddotai/Egocentric-10K (gated), 2025a. Accessed 2026-11-23.",
+    "Juho Kannala and Sami S. Brandt. A generic camera model and calibration method for conventional, wide-angle, and fish-eye lenses. IEEE Transactions on Pattern Analysis and Machine Intelligence, 28 (8): 1335-1340, 2006.",
+    "Gunnar Farnebäck. Two-frame motion estimation based on polynomial expansion. In Image Analysis (SCIA 2003), Lecture Notes in Computer Science 2749, pages 363-370, 2003.",
+    "Till Kroeger, Radu Timofte, Dengxin Dai, and Luc Van Gool. Fast optical flow using dense inverse search. In European Conference on Computer Vision (ECCV), Lecture Notes in Computer Science 9908, pages 471-488, 2016. arXiv:1603.03590.",
+    "Zachary Teed and Jia Deng. RAFT: Recurrent all-pairs field transforms for optical flow. In European Conference on Computer Vision (ECCV), 2020. arXiv:2003.12039.",
+    "Thomas Brox and Jitendra Malik. Large displacement optical flow: Descriptor matching in variational motion estimation. IEEE Transactions on Pattern Analysis and Machine Intelligence, 33 (3): 500-513, 2011.",
+    "Haofei Xu, Jing Zhang, Jianfei Cai, Hamid Rezatofighi, and Dacheng Tao. GMFlow: Learning optical flow via global matching. In IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), pages 8111-8120, 2022. arXiv:2111.13680.",
     "O. Akkas, C. H. Lee, Y. H. Hu, T. Y. Yen, and R. G. Radwin. Measuring elemental time and duty cycle using automated video processing. Ergonomics, 59 (11): 1514-1525, 2016. Read as an abstract only.",
     "R. G. Radwin, Y. H. Hu, O. Akkas, S. Bao, C. Harris-Adamson, J. H. Lin, A. R. Meyers, and D. Rempel. Comparison of the observer, single-frame video and computer vision hand activity levels. Ergonomics, 66 (8): 1132-1141, 2023. Read as an abstract only.",
     "T. H. Lin, Y. H. Hu, and R. Radwin. Automatic estimation of hand activity level from upper-limb trajectories: A probabilistic regression framework. Ergonomics, 69 (9): 1809-1819, 2026. Read as an abstract only.",
-    "T. Agostinelli, A. Generosi, S. Ceccacci, and M. Mengoni. Validation of computer vision-based ergonomic risk assessment tools for real manufacturing environments. Scientific Reports, 14: 27785, 2024.",
     "Manlio Massiris Fernández, Sanjin Radoš, Krešimir Matković, M. Eduard Gröller, and Claudio Delrieux. ErgoExplorer: Interactive ergonomic risk assessment from video collections. arXiv preprint arXiv:2209.05252, 2022.",
     "Amir Yazdani, Roya Sabbagh Novin, Andrew Merryweather, and Tucker Hermans. DULA and DEBA: Differentiable ergonomic risk models for postural assessment and optimization in ergonomically intelligent pHRI. arXiv preprint arXiv:2205.03491, 2022.",
     "J. Likitlersuang, E. R. Sumitro, T. Cao, R. J. Visée, S. Kalsi-Ryan, and J. Zariffa. Egocentric video: A new tool for capturing hand use of individuals with spinal cord injury at home. Journal of NeuroEngineering and Rehabilitation, 16: 83, 2019.",
-    "Brian A. Nosek, Charles R. Ebersole, Alexander C. DeHaven, and David T. Mellor. The preregistration revolution. Proceedings of the National Academy of Sciences, 115 (11): 2600-2606, 2018.",
-    "Juho Kannala and Sami S. Brandt. A generic camera model and calibration method for conventional, wide-angle, and fish-eye lenses. IEEE Transactions on Pattern Analysis and Machine Intelligence, 28 (8): 1335-1340, 2006.",
-    "Gunnar Farnebäck. Two-frame motion estimation based on polynomial expansion. In Image Analysis (SCIA 2003), Lecture Notes in Computer Science 2749, pages 363-370, 2003.",
-    "Zachary Teed and Jia Deng. RAFT: Recurrent all-pairs field transforms for optical flow. In European Conference on Computer Vision (ECCV), 2020. arXiv:2003.12039.",
     "Dandan Shan, Jiaqi Geng, Michelle Shu, and David F. Fouhey. Understanding human hands in contact at internet scale. In IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), 2020. arXiv:2006.06669.",
-    "Lingzhi Zhang, Shenghao Zhou, Simon Stent, and Jianbo Shi. Fine-grained egocentric hand-object segmentation: Dataset, model, and applications. arXiv preprint arXiv:2208.03826, 2022."
+    "Lingzhi Zhang, Shenghao Zhou, Simon Stent, and Jianbo Shi. Fine-grained egocentric hand-object segmentation: Dataset, model, and applications. arXiv preprint arXiv:2208.03826, 2022.",
+    "Build AI. Egocentric-10K-Evaluation: dataset card. Hugging Face dataset card, builddotai/Egocentric-10K-Evaluation, 2025b. Accessed 2026-11-23. The card's metadata states the Apache-2.0 licence.",
+    "Caio Theodoro. Asymmetric judge error and clustered frames: A pre-registered audit of a commercial dataset quality claim. Zenodo preprint, doi:10.5281/zenodo.24453957, 2026a.",
+    "Caio Theodoro. The hand box was measuring the wall. Essay, published 2026-09-08 at https://caio.theodoro.dev/blog/cyclegraph-flow-is-not-hand-speed; source in the repository at writing/flow-is-not-hand-speed.md, 2026b.",
+    "Brian A. Nosek, Charles R. Ebersole, Alexander C. DeHaven, and David T. Mellor. The preregistration revolution. Proceedings of the National Academy of Sciences, 115 (11): 2600-2606, 2018."
   ],
-  "version": "paper-v1"
+  "version": "paper-v2.0"
 }

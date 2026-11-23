@@ -1,9 +1,10 @@
 """Write .zenodo.json from the paper itself, so the deposit cannot drift from the PDF.
 
-The description is the paper's abstract with its macros expanded from paper/generated/numbers.tex.
-The reference strings are the entries of paper/cyclegraph.bbl with the LaTeX stripped. The
-related works are the repository, the Hugging Face dataset, the Zenodo record of the sibling
-audit, and every arXiv paper the bibliography cites.
+The description is the paper's abstract with its macros expanded from paper/generated/numbers.tex,
+followed by the preprint disclaimer and repository URL. The reference strings are the entries of
+paper/cyclegraph.bbl with the LaTeX stripped. The related works are the repository, the Hugging
+Face dataset, the blog essay, the Zenodo record of the sibling audit, and every arXiv paper the
+bibliography cites.
 
     python3 scripts/export_zenodo_metadata.py          # rewrite .zenodo.json
     python3 scripts/export_zenodo_metadata.py --check  # exit 1 if it differs
@@ -15,18 +16,27 @@ import argparse
 import json
 import re
 import sys
+import unicodedata
 from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent
 PAPER = ROOT / "paper"
 OUT = ROOT / ".zenodo.json"
-VERSION = "paper-v1"
-TITLE = ("When Dense Optical Flow Stops Reporting the Hand: An Instrument Check for Reading "
-         "Egocentric Factory Video as Hand Activity Level")
+VERSION = "paper-v2.0"
+PUBLICATION_DATE = "2026-09-08"
+TITLE = (
+    "When Dense Optical Flow Measures the Background Instead of the Hand: "
+    "Silent Object Switching Under Egocentric Camera Motion"
+)
 REPO = "https://github.com/caiotheodoro/cyclegraph"
 DATASET = "https://huggingface.co/datasets/caiotheodoro/cyclegraph-flow-gain"
+ESSAY = "https://caio.theodoro.dev/blog/cyclegraph-flow-is-not-hand-speed"
 SIBLING_DOI = "10.5281/zenodo.24453957"
+NOTES = (
+    f"First published on 8 September 2026 ({ESSAY}). "
+    f"This version, {VERSION}, is of 23 November 2026."
+)
 
 
 def _macros() -> dict[str, str]:
@@ -41,6 +51,8 @@ def _detex(s: str, macros: dict[str, str]) -> str:
     s = re.sub(r"\\(?:emph|texttt)\{([^}]*)\}", r"\1", s)
     s = s.replace("---", "\u2014").replace("--", "-").replace("~", " ")
     s = s.replace("``", '"').replace("''", '"').replace("$\\times$", "x")
+    s = s.replace("$\\sigma$", "sigma").replace("$\\pm$", "+/-")
+    s = re.sub(r"\$([^$]+)\$", r"\1", s)
     return re.sub(r"\s+", " ", s).strip()
 
 
@@ -56,7 +68,6 @@ _ACCENTS = {"'": "\u0301", '"': "\u0308", "v": "\u030c", "`": "\u0300", "^": "\u
 
 def _accents(s: str) -> str:
     """{\\'a} -> a with a combining acute, composed; {\\v s} -> s with a caron."""
-    import unicodedata
 
     def one(m: re.Match[str]) -> str:
         return unicodedata.normalize("NFC", (m.group(2) or m.group(3)) + _ACCENTS[m.group(1)])
@@ -93,21 +104,36 @@ def build() -> dict[str, Any]:
          "scheme": "url"},
         {"relation": "isSupplementedBy", "identifier": DATASET, "resource_type": "dataset",
          "scheme": "url"},
+        {"relation": "isSupplementedBy", "identifier": ESSAY, "resource_type": "other",
+         "scheme": "url"},
         {"relation": "cites", "identifier": SIBLING_DOI, "resource_type": "publication-preprint",
          "scheme": "doi"},
     ]
-    related += [{"relation": "cites", "identifier": f"arXiv:{i}",
-                 "resource_type": "publication-preprint", "scheme": "arxiv"} for i in arxiv_ids()]
+    related += [
+        {"relation": "cites", "identifier": f"arXiv:{i}",
+         "resource_type": "publication-preprint", "scheme": "arxiv"}
+        for i in arxiv_ids()
+    ]
     return {
         "title": TITLE,
         "upload_type": "publication",
         "publication_type": "preprint",
-        "creators": [{"name": "Theodoro, Caio", "orcid": "0009-0005-7343-981X"}],
-        "publication_date": "2026-11-23",
+        "creators": [
+            {"name": "Theodoro, Caio", "affiliation": "Avenza Labs", "orcid": "0009-0005-7343-981X"},
+            {"name": "Theodoro, Matheus", "affiliation": "Avenza Labs", "orcid": "0009-0001-4061-4117"},
+        ],
+        "publication_date": PUBLICATION_DATE,
         "license": "cc-by-4.0",
-        "description": abstract() + f" Code and data: {REPO}",
-        "keywords": ["egocentric video", "optical flow", "hand activity level",
-                     "occupational ergonomics", "pre-registration"],
+        "description": abstract() + f" Not peer reviewed. Code and data: {REPO}",
+        "notes": NOTES,
+        "keywords": [
+            "egocentric video",
+            "optical flow",
+            "hand speed",
+            "background capture",
+            "hand activity level",
+            "occupational ergonomics",
+        ],
         "language": "eng",
         "related_identifiers": related,
         "references": references(),

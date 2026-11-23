@@ -1,0 +1,32 @@
+\begin{tikzpicture}[>=Latex,font=\footnotesize]
+% Camera & fisheye optical axis
+\draw[gray!50,dashed] (0,0) -- (11.9,0);
+\node[anchor=south east,gray!70!black] at (11.9,0.06) {optical axis ($z$)};
+% Camera at t0 and t1 (draw C1 first so arrow and label stay clean)
+\draw[dashed,blue!65!black,fill=blue!6] (-0.35,1.25) rectangle (0.35,1.85);
+\node[anchor=south,blue!75!black] at (0.0,1.88) {$C_1$};
+\draw[fill=black!8,thick] (-0.35,-0.32) rectangle (0.35,0.32);
+\draw[thick] (0.35,-0.22) -- (0.62,-0.42) -- (0.62,0.42) -- (0.35,0.22);
+\node[anchor=north,align=center] at (0.1,-0.45) {Camera $C_0$\\(fisheye, $67.9^\circ$)};
+\draw[->,very thick,blue!75!black] (0.0,0.40) -- (0.0,1.18);
+\node[anchor=east,align=right,blue!75!black] at (-0.45,0.82) {ego-motion\\translation $t$};
+% Hand plane at Z_hand
+\draw[ultra thick,red!75!black] (3.4,-1.05) -- (3.4,1.05);
+\node[above,red!75!black,font=\footnotesize\bfseries] at (3.4,1.10) {Hand plane};
+\node[below,red!75!black,align=center] at (3.4,-1.10) {$Z_{\mathrm{hand}} = 0.45\,\mathrm{m}$\\(box width $\approx 96.6\,\mathrm{px}$)};
+% Background plane at Z_bg
+\draw[ultra thick,teal!70!black] (9.4,-2.25) -- (9.4,2.25);
+\node[above,teal!70!black,font=\footnotesize\bfseries] at (9.4,2.30) {Background plane (workstation wall)};
+\node[below,teal!70!black,align=center] at (9.4,-2.30) {$Z_{\mathrm{bg}} = 2.50\,\mathrm{m}$\\(mask complement $\to$ scalar ego-motion)};
+% Projection rays from C0
+\draw[gray!65,thin] (0.62,0) -- (3.4,1.05) -- (9.4,2.25);
+\draw[gray!65,thin] (0.62,0) -- (3.4,-1.05) -- (9.4,-2.25);
+% Apparent flow arrows on image plane
+\draw[->,very thick,red!75!black] (3.65,-0.12) -- (3.65,-1.02)
+  node[midway,right,align=left] {hand flow $v_{\mathrm{hand}}$\\($\propto t/Z_{\mathrm{hand}}$)};
+\draw[->,very thick,teal!70!black] (9.65,-0.15) -- (9.65,-0.62)
+  node[midway,right,align=left] {background flow $v_{\mathrm{bg}}$\\($\approx 0.18\,v_{\mathrm{hand}}$)};
+% Depth ratio callout
+\draw[<->,thick,black!70] (0.62,-2.85) -- (3.4,-2.85) node[midway,below] {$Z_{\mathrm{hand}}$};
+\draw[<->,thick,black!70] (0.62,-3.45) -- (9.4,-3.45) node[midway,below] {$Z_{\mathrm{bg}}$\quad(depth ratio $Z_{\mathrm{hand}}/Z_{\mathrm{bg}} = 0.18$)};
+\end{tikzpicture}

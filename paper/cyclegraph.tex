@@ -1,481 +1,673 @@
-% When dense optical flow stops reporting the hand.
+% When dense optical flow measures the background instead of the hand.
 %
 % No artifact number is typed in this file. Each one is a macro (\cg...) defined in
-% generated/numbers.tex by scripts/export_paper_tables.py from the committed results, and every
-% table and figure is a generated file. tests/test_paper.py fails on a stale generated file, on
-% a bare number in the prose that is not on its short allowlist, and on a PDF whose extracted
-% text has lost a citation or a number (vernier's paper once lost an abstract to doubled
-% backslashes while the build stayed green).
+% generated/numbers.tex by scripts/export_paper_tables.py from committed results, and every
+% table and figure is generated from committed artifacts. tests/test_paper.py fails on a stale
+% generated file, a bare number in prose outside its allowlist, an undefined macro, a doubled
+% backslash, an uncited reference, or a PDF whose extracted text has lost a citation or value.
 \documentclass[11pt]{article}
 
-\usepackage[margin=1.1in]{geometry}
+\usepackage[margin=1.0in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
 \usepackage{booktabs}
 \usepackage{graphicx}
 \usepackage{tikz}
 \usepackage{pgfplots}
-\usetikzlibrary{calc}
+\usetikzlibrary{calc,arrows.meta}
 \usepgfplotslibrary{fillbetween}
 \pgfplotsset{compat=1.18}
-\usepackage{amsmath}
+\usepackage{amsmath,amssymb}
 \usepackage{microtype}
 \usepackage{url}
 \usepackage[hidelinks]{hyperref}
 \usepackage[numbers,sort&compress]{natbib}
+\usepackage[font=footnotesize,skip=3pt]{caption}
 
 \setlength{\tabcolsep}{4pt}
+\setlength{\textfloatsep}{10pt plus 2pt minus 2pt}
+\setlength{\floatsep}{8pt plus 2pt minus 2pt}
 \sloppy
 
 \input{generated/numbers}
 
-\title{When Dense Optical Flow Stops Reporting the Hand:\\
-An Instrument Check for Reading Egocentric Factory Video\\ as Hand Activity Level}
-\author{Caio Theodoro\\ \small Independent}
-\date{23 November 2026}
+\title{When Dense Optical Flow Measures the Background\\
+Instead of the Hand: Silent Object Switching\\
+Under Egocentric Camera Motion}
+\author{Caio Theodoro\\ \small Avenza Labs (\texttt{avenza.cloud}) \and Matheus Theodoro\\ \small Avenza Labs (\texttt{avenza.cloud})}
+\date{First version 8 September 2026; this version 23 November 2026}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
 \noindent
-Build AI publishes that \cgVendorPct{}\% of \cgVendorFrames{} sampled frames of its Egocentric-10K
-factory corpus show the camera wearer actively manipulating an object, as labelled by a
-vision-language model. A share of time spent working with the hands is a duty cycle, and duty
-cycle is one of the two inputs to the ACGIH Hand Activity Level (HAL). I pre-registered a
-measurement of the corpus as HAL before writing code. It has not run, because of cost, and no
-ergonomist has scored anything. So this note makes no claim about the corpus, about the vendor's
-figure, or about whether the instrument is accurate. It reports the one check that needs no
-corpus: whether dense optical flow inside a hand box reports hand speed, tested on rendered
-scenes under the corpus's published fisheye lens, with a moving camera over a static hand
-plane, where the true flow is known. Over
-\cgNSeeds{} texture seeds, the ratio of recovered to true flow stays near one up to about
-\cgDispKnee{} px of hand motion between the two frames, falls through one half at \cgWidthHalfB{} px on a nine-point grid, and settles at \cgShelfMean{} (sd \cgShelfSd{}), the ratio of the two assumed
-scene depths (\cgRatio{}): in this scene, past the crossing the estimator reports the background. RAFT-small
-crosses later, at \cgHalfRaftMean{} px over \cgNSeedsRaft{} seeds, and lands on the same shelf. At
-the corpus median speed the pre-registration assumes, and the clip's own frame interval, the
-hand moves \cgPxAtMedian{} px. That is the edge of the transition, where mean gain is
-\cgGainAtKneeMean{} (range \cgGainAtKneeMin{} to \cgGainAtKneeMax{}) against an error budget of
-\cgBudgetPct{}\% of speed. The location of the crossing belongs to this scene and may not transfer: the scene is
-one geometry with no occlusion, blur or noise, two estimators were tried at their defaults, and
-the registered pair spacing was changed after this check failed. Three claims in an essay I published earlier \citep{theodoro2026essay} from a single seed did not
-survive the seeds, and are corrected here. Not peer reviewed.
+Box-median dense optical flow inside a detected hand box under egocentric camera motion silently
+switches from tracking the hand to tracking the background. On rendered two-plane scenes under a
+calibrated fisheye lens (hand at \cgHandDist{}~m, background at \cgBgDist{}~m, depth ratio
+\cgRatio{}), OpenCV Farneback at 960$\times$540 crosses half gain at \cgHalfFineMean{}~px
+(sd~\cgHalfFineSd{} over \cgNSeeds{} texture seeds; \cgWidthHalfB{}~px on a nine-point grid) and
+settles on a shelf at \cgShelfMean{} (sd~\cgShelfSd{}), equal to the depth ratio. Three distinct
+estimators---OpenCV DIS (\cgHalfDisMean{}~px, shelf \cgShelfDisMean{}), RAFT-small
+(\cgHalfRaftMean{}~px, shelf \cgShelfRaftMean{}), and five-times-larger RAFT-large
+(\cgHalfRaftLargeMean{}~px, shelf \cgShelfRaftLargeMean{})---shift the crossing and land on the
+same geometric shelf, while all \cgTotalMeasurements{} seeded measurements across every sweep
+return finite, non-null fields. Direct pixel-level inspection at \cgDispShelfProbe{}~px confirms
+the mechanism: \cgFieldCloserBgMin{}\% to \cgFieldCloserBgMax{}\% of inside-box pixels lie closer
+to background flow than hand flow (RAFT-large locks onto the background to within
+\cgFieldRaftLEpeBg{}~px median endpoint error), collapsing the pipeline's ego-motion-subtracted
+residual to \cgFieldRecMinPct{}\%--\cgFieldRecMaxPct{}\% of true relative speed. A matched
+static-camera, moving-hand control eliminates the \cgRatio{} shelf (post-\cgDispShelfProbe{}~px
+gain falls to \cgStaticFloorRaftL{}--\cgStaticFloorDis{}) and shifts every estimator's crossing
+earlier by \cgShiftPctRaftS{}\%--\cgShiftPctRaftL{}\%, showing that the shelf is an ego-motion
+property and the crossing is governed by the velocity discontinuity across the hand-box boundary.
+Controlled multi-seed sweeps confirm that the shelf tracks the depth ratio across 0.10 to 0.50,
+that larger boxes delay collapse for RAFT-small (\cgBoxHalfRaftSmall{} to
+\cgBoxHalfRaftLarge{}~px) while Farneback saturates (\cgBoxHalfFarSmall{} to
+\cgBoxHalfFarLarge{}~px), that additive Gaussian noise degrades low-displacement gain and shifts
+crossings earlier, and that horizontal motion blur trades fine-scale accuracy for reduced spatial
+aliasing. Under the wide-angle lens alone, scalar-median ego-motion subtraction leaves a
+rotational residual \cgRotRatio{}$\times$ larger than on a narrow lens, exhausting a
+\cgHalBound{}~HAL (\cgBudgetPct{}\% speed) error budget at \cgRotBudget{}~deg/s of head rotation
+or \cgTransBudgetCm{}~cm/s of translation. This study is synthetic, with no corpus exposure
+measurement or expert ergonomic validation; it isolates a reproducible, silent failure mode of
+egocentric box-median flow pipelines.
 \end{abstract}
 
-\section{What this note does not show}
-\label{sec:notshow}
+\section{Introduction}
+\label{sec:intro}
 
-The measurement the project exists to make has not run. It is a reading of a \cgCorpusHours{}-hour
-factory corpus as HAL, and its cost is stated in the repository's cost ledger as blocked on money and
-on one licence acceptance. Nothing below is a result about that corpus.
+Estimating hand speed from head-mounted video is a natural building block for egocentric activity
+analysis and automated occupational ergonomics. In repetitive manufacturing work, the ACGIH
+Threshold Limit Value for Hand Activity Level (HAL) combines duty cycle and RMS hand speed into a
+0--10 exposure rating associated with carpal tunnel syndrome incidence
+\citep{latko1997,kapellusch2014,radwin2015,akkas2015}. Whereas third-person ergonomic systems
+score whole-body posture from fixed cameras \citep{chen2013,agostinelli2024}, head-mounted
+factory video sees the hands continuously but introduces continuous camera ego-motion and wide
+fisheye optics \citep{grauman2022ego4d,damen2022epic100,buildai2025corpus}.
 
-No ergonomist, certified or otherwise, has scored a clip, so there is no agreement statistic of
-any kind. The instrument is unvalidated against professional assessment, and nothing in this
-note narrows that gap. Peak force cannot be read from video, so the full ACGIH threshold limit
-value is never computed. Only its HAL axis is in scope, and every record the project writes
-says so.
+A standard, training-free pipeline for extracting hand speed from such video detects a hand
+bounding box, computes dense two-frame optical flow, estimates camera ego-motion as the median
+flow over the complement of the hand mask, subtracts that vector from flow inside the box, and
+scales pixel speed to millimetres per second by box width. Because the pipeline produces finite
+numbers on every textured frame pair, failure is visible only if an estimator returns nulls or
+implausibly large speeds.
 
-The vendor's number is a share of sampled frames that a language model called manipulation. It is
-not a duty cycle of any worker or any job, and Section~\ref{sec:viewpoint} says what has to be
-true before it could stand in for one. I do not compute HAL from it anywhere in this note.
+This paper shows that the pipeline fails in the opposite direction: past a displacement threshold
+near ordinary hand speeds, dense optical flow inside the hand box silently switches from tracking
+the hand to tracking the background plane behind it. Under camera translation, the background
+moves at the ratio of hand depth to background depth ($Z_{\mathrm{hand}}/Z_{\mathrm{bg}}$), so
+the box-median flow settles onto a shelf equal to that ratio. The subsequent ego-motion
+subtraction then cancels the wrong-object signal and returns a small, plausible, non-null speed.
+Because no null-rate check or schema guard fires, two errors pointing in the same direction cancel
+into an ordinary-looking measurement.
 
-What I did run is a check on one input to the instrument, hand speed from dense optical flow, on
-rendered frames. It is a small result with a stated scope. It is also the only part of the
-project a stranger can reproduce with no corpus access, no token and no GPU.
+We isolate and quantify this mechanism on rendered two-plane scenes under the published
+Kannala--Brandt fisheye lens of a large egocentric factory corpus \citep{kannala2006,buildai2025corpus},
+where the analytic flow field is known exactly. Our contributions are:
 
-\section{The viewpoint}
-\label{sec:viewpoint}
+\begin{itemize}\setlength\itemsep{2pt}\setlength\parskip{0pt}
+\item \textbf{Direct pixel-level proof of silent background capture across four estimators.}
+Farneback, OpenCV DIS, RAFT-small, and RAFT-large all cross half gain between \cgHalfFineMean{}
+and \cgHalfDisMean{}~px at 960$\times$540 and settle on the exact depth ratio
+(\cgShelfRaftMean{}--\cgShelfDisMean{}). Direct inspection of the flow field at
+\cgDispShelfProbe{}~px shows \cgFieldCloserBgMin{}\%--\cgFieldCloserBgMax{}\% of inside-box pixels
+locked closer to background flow than hand flow, collapsing the pipeline's ego-motion-subtracted
+residual to \cgFieldRecMinPct{}\%--\cgFieldRecMaxPct{}\% of true speed with zero null fields across
+\cgTotalMeasurements{} seeded evaluations (\S\ref{sec:field}, \S\ref{sec:estimators}).
+\item \textbf{Causal separation of ego-motion capture from large-displacement breakdown.}
+A matched static-camera, moving-hand arm eliminates the \cgRatio{} shelf across all four
+estimators (post-\cgDispShelfProbe{}~px gain drops to \cgStaticFloorRaftL{}--\cgStaticFloorDis{})
+and shifts every crossing earlier by \cgShiftPctRaftS{}\%--\cgShiftPctRaftL{}\%, establishing that
+the shelf belongs to ego-motion geometry and the crossing is governed by the relative velocity jump
+across the hand-box boundary (\S\ref{sec:estimators}).
+\item \textbf{Multi-seed parametric laws across geometry, resolution, blur, and noise.}
+Controlled sweeps establish that the post-knee shelf tracks $Z_{\mathrm{hand}}/Z_{\mathrm{bg}}$
+linearly across 0.10--0.50; that larger hand boxes delay crossing linearly for RAFT-small
+(\cgBoxHalfRaftSmall{} to \cgBoxHalfRaftLarge{}~px) while Farneback saturates near its pyramid
+range (\cgBoxHalfFarSmall{} to \cgBoxHalfFarLarge{}~px); that Gaussian noise degrades gain and
+pulls crossings earlier; that horizontal motion blur trades fine-scale accuracy for reduced
+aliasing; and that higher decode widths collapse at lower physical speeds (\S\ref{sec:sweeps}).
+\item \textbf{Exact-geometry fisheye subtraction floor and open diagnostic harness.}
+Independent of any optical-flow estimator, scalar-median ego-motion subtraction on the corpus
+fisheye leaves a rotational residual \cgRotRatio{}$\times$ larger than on a narrow lens
+(\cgRotFisheye{} vs.\ \cgRotNarrow{}~mm/s at 10~deg/s), exhausting a \cgHalBound{}~HAL budget at
+\cgRotBudget{}~deg/s of rotation or \cgTransBudgetCm{}~cm/s of translation (\S\ref{sec:impact}).
+\end{itemize}
 
-\paragraph{Hand Activity Level.}
-The ACGIH threshold limit value for HAL rates repetitive hand work from 0 to 10, from how often
-the hands exert and what share of the cycle they spend exerting \citep{latko1997,radwin2015}.
-Two published equations, both regression fits to the ACGIH 2001 look-up table, turn the inputs
-into a rating: one from exertion frequency and duty cycle \citep{radwin2015}, one from RMS hand
-speed and duty cycle \citep{akkas2015}. The second is
+\section{Scene geometry and experimental protocol}
+\label{sec:protocol}
+
+\paragraph{Two-plane fisheye geometry.}
+The synthetic testbed models a head-mounted camera viewing two fronto-parallel textured planes
+through the nominal Kannala--Brandt fisheye lens shipped with Egocentric-10K
+($f_x \approx \cgFxNom{}$, $f_y \approx \cgFyNom{}$ at 1920$\times$1080, radial coefficients
+$k_1,\dots,k_4$, monotonic half-angle \cgHalfAngle{}$^\circ$; \citep{kannala2006,buildai2025corpus}):
+a hand plane at $Z_{\mathrm{hand}} = \cgHandDist{}$~m and a workstation background plane at
+$Z_{\mathrm{bg}} = \cgBgDist{}$~m (Figure~\ref{fig:geometry}). At nominal geometry, an
+\cgHandBreadth{}~mm hand subtends a centred bounding box of width \cgBoxWidthNom{}~px at
+960$\times$540 (\cgMmPerPx{}~mm/px). In the primary \emph{ego-motion} arm, the camera translates
+sideways by $t \in [0.005, 0.15]$~m between consecutive frames over a static scene. Because
+translational optical flow scales inversely with depth, pixels inside the hand box move by
+$v_{\mathrm{hand}}$, while background pixels move by
+$v_{\mathrm{bg}} \approx (Z_{\mathrm{hand}}/Z_{\mathrm{bg}})\,v_{\mathrm{hand}} = \cgRatio{}\,v_{\mathrm{hand}}$.
+Pixels outside the fisheye's invertible image circle carry no ray and are masked as invalid in
+ground truth and black in rendered frames so they cannot pull the ego-motion median toward zero.
+
+\begin{figure}[t]
+\centering
+\input{generated/fig_geometry}
+\caption{Two-plane fisheye scene geometry. Sideways camera translation $t$ over a static hand
+plane ($Z_{\mathrm{hand}} = \cgHandDist{}$~m) and workstation background ($Z_{\mathrm{bg}} =
+\cgBgDist{}$~m) induces analytic optical flow in the exact ratio of the depths
+($Z_{\mathrm{hand}}/Z_{\mathrm{bg}} = \cgRatio{}$). The pipeline estimates camera ego-motion as
+the median flow over the complement of the hand box.}
+\label{fig:geometry}
+\end{figure}
+
+\paragraph{Rendering and matched static-camera control.}
+Each frame pair is generated from a deterministic, band-limited three-octave bilinear noise texture
+(indexed by a texture seed) providing spatial gradients across pyramid scales. Frame 2 is produced
+by first-order backward bilinear warping along the exact analytic flow field. In the matched
+\emph{static-camera, moving-hand} control, the exact same hand-box displacement field is applied
+inside the box while true background flow is identically zero outside, using the same texture
+seeds and warp convention so that background motion is the sole factor varied. For perturbation
+sweeps, directional motion blur is applied via a horizontal 1D uniform box kernel of length
+$L \in \{0, 5, 11, 21\}$~px on both frames, and sensor noise adds independent zero-mean Gaussian
+noise ($\sigma \in \{0, 5, 15, 30\}$ intensity levels, clipped to $[0, 255]$).
+
+\paragraph{Estimators.}
+We evaluate four dense optical-flow estimators spanning classical variational/pyramid methods and
+deep correlation networks, all at their library defaults:
+(1)~OpenCV \textbf{Farneback} polynomial-expansion pyramid \citep{farneback2003} (3 levels,
+window 15, 3 iterations);
+(2)~OpenCV \textbf{DIS} (Dense Inverse Search, \texttt{PRESET\_MEDIUM}; \citep{kroeger2016dis}),
+a fast coarse-to-fine inverse compositional patch matcher with variational refinement;
+(3)~torchvision \textbf{RAFT-small} (\texttt{Raft\_Small\_Weights.DEFAULT}, 1.0M parameters;
+\citep{teed2020raft}); and
+(4)~torchvision \textbf{RAFT-large} (\texttt{Raft\_Large\_Weights.DEFAULT}, 5.3M parameters).
+Classical estimators run over \cgNSeeds{} texture seeds (0--19) on primary arms and 10 seeds
+(0--9) on parameter sweeps; neural estimators run over \cgNSeedsRaft{} seeds (0--9 plus the
+originally published seed~\cgPubSeed{}) on primary arms and 5 seeds (0--4) on sweeps. Device
+parity checks confirm RAFT-small on Apple MPS reproduces CPU to within \cgRaftMpsGap{} max
+absolute gain difference on seed~\cgPubSeed{}, and CPU reproduces the earlier CUDA run to within
+\cgRaftDevGap{}.
+
+\paragraph{Metrics.}
+The primary scalar summary is \emph{gain}: the median recovered flow magnitude inside the hand box
+divided by the median true magnitude there. Gain near one indicates hand tracking; gain near
+$Z_{\mathrm{hand}}/Z_{\mathrm{bg}}$ indicates background capture. The \emph{half-crossing}
+$d_{0.5}$ is the linearly interpolated displacement where gain first falls below 0.5; the
+\emph{shelf} is the median collapsed gain above half the expected depth ratio (excluding extreme
+displacements where an estimator loses the background as well). Because magnitude gain is blind
+to vector direction and spatial structure, Experiment~A directly measures pixel-level inside-box
+alignment against both true hand flow $v_{\mathrm{hand}}$ and hypothetical background flow
+$v_{\mathrm{bg}}$ at the same pixel coordinates: the fraction of box pixels closer in $L_2$
+distance to $v_{\mathrm{bg}}$ than $v_{\mathrm{hand}}$, the fraction strictly locked within
+25\% of $\|v_{\mathrm{hand}} - v_{\mathrm{bg}}\|$ to $v_{\mathrm{bg}}$ or $v_{\mathrm{hand}}$,
+median cosine similarity $\cos\theta$ to $v_{\mathrm{hand}}$, median endpoint error (EPE) against
+each hypothesis, and the end-to-end pipeline residual RMS after subtracting the mask-complement
+median ego-motion.
+
+\paragraph{Physical speed and ergonomic error budget.}
+To anchor pixel displacements in physical units, we map displacements at the clip's native
+\cgPairInterval{}~ms frame interval (30~fps) to mm/s via the \cgHandBreadth{}~mm hand breadth and
+propagate speed through the Akkas et al.\ \citep{akkas2015} HAL equation (fitted on
+\cgSpeedLo{}--\cgSpeedHi{}~mm/s):
 \begin{equation}
 \mathrm{HAL} = 10\,\sigma\!\left(-15.87 + 0.02\,D + 2.25\ln S\right),
+\label{eq:hal}
 \end{equation}
-with $\sigma$ the logistic function, $D$ the duty cycle in percent and $S$ the RMS hand speed in
-mm/s. It was fitted on speeds from \cgSpeedLo{} to \cgSpeedHi{} mm/s. The scale is not
-decorative: HAL combined with peak force is associated with carpal tunnel syndrome incidence in a pooled cohort \citep{kapellusch2014}.
+where $\sigma$ is the logistic function, $D$ is duty cycle in percent, and $S$ is RMS hand speed
+in mm/s. At the pre-registered pricing assumption ($S = \cgAssumedMedian{}$~mm/s,
+$D = \cgDutyPricing{}\%$), a \cgHalBound{}~HAL systematic error budget corresponds to
+\cgBudgetMmS{}~mm/s, or \cgBudgetPct{}\% of speed (\cgBudgetPctLo{}\%--\cgBudgetPctHi{}\% across
+400--800~mm/s), and the hand moves \cgPxAtMedian{}~px per frame pair at 960$\times$540.
 
-\paragraph{The vendor's figure.}
-Build AI sells egocentric video recorded in factories. The evaluation release's dataset card
-publishes quality figures for it \citep{buildai2025eval}. It states that the authors
-``randomly sample 10k frames from each dataset and run them through a gemini-2.5-flash'', and
-defines active manipulation as the wearer ``visibly using their hands to work on, modify,
-assemble, process, or handle physical objects, materials, components in pursuit of a specific
-goal''. The model is told to answer ``no'' when the action is ambiguous. The published figure
-for Egocentric-10K is \cgVendorPct{}\%, against \cgVendorPctEgo{}\% for Ego4D
-\citep{grauman2022ego4d} and \cgVendorPctEpic{}\% for EPIC-KITCHENS-100 \citep{damen2022epic100}.
-The corpus is \cgCorpusHours{} hours across \cgCorpusFactories{} factories
-\citep{buildai2025corpus}. The card carries no interval and no human label. Every statement in
-this paragraph is copied from the vendor's pages on the date I retrieved them, and the copy is
-\texttt{results/vendor\_claim.json}.
+\section{Direct observation of background capture}
+\label{sec:field}
 
-\paragraph{Why the two meet.}
-The fraction of sampled instants in a state is, if the instants are drawn uniformly over time,
-the fraction of time in that state. That is a duty cycle. The TLV's own definition of an
-exertion is the hand holding, manipulating, triggering, pushing, pulling or otherwise handling an
-object, which is close to what the vendor's prompt asks a model to find \citep{radwin2015}.
-
-That is an analogy, and three things make it weaker than it sounds. The vendor's figure pools
-every worker, task and idle minute in the sample, so it is a corpus prevalence, and the TLV's
-duty cycle belongs to a job. The card does not say the frames were drawn uniformly over time.
-And the label is a model's, once: in a sibling audit of the same figures, I found that the same
-kind of judge over-called manipulation on \cgSibOver{} of \cgSibOverOf{} frames where over-calling
-was possible against \cgSibUnder{} of \cgSibUnderOf{} for under-calling, on a \cgSibLabels{}-frame set
-labelled by one rater \citep{theodoro2026vernier}.
-In that audit the
-judge's errors ran mostly one way, so a share from that kind of label is more likely too high than
-too low. That is a statement about the kind of label, not a measurement of the vendor's figure.
-So the reading that survives is narrower: the same label, taken per clip and not pooled, would be
-the duty-cycle input, and a hand-speed estimate for the same clip would be the other. Whether the
-label can express the TLV's exertion is the sharpest open objection in the repository's own list
-of objections to itself, which marks it fatal if it fails.
-
-\paragraph{Why nobody has read it that way.}
-Automated ergonomic assessment from video is mature, and HAL itself has been recovered from
-video since 2013 by one group, and the work I could open used a fixed camera
-\citep{chen2013,akkas2016,radwin2023,lin2026hal}. I read the two equation papers in full and these
-only as abstracts. The whole-body indices RULA and REBA are
-the usual targets of the general systems \citep{agostinelli2024,massiris2022ergoexplorer,yazdani2022dula},
-and they score trunk, neck and legs, which a head-mounted camera does not see. The hand-and-wrist
-standards are not ill-posed from that viewpoint, and I found nothing that applies one to
-egocentric video. The nearest work measures the share of time hands interact with objects, with
-a head-worn camera, to track hand use after spinal cord injury; it does not mention
-occupational exposure \citep{likitlersuang2019}.
-
-The gate that asked this was run on 5 September 2026 and cleared narrowly. I reran its three
-PubMed queries on 23 November 2026. They returned \cgPubmedA{}, \cgPubmedB{} and \cgPubmedC{}
-hits, the same counts as in September; the one hit for the second query is a surface-EMG paper
-that is not video. An arXiv title-and-abstract query for the phrase ``hand activity level''
-returned \cgArxivA{}. That is a search result, not a proof of absence, and the record is
-\texttt{results/provenance.json}.
-
-\section{What was fixed before any result}
-\label{sec:prereg}
-
-Pre-registration binds an analysis plan before outcomes are known \citep{nosek2018}. Here it
-fixed the following, in \texttt{docs/PRE-REGISTRATION.md}, before a line of the pipeline's source
-existed.
-
-The corpus is the raw release at one pinned revision, because the evaluation release's frame
-identifiers carry no clip, worker or factory. Frames are read at 4 Hz. HAL is computed only by
-the two published equations above, and never by an approximation of mine. The speed path is
-primary and a spectral bout frequency is the cross-check. Intervals cluster over factory and
-worker together, since clips from one worker share task, station and shift. The reporting unit is
-the corpus, plus factory-size terciles that clear a k-anonymity floor of five factories and fifty
-workers with no factory above 40\% of a stratum; no worker and no factory is ever a reporting unit,
-because the measured object is people at work. Peak force is never imputed. The speed path's
-residual floor (the apparent speed a static hand produces under camera motion alone, Section~\ref{sec:check}) under the corpus's own lens must be at most \cgHalBound{} HAL at the corpus median
-speed. Five hypotheses (H1 to H5, which the card splits into sub-claims) carry numeric bounds and the condition that falsifies each; a negative
-control on two other egocentric corpora is meant to show the pipeline responds to repetitive work
-and not to hands or head motion. The main draw has two arms, 40{,}000 clips or 200, and which
-arm runs is decided by one pilot result.
-
-Two things limit what that buys. The freeze is a git commit (\cgFreezeShort{}); every commit that
-adds a source file descends from it, and \texttt{scripts/validate.py} checks that by ancestry and
-not by timestamp. But the repository became public on \cgRepoCreated{}, after the one-factory
-pilot had run, and the freeze has no signed tag, no registry entry and no third-party timestamp.
-A reader has the author's history and nothing else. The deposit of this note is a deposit of a
-paper; it does not date the registration. And pre-registration bounds analytic flexibility, not
-the choice of what to register.
-
-The file was amended \cgAmendments{} times, to version \cgPreregVersion{}, each time through a
-dated decision with a reversal clause and a quotation of the sentence replaced. The last
-amendment matters to this note. The speed pair had been read as two frames $1/4$ s apart (the 4 Hz analysis rate taken as the pair spacing). The
-synthetic sweep below showed that at that spacing both estimators report the background across
-the fitted speed range, and the sentence was amended to mean the clip's own frame interval,
-about \cgPairInterval{} ms. No real speed had been measured, so the amendment predates any
-outcome; it did not predate the instrument check, and a reader should weigh it as a change made
-because the check failed.
-
-A pilot on one factory has run end to end. Its values are never published, because a single
-factory can be named; only verdicts are. Table~\ref{tab:card} is the measurement card as
-committed. Its sources sit with the withheld pilot values, so a reader cannot check any row from
-the repository, and nothing in this note rests on one. Of the \cgCardClaims{} claims, \cgCardUntested{} are untested.
-One failure is worth stating: the spectral frequency path disagreed with transition counting by far
-more than its registered bound, and the obvious repair was left unapplied because the result had
-already been seen.
-
-\begin{table}[t]
-\centering\small
-\input{generated/tab_card}
-\caption{The pre-registered claims and their recorded status, from
-\texttt{MEASUREMENT\_CARD.json}. The card's verdict is \cgCardVerdict{}. Pilot rows come from one
-factory whose values are withheld.}
-\label{tab:card}
-\end{table}
-
-\section{The instrument check}
-\label{sec:check}
-
-\paragraph{Design.}
-Hand speed in the pipeline is the RMS of residual optical flow inside a detected hand box, with
-ego-motion estimated as the median flow over the complement of the box and subtracted, and the
-result scaled to mm/s by the box width against an \cgHandBreadth{} mm hand breadth. Before any
-real frame touched it, I asked what that rule does on frames where the answer is known.
-
-The scene is two fronto-parallel textured planes seen through the corpus's published fisheye
-lens (Kannala--Brandt, \cgHalfAngle{} degrees of half-angle) \citep{kannala2006}: a hand plane at
-\cgHandDist{} m and a background at \cgBgDist{} m. Both distances are stated assumptions about a
-workstation, and the shelf moves with them. The camera translates sideways
-between the two frames, which gives the static hand its motion relative to the camera and the
-background its own, in the ratio of the depths. The true flow is analytic. The quantity is
-\emph{gain}: the median recovered flow magnitude inside the hand box over the median true
-magnitude there. A gain of one recovers the motion; a gain of \cgRatio{} reports under a fifth
-of it. The two estimators are OpenCV's Farneback \citep{farneback2003} at its default pyramid and
-window, and torchvision's RAFT-small with its default weights \citep{teed2020raft}, run on a CPU.
-The seed changes only the texture. The pair interval is \cgPairInterval{} ms, and it only
-rescales displacement into mm/s.
-
-\paragraph{The seed spread.}
-The published curve was one seed, number \cgPubSeed{}. I repeated the sweep over \cgNSeeds{} seeds for
-Farneback and \cgNSeedsRaft{} for RAFT-small, because a single run is not an interval. The spread
-is the texture's and nothing else; it says nothing about factory video.
+Inferring a failure mechanism solely from a box-median magnitude ratio leaves open whether the
+estimator genuinely locks onto the background vector field or merely shrinks magnitudes toward
+zero. Figure~\ref{fig:flowfield} and Table~\ref{tab:field} resolve this directly by inspecting the
+recovered flow vectors inside and around the hand box before, at, and past the transition.
 
 \begin{figure}[t]
 \centering
-\input{generated/fig_gain}
-\caption{Gain against hand displacement at 960$\times$540. Lines are the mean over seeds; bands
-are the minimum and maximum. The dashed line is the one seed I published earlier (seed number \cgPubSeed{}). It reads at the top of the band at \cgDispKnee{} px and below the mean at \cgDispAfter{} px, so it shows a sharper drop than the average texture does.}
-\label{fig:gain}
+\input{generated/fig_flowfield}
+\caption{Direct observation of hand-to-background switching at 960$\times$540 (seed~\cgPubSeed{}).
+\textbf{(a--b)}~Horizontal flow speed $-u_x(x)$ along the frame centerline across the shaded hand
+box. At \cgDispPreKnee{}~px all four estimators track the true top-hat profile; at
+\cgDispShelfProbe{}~px all four collapse inside the box, with RAFT-small and RAFT-large flattening
+directly onto the background plane across the entire interior. \textbf{(c--d)}~2D flow vectors
+around the dashed hand box at \cgDispShelfProbe{}~px (gray: true flow; color: estimated flow),
+showing recovered arrows inside the box shrinking to match the surrounding background.}
+\label{fig:flowfield}
 \end{figure}
 
-Figure~\ref{fig:gain} and Table~\ref{tab:gain} give the result. Below about \cgDispKnee{} px
-Farneback recovers the hand's motion. The mean gain at \cgDispKnee{} px is \cgGainAtKneeMean{}
-(sd \cgGainAtKneeSd{}, range \cgGainAtKneeMin{} to \cgGainAtKneeMax{}), and the published seed read
-\cgGainAtKneePub{} there. At \cgDispAfter{} px the mean is \cgGainAfterMean{}, with a range of
-\cgGainAfterMin{} to \cgGainAfterMax{}, and the published seed read \cgGainAfterPub{}. So the
-single-seed curve showed a cliff between two grid points, and the seeds show a transition whose
-location depends on the texture. On a finer grid across it, gain crosses one half at
-\cgHalfFineMean{} px (sd \cgHalfFineSd{}, range \cgHalfFineMin{} to \cgHalfFineMax{}, all
-\cgHalfFineN{} seeds), and \cgBelowNinety{} of \cgNSeeds{} seeds are already below 0.9 at
-\cgDispKnee{} px.
+At \cgDispPreKnee{}~px (below the transition), all four estimators track the hand cleanly:
+\cgFieldLockedHandPreMin{}\%--\cgFieldLockedHandPreMax{}\% of inside-box pixels lie within 25\% of
+the true hand vector, median EPE to hand flow is \cgFieldPreEpeMin{}--\cgFieldPreEpeMax{}~px,
+cosine similarity is unity, and the actual pipeline ego-motion-subtracted residual recovers
+\cgFieldPreRecMinPct{}\%--\cgFieldPreRecMaxPct{}\% of the true hand-minus-background speed
+(Table~\ref{tab:field}). Already at \cgDispKnee{}~px---the assumed median speed of
+\cgSpeedAtKnee{}~mm/s---\cgFieldKneeCloserMin{}\%--\cgFieldKneeCloserMax{}\% of box pixels (along
+the box perimeter) are closer to background flow than hand flow, pulling Farneback's box-median
+gain down to \cgGainAtKneeMean{} (sd~\cgGainAtKneeSd{}).
+
+Past the transition at \cgDispShelfProbe{}~px, the switch is complete across every architecture.
+Between \cgFieldCloserBgMin{}\% and \cgFieldCloserBgMax{}\% of inside-box pixels are closer to
+background flow than hand flow, and \cgFieldLockedBgMin{}\% to \cgFieldLockedBgMax{}\% are strictly
+locked onto the background vector. The effect is sharpest for the strongest neural model:
+RAFT-large locks \cgFieldRaftLLockedBg{}\% of inside-box pixels onto the background with a median
+EPE to background flow of \cgFieldRaftLEpeBg{}~px against \cgFieldRaftLEpeHand{}~px to the hand,
+producing a flat profile straight across the hand box (Figure~\ref{fig:flowfield}b,d). DIS and
+Farneback also lose all strict hand lock (\cgFieldFarCloserBg{}\% closer to background;
+DIS even exhibits sign reversals in the box interior at seed~\cgPubSeed{}, explaining its lower
+cosine similarity).
 
 \begin{table}[t]
 \centering\small
-\input{generated/tab_gain}
-\caption{Gain by displacement at 960$\times$540, over \cgNSeeds{} seeds for Farneback and
-\cgNSeedsRaft{} for RAFT-small. Range is minimum to maximum.}
-\label{tab:gain}
+\resizebox{\linewidth}{!}{\input{generated/tab_field}}
+\caption{Pixel-level flow-field metrics inside the hand box at 960$\times$540 under ego-motion
+(means over \cgNSeeds{} seeds for Farneback/DIS and \cgNSeedsRaft{} seeds for RAFT-small/RAFT-large).
+\emph{Closer bg}: share of box pixels closer in $L_2$ distance to true background flow than hand
+flow. \emph{Locked bg}: share within 25\% of $\|v_{\mathrm{hand}}-v_{\mathrm{bg}}\|$ of background
+flow. \emph{Resid.\ rec.}: pipeline ego-motion-subtracted RMS residual as a share of true residual.}
+\label{tab:field}
 \end{table}
+
+\paragraph{Why the failure hides.}
+In the pipeline, camera ego-motion is estimated as the median flow outside the hand box and
+subtracted from the box. Once the box itself holds the background's flow, subtraction cancels the
+wrong-object velocity directly: at \cgDispShelfProbe{}~px, RAFT-large's pipeline residual drops to
+\cgFieldRaftLResPx{}~px against a true relative speed of \cgFieldTrueResHi{}~px
+(\cgFieldRecMinPct{}\% recovery), and across all four estimators only
+\cgFieldRecMinPct{}\%--\cgFieldRecMaxPct{}\% of true relative speed survives subtraction
+(Table~\ref{tab:field}). Meanwhile, every one of the \cgPublishedRows{} single-seed rows,
+\cgSeedMeasurements{} baseline seed measurements, and \cgVTwoMeasurements{} post-hoc v2
+measurements (\cgTotalMeasurements{} seeded evaluations in all) returned a finite, non-null field.
+No null-rate ceiling, schema validator, or magnitude sanity check receives any signal that the
+estimator has stopped tracking the hand.
+
+\section{Estimator comparison and static-camera control}
+\label{sec:estimators}
+
+Figure~\ref{fig:gain_v2} and Table~\ref{tab:estimators} compare all four estimators under
+ego-motion and under the matched static-camera, moving-hand control.
 
 \begin{figure}[t]
 \centering
-\input{generated/fig_fine}
-\caption{Farneback at 960$\times$540 on a fine grid across the transition. One thin line per
-seed, mean in blue. The location of the drop moves by several pixels with the texture.}
-\label{fig:fine}
+\input{generated/fig_gain_v2}
+\caption{Gain against hand displacement at 960$\times$540 across all four estimators (lines: seed
+means; shaded bands: min--max ranges over \cgNSeeds{} seeds for Farneback/DIS and \cgNSeedsRaft{}
+for RAFT-small/RAFT-large). \textbf{(a)}~Under ego-motion, all four estimators collapse onto the
+\cgRatio{} depth-ratio shelf. \textbf{(b)}~Under a static camera with a moving hand, the shelf
+vanishes to near zero and every estimator crosses half gain earlier.}
+\label{fig:gain_v2}
 \end{figure}
 
-\paragraph{The shelf.}
-Past the transition gain does not fall to zero. It sits at \cgShelfMean{} (sd \cgShelfSd{}, range \cgShelfMin{}
-to \cgShelfMax{}) for Farneback and at \cgShelfRaftMean{} (sd \cgShelfRaftSd{}) for
-RAFT-small, against a depth ratio of \cgRatio{}. At the largest displacement Farneback falls
-below the shelf, because it has exceeded its search range and tracks nothing; that second regime
-is excluded from the shelf and is not averaged into it. The estimator is no longer measuring the hand.
-It has smoothed across the depth discontinuity at the box edge and reports the background, which is further away by that ratio and so moves that much more slowly in pixels. The number it returns is a correct measurement of the wrong object. I infer the mechanism from the gain landing on the ratio; I did not render the flow field to look.
-
-The nine-point-grid crossings are interpolated linearly between points far apart, so for Farneback the fine grid, \cgHalfFineMean{} px, is the better estimate and the nine-point figure, \cgWidthHalfB{} px (sd \cgWidthHalfSdB{}), is for comparing against RAFT-small and across widths.
-
-RAFT-small moves the crossing and leaves the shelf alone. On the same nine-point grid gain
-crosses one half at \cgHalfRaftMean{} px (sd \cgHalfRaftSd{}, range \cgHalfRaftMin{} to
-\cgHalfRaftMax{}) against \cgWidthHalfB{} for Farneback (range \cgHalfFarMin{} to \cgHalfFarMax{}), and the ranges do not overlap. The crossing belongs to the estimator and the shelf belongs to the geometry. RAFT-small also
-under-recovers small motion at the smallest decode: \cgRaftSmall{} at \cgRaftSmallPx{} px at
-480$\times$270, one seed.  Two estimators say nothing about a method that models depth. On the shared seed the CPU run
-reproduces the published curve, which was measured on a GPU, to within \cgRaftDevGap{}.
-
-\paragraph{Where the corpus's assumed speed sits.}
-The pre-registration assumes a corpus median RMS speed of \cgAssumedMedian{} mm/s to price its
-error budget. At \cgPairInterval{} ms and \cgMmPerPx{} mm per pixel at 960$\times$540, that speed
-moves the hand \cgPxAtMedian{} px (the nearest grid point, \cgDispKnee{} px, is \cgSpeedAtKnee{} mm/s), which is the top edge of the flat part of the curve and the
-start of the drop. The registered budget is \cgHalBound{} HAL, which at that speed is
-\cgBudgetMmS{} mm/s, or \cgBudgetPct{}\% of the speed (between \cgBudgetPctLo{}\% and
-\cgBudgetPctHi{}\% across the band from 400 to 800 mm/s). Mean gain at the matching grid point
-is \cgGainAtKneeMean{}. Gain is not the pipeline's speed error, because the subtraction step
-changes it, but a recovery of \cgGainAtKneeMean{} on average and \cgGainAtKneeMin{} at worst is
-not a recovery within a few percent. At \cgSpeedAfter{} mm/s, inside the fitted range of the
-equation, the estimator is on the shelf.
+\paragraph{Four estimators, one geometric shelf.}
+On the nine-point ego-motion grid at 960$\times$540, Farneback crosses half gain at
+\cgWidthHalfB{}~px (sd~\cgWidthHalfSdB{}, range \cgHalfFarMin{}--\cgHalfFarMax{}~px;
+\cgHalfFineMean{}~px, sd~\cgHalfFineSd{} on the fine grid across the transition,
+Figure~\ref{fig:fine_width}a). Swapping to a different classical method (DIS-medium) or to deep
+all-pairs correlation (RAFT-small and RAFT-large) delays the crossing by roughly
+\cgDelayMinPx{}--\cgDelayMaxPx{}~px: RAFT-small crosses at \cgHalfRaftMean{}~px
+(sd~\cgHalfRaftSd{}), RAFT-large at \cgHalfRaftLargeMean{}~px (sd~\cgHalfRaftLargeSd{}), and
+DIS-medium at \cgHalfDisMean{}~px (sd~\cgHalfDisSd{}). Scaling RAFT five-fold improves
+low-displacement fidelity (gain near unity up to \cgDispKnee{}~px) and does not move the crossing
+past \cgHalfRaftMean{}~px. Crucially, all four estimators land on the same shelf: \cgShelfMean{}
+(Farneback), \cgShelfDisMean{} (DIS), \cgShelfRaftMean{} (RAFT-small), and \cgShelfRaftLargeMean{}
+(RAFT-large), against the exact depth ratio of \cgRatio{}. Only at the extreme displacement
+(\cgDispMax{}~px) does Farneback fall below the shelf into a second regime where it exceeds its
+search range and tracks nothing (excluded from the shelf mean).
 
 \begin{table}[t]
 \centering\small
-\input{generated/tab_hal}
-\caption{An illustration, not a measurement: HAL from the equation at a duty cycle of
-\cgDutyPricing{}\% when the speed it is given is the true speed scaled by Farneback's mean gain
-at that speed, and over the seed range of the gain. The subtraction of ego-motion is ignored,
-which would lower the recovered speed further.}
-\label{tab:hal}
+\resizebox{\linewidth}{!}{\input{generated/tab_estimators}}
+\caption{Four-estimator comparison at 960$\times$540 (mean $\pm$ sd across seeds). Ego-motion
+crossings $d_{0.5}$ and shelf gains are on the nine-point grid (Farneback fine-grid $d_{0.5}$ is
+\cgHalfFineMean{} $\pm$ \cgHalfFineSd{}~px). Static-camera post-\cgDispShelfProbe{}~px gain is the
+median over \cgDispShelfProbe{}--\cgDispMax{}~px. A14 rotation residual is for 1~deg yaw
+(\cgNSeedsRaft{} seeds) against exact geometry (\cgAOneFourGeom{}~px).}
+\label{tab:estimators}
 \end{table}
 
-Table~\ref{tab:hal} turns gain into HAL points at three speeds. It propagates the synthetic gain
-through the published equation and nothing else, at a duty cycle I chose to match the repository's
-pricing assumption. The loss is \cgHalLossMeanLo{} points at \cgSpeedRowLo{} mm/s,
-\cgHalLossMeanMid{} at \cgSpeedRowMid{} mm/s and \cgHalLossMeanHi{} at \cgSpeedRowHi{} mm/s, against a
-registered bound of \cgHalBound{}.
+\paragraph{Static-camera control: background capture vs.\ boundary jump.}
+When the camera is stationary and only the hand moves (Figure~\ref{fig:gain_v2}b), two clear
+effects emerge. First, the \cgRatio{} shelf disappears completely: post-\cgDispShelfProbe{}~px
+median gain falls to \cgStaticFloorRaftS{} for RAFT-small, \cgStaticFloorRaftL{} for RAFT-large,
+\cgStaticFloorFar{} for Farneback, and \cgStaticFloorDis{} for DIS. This directly confirms that the
+\cgRatio{} plateau is not an estimator noise floor, but faithful tracking of a moving background.
 
-\paragraph{Decode resolution.}
-The repository chose 960$\times$540 for the flow decode because a single seed showed it beating
-both 480$\times$270 and the larger sizes. Table~\ref{tab:width} puts the four widths at the same
-physical motion, about \cgWidthSpeedB{} mm/s. The seeds do not support an optimum. At that speed
-the mean gain is \cgWidthGainA{} at 480$\times$270 (range \cgWidthGainMinA{} to \cgWidthGainMaxA{})
-and \cgWidthGainB{} at 960$\times$540 (range \cgWidthGainMinB{} to \cgWidthGainMaxB{}); the
-ranges overlap almost entirely. What the seeds do support is that 1440 and 1920 wide fall at a
-lower physical speed, \cgWidthHalfMmSC{} and \cgWidthHalfMmSD{} mm/s at the half crossing against
-\cgWidthHalfMmSB{} at 960, because a finer grid spends the same motion on more pixels. The 480$\times$270 row has the highest crossing speed and the lowest crossing in pixels, and I do not explain it. The grid
-is coarse above 480, so I make no claim about how the crossing scales with the hand box.
+Second, every estimator crosses half gain \emph{earlier} under a static camera than under
+ego-motion: Farneback drops from \cgWidthHalfB{} to \cgStaticHalfFar{}~px (\cgShiftPctFar{}\%
+earlier), DIS from \cgHalfDisMean{} to \cgStaticHalfDis{}~px (\cgShiftPctDis{}\%), RAFT-small from
+\cgHalfRaftMean{} to \cgStaticHalfRaftS{}~px (\cgShiftPctRaftS{}\%), and RAFT-large from
+\cgHalfRaftLargeMean{} to \cgStaticHalfRaftL{}~px (\cgShiftPctRaftL{}\%). The mechanism is
+geometric: under ego-motion at depth ratio \cgRatio{}, the velocity discontinuity across the
+hand-box edge is $(1 - \cgRatio{})d = \cgJumpFracEgo{}\,d$, whereas under a static camera the jump
+is the full $d$ (\cgJumpRatioPct{}\% larger). The crossing is therefore governed by the
+\emph{relative velocity jump} $\Delta v = \|v_{\mathrm{hand}} - v_{\mathrm{bg}}\|$ across the depth
+boundary rather than absolute hand displacement alone.
+
+\section{Sensitivity to geometry, resolution, blur, and noise}
+\label{sec:sweeps}
+
+To test whether the switch is an artefact of one fixed scene, we sweep four physical factors at
+960$\times$540 (Figure~\ref{fig:sweeps}, Table~\ref{tab:sweeps}) alongside decode resolution
+(Figure~\ref{fig:fine_width}b, Table~\ref{tab:width}).
+
+\begin{figure}[t]
+\centering
+\input{generated/fig_sweeps}
+\caption{Controlled multi-seed parameter sweeps at 960$\times$540 under ego-motion (10 seeds for
+Farneback and DIS; 5 seeds for RAFT-small). \textbf{(a)}~Observed post-knee shelf tracks the true
+depth ratio across 0.10--0.50. \textbf{(b)}~Larger hand boxes delay collapse strongly for
+RAFT-small while Farneback saturates near its pyramid range. \textbf{(c)}~Horizontal 1D motion blur
+reduces aliasing and delays crossings while degrading low-displacement gain. \textbf{(d)}~Gaussian
+sensor noise degrades gain and pulls crossings earlier.}
+\label{fig:sweeps}
+\end{figure}
+
+\paragraph{Depth ratio.}
+Varying $Z_{\mathrm{bg}}$ across 0.90, 1.50, 2.50, and 4.50~m (depth ratios 0.50, 0.30, \cgRatio{},
+and 0.10) shifts the post-knee shelf directly along the identity line (Figure~\ref{fig:sweeps}a).
+RAFT-small tracks the ratio to within \cgDepthMaxErr{} across the entire five-fold span (from
+\cgDepthShelfRaftTen{} at 0.10 to \cgDepthShelfRaftFifty{} at 0.50), with DIS and Farneback
+following the same trend (Farneback dips slightly below 0.50 as its pyramid begins entering regime
+two). Consistent with the boundary-jump law from \S\ref{sec:estimators}, raising the depth ratio
+shrinks $\Delta v / d$ and pushes the half-crossing substantially higher: from \cgDepthHalfFarTen{}
+to \cgDepthHalfFarFifty{}~px for Farneback, up to \cgDepthHalfDisFifty{}~px for DIS, and up to
+\cgDepthHalfRaftFifty{}~px for RAFT-small.
+
+\paragraph{Hand bounding-box size.}
+Scaling the hand box width from \cgBoxWidthSmall{}~px (0.5$\times$ nominal) to
+\cgBoxWidthLarge{}~px (2.0$\times$) leaves the \cgRatio{} shelf unchanged while separating
+architectures cleanly on crossing displacement (Figure~\ref{fig:sweeps}b). Because RAFT computes
+all-pairs correlations globally, a wider hand interior resists boundary infiltration and scales
+strongly with box width, from \cgBoxHalfRaftSmall{}~px at \cgBoxWidthSmall{}~px width to
+\cgBoxHalfRaftLarge{}~px at \cgBoxWidthLarge{}~px width (\cgBoxRatioLo{}--\cgBoxRatioHi{} box
+widths). Farneback, constrained by its fixed 3-level pyramid search range, saturates early
+(\cgBoxHalfFarSmall{} to \cgBoxHalfFarLarge{}~px), while DIS scales moderately
+(\cgBoxHalfDisSmall{} to \cgBoxHalfDisLarge{}~px). For small or distant hand boxes
+(\cgBoxWidthSmall{}~px), even RAFT-small collapses at \cgBoxHalfRaftSmall{}~px.
+
+\paragraph{Motion blur and sensor noise.}
+Perturbing both frames reveals two opposite effects on the crossing (Figure~\ref{fig:sweeps}c--d,
+Table~\ref{tab:sweeps}). Horizontal motion blur degrades fine-scale accuracy at small
+displacements---at a 21~px kernel, gain at \cgDispLow{}~px falls from \cgBlurFarGainZero{} to
+\cgBlurFarGainMax{} for Farneback and to \cgBlurRaftGainMax{} for RAFT-small---yet unexpectedly
+\emph{delays} the 0.5 crossing (Farneback \cgBlurFarHalfZero{} to \cgBlurFarHalfMax{}~px; DIS to
+\cgBlurDisHalfMax{}~px; RAFT-small up to \cgBlurRaftHalfMid{}~px at 11~px blur and
+\cgBlurRaftHalfMax{}~px at 21~px blur). Filtering out high-frequency texture along the motion axis
+reduces spatial aliasing across large shifts, allowing coarse correspondence to persist slightly
+longer at the cost of under-recovering small motion; the \cgBlurShelfMin{}--\cgBlurShelfMax{} shelf
+persists at every blur level. Additive Gaussian sensor noise ($\sigma = 30$) has no such silver
+lining: it degrades small motion (gain at \cgDispLow{}~px drops to \cgNoiseFarGainMax{} for
+Farneback and \cgNoiseRaftGainMax{} for RAFT-small) and pulls crossings earlier (RAFT-small drops
+from \cgNoiseRaftHalfZero{} to \cgNoiseRaftHalfMax{}~px; DIS to \cgNoiseDisHalfMax{}~px; Farneback
+to \cgNoiseFarHalfMax{}~px) while leaving the geometric shelf intact.
+
+\begin{table}[t]
+\centering\small
+\input{generated/tab_sweeps}
+\caption{Controlled parameter sweeps at 960$\times$540 under ego-motion (seed counts in column
+headers). $d_{0.5}$ is mean half-crossing displacement (px); Shelf is mean regime-one floor gain.}
+\label{tab:sweeps}
+\end{table}
+
+\paragraph{Texture spread and decode resolution.}
+Figure~\ref{fig:fine_width}a shows that on the fine grid at 960$\times$540, Farneback's crossing
+varies by 9~px across textures alone (range \cgHalfFineMin{}--\cgHalfFineMax{}~px, mean
+\cgHalfFineMean{}~px), and \cgBelowNinety{} of \cgNSeeds{} seeds are already below 0.9 gain at
+\cgDispKnee{}~px. Table~\ref{tab:width} and Figure~\ref{fig:fine_width}b compare Farneback across
+four decode widths at the same physical motion ($\approx\cgWidthSpeedB{}$~mm/s). At that speed,
+480$\times$270 (\cgWidthGainA{}, range \cgWidthGainMinA{}--\cgWidthGainMaxA{}) and 960$\times$540
+(\cgWidthGainB{}, range \cgWidthGainMinB{}--\cgWidthGainMaxB{}) overlap almost entirely, so no
+optimum between them is established. Higher decode resolutions (1440$\times$810 and
+1920$\times$1080) collapse at lower physical speeds (\cgWidthHalfMmSC{} and \cgWidthHalfMmSD{}~mm/s
+against \cgWidthHalfMmSB{}~mm/s at 960$\times$540) because a finer pixel grid converts the same
+physical displacement into more pixels against a fixed pyramid window.
+
+\begin{figure}[t]
+\centering
+\input{generated/fig_fine_width}
+\caption{\textbf{(a)}~Farneback fine-grid sweep across the transition at 960$\times$540 (thin gray
+lines: \cgNSeeds{} individual texture seeds; thick blue line: mean). \textbf{(b)}~Mean Farneback
+gain across four decode widths (\cgNSeeds{} seeds).}
+\label{fig:fine_width}
+\end{figure}
 
 \begin{table}[t]
 \centering\small
 \resizebox{\linewidth}{!}{\input{generated/tab_width}}
-\caption{Farneback at four decode widths over \cgNSeeds{} seeds. Gain is read at the same
-physical motion in every row. The crossing is the displacement where gain first falls through one
-half, interpolated linearly on the nine-point grid.}
+\caption{Farneback across four decode widths over \cgNSeeds{} texture seeds. Gain is evaluated at
+the same physical motion ($\approx\cgWidthSpeedB{}$~mm/s) in every row; crossings are linearly
+interpolated on the nine-point grid.}
 \label{tab:width}
 \end{table}
 
-\begin{figure}[t]
-\centering
-\input{generated/fig_width}
-\caption{Mean gain against displacement for the four decode widths, over \cgNSeeds{} seeds.}
-\label{fig:width}
-\end{figure}
+\section{Downstream impact and fisheye subtraction floor}
+\label{sec:impact}
 
-\paragraph{Why it hides.}
-The pipeline takes ego-motion as the median flow outside the hand box and subtracts it. Past the transition the box already holds the background's flow, so by the rule's own arithmetic the correction removes the signal it was meant to clean and the residual comes out small and ordinary-looking. The sweep does not run the subtraction; this is the rule applied to the measured gain. Every one of the \cgPublishedRows{} rows in the three published sweep files, and every one of the
-\cgSeedMeasurements{} seeded measurements (four widths on the nine-point grid, the fine grid, and the
-RAFT-small run), returned a finite, non-null field, so no null-rate ceiling and no schema check
-has anything to fire on. The residual that a rotation-only synthetic leaves is the one place the
-failure shows against a control. Exact geometry leaves \cgResGeom{} px; Farneback leaves
-\cgResFarneback{}, above the floor as an estimator's error should be; RAFT-small leaves
-\cgResRaft{}, below the floor that exact geometry allows, which is most simply read as recovering less of the field than is there. These are one scene and one seed.
-
-\paragraph{The lens and the subtraction, with no estimator.}
-The same subtraction has a second
-error that needs no estimator. Rotational flow on a fisheye
-varies with radius, and a scalar median over the background cancels a uniform field, not a radial
-one. In closed form, a head rotation of 10 degrees per second leaves \cgRotFisheye{} mm/s of
-apparent hand speed under the corpus lens and \cgRotNarrow{} mm/s under a narrow one, about
-\cgRotRatio{} times more from the same rule. Table~\ref{tab:floor} gives the sweep. The registered
-budget is exhausted by \cgRotBudget{} degrees per second of rotation, or \cgTransBudgetCm{} cm/s
-of translation, at the assumed median. Whether real head motion sits inside that is unknown until
-frames are decoded.
+\paragraph{Exact-geometry fisheye subtraction floor.}
+Even with a perfect optical-flow estimator, subtracting a scalar background median on a wide-angle
+fisheye lens introduces a large geometric error. Pure camera rotation produces depth-independent
+flow, which a scalar median cancels on a narrow lens where rotational flow is nearly uniform; on
+the corpus's \cgHalfAngle{}$^\circ$ Kannala--Brandt lens, rotational flow varies strongly with
+radius. In closed form (Table~\ref{tab:floor}), a 10~deg/s head rotation leaves \cgRotFisheye{}~mm/s
+of apparent hand speed under the corpus fisheye versus \cgRotNarrow{}~mm/s under a narrow-lens
+control---\cgRotRatio{}$\times$ more from the same subtraction rule. At the assumed median speed of
+\cgAssumedMedian{}~mm/s, the entire \cgHalBound{}~HAL (\cgBudgetMmS{}~mm/s) budget is exhausted by
+\cgRotBudget{}~deg/s of head rotation or \cgTransBudgetCm{}~cm/s of camera translation before any
+estimator error enters.
 
 \begin{table}[t]
 \centering\small
 \input{generated/tab_floor}
-\caption{Apparent hand speed that a perfectly static hand produces after the ego-motion
-subtraction, in exact geometry with no estimator, from \texttt{a14\_translation\_floor.json}.}
+\caption{Exact-geometry apparent speed of a static hand after scalar-median ego-motion subtraction
+(no optical-flow estimator in the loop), from \texttt{results/a14\_translation\_floor.json}.}
 \label{tab:floor}
 \end{table}
 
+\paragraph{Sub-floor under-recovery under rotation.}
+Evaluating the four estimators on rendered 1~deg yaw pairs at 960$\times$540 against the exact
+geometry floor (\cgAOneFourGeom{}~px; Table~\ref{tab:estimators}, last column) exposes a second
+silent failure. Farneback (\cgAOneFourFar{}~px), DIS (\cgAOneFourDis{}~px), and RAFT-large
+(\cgAOneFourRaftL{}~px) sit slightly above the exact floor, as an estimator carrying its own noise
+should. RAFT-small sits consistently \emph{below} the geometric floor across all \cgNSeedsRaft{}
+seeds (\cgAOneFourRaftS{}~px, sd~\cgAOneFourRaftSSd{}), echoing its under-recovery of small
+\cgRaftSmallPx{}~px motion at 480$\times$270 (\cgRaftSmall{} gain). Without the exact-geometry control,
+RAFT-small's lower residual would look more accurate when it is actually recovering less of the
+true field.
+
+\paragraph{Illustrative propagation to HAL.}
+At 960$\times$540 and \cgPairInterval{}~ms per pair, the assumed median speed of
+\cgAssumedMedian{}~mm/s moves the hand \cgPxAtMedian{}~px, placing it right at the edge of
+Farneback's transition (\cgDispKnee{}~px = \cgSpeedAtKnee{}~mm/s, mean gain \cgGainAtKneeMean{},
+range \cgGainAtKneeMin{}--\cgGainAtKneeMax{} against a \cgBudgetPct{}\% error budget). At
+\cgSpeedAfter{}~mm/s---still well inside the \cgSpeedLo{}--\cgSpeedHi{}~mm/s fitted domain of
+Equation~\eqref{eq:hal}---Farneback sits on the shelf. Table~\ref{tab:hal} propagates Farneback's
+synthetic gain through Equation~\eqref{eq:hal} at $D = \cgDutyPricing{}\%$: mean HAL loss grows
+from \cgHalLossMeanLo{} points at \cgSpeedRowLo{}~mm/s to \cgHalLossMeanMid{} at
+\cgSpeedRowMid{}~mm/s and \cgHalLossMeanHi{} at \cgSpeedRowHi{}~mm/s, exceeding the \cgHalBound{}~HAL
+bound by more than an order of magnitude once background capture occurs (and ignoring the
+subsequent ego-motion subtraction, which depresses the recovered speed further).
+
+\begin{table}[t]
+\centering\small
+\input{generated/tab_hal}
+\caption{Illustrative propagation of Farneback's 960$\times$540 gain through Equation~\eqref{eq:hal}
+at $D = \cgDutyPricing{}\%$ (ignoring ego-motion subtraction, which lowers recovered speed further).
+This is a sensitivity illustration, not a corpus measurement.}
+\label{tab:hal}
+\end{table}
+
 \section{Related work}
+\label{sec:related}
 
-HAL from video is a program of one group: template matching on a region of interest for a load
-transfer task \citep{chen2013}, marker-less elemental time and duty cycle \citep{akkas2016},
-agreement of a computer-vision rating with observers \citep{radwin2023}, and a probabilistic
-regression from upper-limb trajectories that reports a larger error across domains than within
-\citep{lin2026hal}. This note inherits that lineage and does not compete with it; the object of study here is the viewpoint and
-the speed input.
+\paragraph{Large-displacement optical flow and motion boundaries.}
+Classical variational and polynomial-expansion flow estimators rely on coarse-to-fine pyramids and
+spatial smoothness priors that blur across motion discontinuities and lose fast, small foreground
+objects once displacement exceeds the coarse-level support \citep{farneback2003,brox2011ldof}.
+\citet{brox2011ldof} addressed large displacements of small structures by integrating sparse
+descriptor matching into variational optimization. \citet{kroeger2016dis} introduced Dense Inverse
+Search (DIS) for real-time CPU flow via multi-scale inverse compositional patch search and
+variational refinement. Deep correlation architectures replaced coarse-to-fine warping with
+all-pairs 4D correlation volumes and recurrent updates (RAFT; \citep{teed2020raft}), and more
+recently with Transformer-based global matching (GMFlow; \citep{xu2022gmflow}). Our contribution
+is not that dense flow smooths motion boundaries, which is well known; it is quantifying the exact
+object-switching transition, proving pixel-level background lock across both classical pyramids and
+all-pairs neural flow under ego-motion, and showing how scalar ego-motion subtraction hides the
+collapse inside a downstream physical metric.
 
-Egocentric datasets have been built to be large and varied \citep{grauman2022ego4d,damen2022epic100},
-and hand-object tooling for them exists \citep{shan2020hands,zhang2022egohos}. The pre-registered
-hand detector was the first of these, and its weights could not be obtained when the pilot ran; a mask model from the
-second stands in, with a box convention whose offset from the original cannot be measured. None of
-that literature reports a duty-cycle or exposure reading of the corpora. The sibling audit of the
-vendor's figures \citep{theodoro2026vernier} is the closest in spirit, and it is about the
-labeller's error, not the exposure reading.
+\paragraph{Video-based ergonomic assessment and egocentric datasets.}
+Automated video estimation of HAL has been developed primarily by one research group using
+fixed third-person cameras: ROI template matching \citep{chen2013}, automated elemental time and
+duty cycle \citep{akkas2016}, observer-to-vision agreement \citep{radwin2023}, and probabilistic
+regression from upper-limb trajectories \citep{lin2026hal} (the latter four consulted as abstracts
+only; the regression equations of \citet{radwin2015} and \citet{akkas2015} were read in full). General
+video-ergonomics systems target whole-body indices such as RULA and REBA
+\citep{agostinelli2024,massiris2022ergoexplorer,yazdani2022dula}, which require trunk and leg
+visibility unavailable from a head-mounted camera. Closest in viewpoint is wearable hand-use
+tracking after spinal cord injury \citep{likitlersuang2019}, which does not score occupational
+exposure. Large egocentric corpora \citep{grauman2022ego4d,damen2022epic100,buildai2025corpus}
+and hand-object detectors \citep{shan2020hands,zhang2022egohos} supply the ingredients for
+egocentric exposure measurement, including published VLM active-manipulation figures
+\citep{buildai2025eval,theodoro2026vernier}, motivating the instrument check studied here
+(Appendix~\ref{app:protocol}).
 
-Dense flow with a smoothness prior is expected to blur across motion boundaries and to lose large displacements. The two estimators here approach large displacement differently, \citet{farneback2003} by a coarse-to-fine pyramid and \citet{teed2020raft} by all-pairs correlation. The contribution of the check is not
-that the failure exists. It is a number for it, in the units the downstream equation uses, under the
-lens of a specific corpus, with a published harness that takes any estimator.
+\section{Limitations}
+\label{sec:limits}
 
-\section{Threats to validity}
+\begin{itemize}\setlength\itemsep{2pt}\setlength\parskip{0pt}
+\item \textbf{Synthetic scenes without real-clip displacement validation.} The renderer uses two
+fronto-parallel planes, one shared texture family, a static hand box, and a first-order backward
+warp with no occlusion, disocclusion, rolling shutter, or illumination change. Real video introduces
+all four, so exact crossing thresholds in pixels may shift on factory footage. No publishable real
+egocentric video clips exist locally on disk, and pilot-factory measurements remain withheld under
+worker-privacy rules; measuring empirical inter-frame hand displacement distributions on public
+egocentric corpora is deferred (\texttt{docs/DESIGN-V2.md}).
+\item \textbf{No corpus measurement and no expert ergonomic validation.} The pre-registered corpus
+HAL study has not run due to compute cost and dataset-licence gates, peak force is unobservable
+from video, and no certified ergonomist has scored any clip. Table~\ref{tab:hal} is a parametric
+sensitivity illustration, not an empirical exposure estimate.
+\item \textbf{Four dense estimators at defaults; sparse and global-matching methods untested.}
+Farneback, DIS, RAFT-small, and RAFT-large span classical and recurrent correlation methods, but
+sparse point trackers, global-matching transformers \citep{xu2022gmflow}, and depth-aware or
+motion-segmented estimators remain untested on this harness.
+\item \textbf{Nominal fleet lens calibration.} Sixteen evenly strided worker calibration files out
+of \cgLensShipped{} shipped in Egocentric-10K were byte-identical; the remaining files are assumed
+identical, so per-camera manufacturing variation across the fleet is unmodelled.
+\item \textbf{Post-hoc scope of v2 experiments and registration clock.} The pixel-level field
+analysis, static-camera arm, DIS/RAFT-large evaluations, and parameter sweeps are post hoc, planned
+in \texttt{docs/DECISIONS.md} (D078) prior to execution. The original pipeline pre-registration's
+ordering relies on git commit ancestry without an external third-party timestamp
+(Appendix~\ref{app:protocol}).
+\end{itemize}
 
-\paragraph{The scene is easier than a factory.} Both planes share one texture type, the hand box
-does not move between the frames, the warp is backward and first order, and there is no occlusion,
-disocclusion, motion blur, rolling shutter, sensor noise or illumination change. The repository's
-own list of objections to itself names the last four as the causes of real flow failure. The estimator is being given an
-easier problem than a factory gives it, and it still fails. That makes the failure plausible and
-does not make the crossing location transferable. It could be earlier or later on real video.
+\section{Conclusion}
+\label{sec:conclusion}
 
-\paragraph{The camera moves, not the hand.} The sweep translates the camera over a static scene.
-Under that motion the background also moves, at the depth ratio, so an estimator that locks onto
-the background lands on the shelf. With a static camera and an independently moving hand the
-background would not move, and the same failure would land near zero. The crossing is unchanged
-either way; the shelf's value is a fact about ego-motion-dominated frames. Head-mounted factory
-video is ego-motion-dominated, but that is an argument and not a measurement.
+Box-median dense optical flow inside a detected hand box under egocentric camera motion fails by
+quietly switching objects. Across four distinct estimators (Farneback, DIS, RAFT-small, and
+RAFT-large), gain holds near unity at small shifts, crosses one half between \cgHalfFineMean{} and
+\cgHalfDisMean{}~px at 960$\times$540, and settles on the depth ratio (\cgRatio{}) as
+\cgFieldCloserBgMin{}\%--\cgFieldCloserBgMax{}\% of inside-box pixels lock onto the background
+plane. Because scalar ego-motion subtraction cancels the captured background velocity and every
+measurement returns a finite field, the pipeline outputs an ordinary-looking speed that recovers
+only \cgFieldRecMinPct{}\%--\cgFieldRecMaxPct{}\% of true relative motion.
 
-\paragraph{The depths are assumptions.} A hand at \cgHandDist{} m and a background at \cgBgDist{} m
-suit a bench. A different workstation gives a different shelf, in proportion. That is a prediction
-I have not tested. The lens is the corpus's, and \cgLensChecked{} of the \cgLensShipped{} shipped calibration files, drawn at an even stride, were byte-identical; the rest are assumed. It is a nominal lens, not a per-camera calibration of the fleet.
+Three practical rules follow for egocentric hand-speed measurement. First, benchmark any candidate
+flow estimator on synthetic two-plane scenes under the target camera's lens and expected hand-box
+sizes before decoding video, checking both ego-motion and static-camera arms. Second, never rely
+on flow null rates or post-subtraction residual magnitudes to guard against tracking collapse;
+background capture hides inside both. Third, on wide-angle head-mounted cameras, replace
+scalar-median ego-motion subtraction with parametric rotational compensation and prefer sparse
+keypoint tracking or global-matching methods over box-median dense flow when inter-frame hand
+displacements approach a third of the hand box width.
 
-\paragraph{Two estimators, one metric.} Farneback and RAFT-small agree about the shelf, which is
-weak evidence about dense flow and none about a sparse or depth-aware method. The metric is a ratio
-of median magnitudes inside the box, so it is blind to direction, and an estimator returning the
-exact field negated would score as a perfect one. Both estimators ran at their defaults; the
-repository's one-seed trial of a larger window and more pyramid levels did not help, and no larger
-RAFT or depth-aware method was tried. It tests one failure and is not an accuracy
-measure. The seed spread is over texture only; geometry, lens and depths are single values.
+\section*{Ethics, disclosures, and availability}
 
-\paragraph{Gain is not HAL error.} Table~\ref{tab:hal} is a propagation through an equation. It
-leaves out the ego-motion subtraction, the box convention, the duty-cycle error, the labeller's
-error and the equation's own residual, which its authors publish.
+The motivating factory corpus records identifiable workers whose consent instrument is not
+published; accordingly, this project reports no per-worker, per-factory, sub-floor, or pilot-site
+measurement. Every number in this paper comes from synthetic rendered scenes, exact camera
+geometry, public documentation, or the repository's committed metadata; no corpus video frame is
+touched.
 
-\paragraph{The pre-registration cannot be audited from outside.} Section~\ref{sec:prereg} says what
-the freeze is and is not. An amendment followed the instrument check.
-
-\paragraph{The vendor's figure is one model's labels.} It carries the judge's error
-\citep{theodoro2026vernier}, no interval, and a random frame sample whose clip and worker linkage is not published. I describe what the
-vendor's pages say about the figure. I make no claim about the vendor's intent, and none about
-the figure's true value.
-
-\paragraph{The search.} A novelty claim from search is as good as the queries. I give them in the
-repository and rerun them; two reviews of the occupational literature could not be opened and rest
-on nothing here.
-
-\section{Objections I expect}
-
-\textbf{``This is a note about a tool check, not a finding.''} Agreed on the scope; the title says
-instrument check. The finding is narrow: one construction of a hand-speed estimate, the one this
-project registered, the median of
-dense flow in a box minus the median outside it, stops measuring the hand past a displacement, and
-the stop produces an ordinary-looking number. It is cheap to test for, and a project that uses the construction has reason to.
-
-\textbf{``The HAL mapping is an analogy.''} It is, and Section~\ref{sec:viewpoint} lists where it
-is weak. I do not compute HAL from the vendor's figure. The claim is that per-clip labels of the
-same kind would be an input, and that nobody has asked.
-
-\textbf{``There are no expert labels.''} Correct, and nothing in this work will supply them. It is
-why the card's verdict is \cgCardVerdict{} and why no claim of accuracy appears.
-
-\textbf{``Your own earlier numbers were a single seed.''} Yes. Three statements in the published
-essay did not survive the seeds: that gain falls off a cliff between two grid points, when the
-location of the drop varies by seed; that 960$\times$540 is a measured optimum, when its range
-overlaps 480$\times$270; and that RAFT-small holds full gain at \cgDispAfter{} px, when its mean
-there is \cgRaftAfterMean{} over seeds. All three are entered in the repository's retraction log, with this note as the correction.
-
-\textbf{``The registration is the author's word.''} For the ordering, yes. For the thresholds, the
-file is public, its SHA-256 is pinned in the repository, and the amendment that followed the check is quoted with the sentence
-it replaced.
-
-\section{Ethics, disclosures and availability}
-
-The corpus records identifiable people at work. The vendor's pages I read do not publish the consent instrument. The project therefore reports at no unit a person or a site could be identified by, and withholds every
-pilot value. This note touches no corpus frame: every number in it comes from rendered scenes, the vendor's public pages, the repository's own history, or the committed measurement card.
-
-I wrote this with an AI coding assistant under my direction, and I reviewed and am responsible for
-every claim. I work at a company that sells an AI gateway. Nothing from that product, its data or
-its customers is used here; the data are public or synthetic. I have an interest in this work being
-noticed. The code is Apache-2.0 and this paper is CC BY 4.0.
-
-The repository is \url{https://github.com/caiotheodoro/cyclegraph}. The sweep and a harness that
-takes any estimator are on Hugging Face as a dataset
-(\texttt{caiotheodoro/cyclegraph-flow-gain}). The Farneback arm reproduces with
-\texttt{python3 scripts/measure\_flow\_gain\_seeds.py --raft-seeds 0}; the RAFT-small arm needs
-torch. \texttt{make validate} runs the gate, including \texttt{tests/test\_paper.py}, which ties
-every number here to its artifact.
+The code, analysis scripts, and manuscript were prepared with an AI coding assistant under the
+authors' direction and review. The first author works at a company developing an AI gateway; no employer
+product, data, or customer material is used here. The code is Apache-2.0 and this paper is CC BY 4.0. All code, artifacts, and automated provenance checks (\texttt{make validate},
+\texttt{make paper-check}) are at \url{https://github.com/caiotheodoro/cyclegraph}; the baseline
+sweep and estimator harness are also hosted at
+\texttt{caiotheodoro/cyclegraph-flow-gain}. Baseline Farneback sweeps reproduce via
+\texttt{python3 scripts/measure\_flow\_gain\_seeds.py --raft-seeds 0} and the v2 suite via
+\texttt{python3 scripts/measure\_flow\_gain\_v2.py}. An earlier single-seed essay was published on
+8 September 2026 \citep{theodoro2026essay}; this revised paper (v2.0) is dated 23 November 2026.
 
 \bibliographystyle{unsrtnat}
-\bibliography{refs}
+{\footnotesize\setlength{\bibsep}{0pt}\bibliography{refs}}
+
+\appendix
+
+\section{Pre-registration status, pilot context, and corrections}
+\label{app:protocol}
+
+\paragraph{Motivating ergonomic reading and vendor figure.}
+The broader repository was designed to read Build AI's Egocentric-10K factory corpus
+(\cgCorpusHours{} hours, \cgCorpusFactories{} factories; \citep{buildai2025corpus}) as ACGIH HAL.
+The evaluation release card \citep{buildai2025eval} reports that \cgVendorPct{}\% of
+\cgVendorFrames{} randomly sampled frames labelled once by \texttt{gemini-2.5-flash} show active
+manipulation (versus \cgVendorPctEgo{}\% for Ego4D and \cgVendorPctEpic{}\% for
+EPIC-KITCHENS-100), with no interval and no human labels (\texttt{results/vendor\_claim.json}).
+In a sibling audit on \cgSibLabels{} human-labelled frames \citep{theodoro2026vernier}, the same
+style of VLM judge over-called manipulation on \cgSibOver{} of \cgSibOverOf{} possible frames
+versus \cgSibUnder{} of \cgSibUnderOf{} under-calls. The repository's novelty search (5 September
+2026, rerun 23 November 2026; \texttt{results/provenance.json}) returned \cgPubmedA{}, \cgPubmedB{}
+(an sEMG study, not video), and \cgPubmedC{} PubMed hits and \cgArxivA{} arXiv hits for ``hand
+activity level'' in egocentric video.
+
+\paragraph{Pre-registration freeze and amendments.}
+\texttt{docs/PRE-REGISTRATION.md} was frozen before any source code existed (commit
+\cgFreezeShort{}; \citep{nosek2018}), fixing 4~Hz analysis sampling, the published HAL equations,
+clustered inference over factory and worker, a k-anonymity floor (5 factories, 50 workers, 40\%
+max stratum share), a two-arm main draw (40{,}000 or 200 clips), and the \cgHalBound{}~HAL residual
+floor. The repository became public on \cgRepoCreated{}, after the one-factory pilot had run, and
+carries no external registry timestamp. Five logged amendments brought the protocol to version
+\cgPreregVersion{}. The final amendment (D045) changed the optical-flow pair spacing from 0.25~s
+(4~Hz) to the clip's native \cgPairInterval{}~ms interval specifically because the synthetic check
+showed both Farneback and RAFT-small sitting on the background shelf across the entire fitted speed
+range at 0.25~s.
+
+\paragraph{Pilot status.}
+A one-factory pilot ran end to end with EgoHOS hand masks \citep{zhang2022egohos} standing in for
+the unavailable 100DOH weights \citep{shan2020hands}. All pilot numerical values are withheld
+(single factories are identifiable); only pass/fail verdicts appear in
+\texttt{MEASUREMENT\_CARD.json} (Table~\ref{tab:card}). Of \cgCardClaims{} registered claims,
+\cgCardUntested{} remain untested, \cgCardHolds{} hold on the pilot, and \cgCardFailed{} fail
+(spectral bout frequency disagreed with transition counting beyond its bound), leaving the card
+verdict \cgCardVerdict{}.
+
+\begin{table}[t]
+\centering\small
+\input{generated/tab_card}
+\caption{Pre-registered claims and recorded pilot status from \texttt{MEASUREMENT\_CARD.json}
+(overall verdict: \cgCardVerdict{}). Pilot numerical values are withheld.}
+\label{tab:card}
+\end{table}
+
+\paragraph{Corrections to the 8 September 2026 single-seed essay.}
+Three claims in the initial blog essay \citep{theodoro2026essay} were read off a single texture
+seed (seed~\cgPubSeed{}) and did not survive multi-seed replication (\texttt{docs/RETRACTIONS.md},
+R1--R3): (1)~the drop between \cgDispKnee{} and \cgDispAfter{}~px is a texture-dependent transition
+(seed~\cgPubSeed{} read \cgGainAtKneePub{} and \cgGainAfterPub{} against seed means
+\cgGainAtKneeMean{} and \cgGainAfterMean{}), not a universal cliff; (2)~960$\times$540 is not a
+measured optimum over 480$\times$270, as their seed ranges overlap; and (3)~RAFT-small does not
+hold full gain at \cgDispAfter{}~px (mean \cgRaftAfterMean{} over \cgNSeedsRaft{} seeds). In
+addition, v1's prose predicted that the crossing displacement would be unchanged under a static
+camera; Experiment~B (\S\ref{sec:estimators}) refutes that prediction and shows an earlier crossing
+governed by the boundary velocity jump.
 
 \end{document}

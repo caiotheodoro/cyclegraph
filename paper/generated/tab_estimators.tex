@@ -1,0 +1,14 @@
+\begin{tabular}{@{}lrccccc@{}}
+\toprule
+ & & \multicolumn{2}{c}{Ego-motion (depth ratio 0.18)} & \multicolumn{2}{c}{Static camera (bg $= 0$)} & A14 rot. \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}
+Estimator & Seeds & $d_{0.5}$ (px) & Shelf gain & $d_{0.5}$ (px) & Post-68 px gain & resid. (px) \\
+\midrule
+Farneback & 20 & 29.4 $\pm$ 1.6 & 0.19 $\pm$ 0.01 & 24.7 $\pm$ 3.7 & 0.058 & 1.22 $\pm$ 0.00 \\
+DIS-medium & 20 & 42.2 $\pm$ 7.7 & 0.19 $\pm$ 0.02 & 34.5 $\pm$ 7.6 & 0.092 & 1.22 $\pm$ 0.00 \\
+RAFT-small & 11 & 40.4 $\pm$ 1.8 & 0.18 $\pm$ 0.00 & 39.0 $\pm$ 1.6 & 0.001 & 1.03 $\pm$ 0.03 \\
+RAFT-large & 11 & 40.0 $\pm$ 3.1 & 0.18 $\pm$ 0.00 & 31.0 $\pm$ 4.0 & 0.000 & 1.20 $\pm$ 0.02 \\
+\midrule
+Exact geometry & --- & --- & 0.18 & --- & 0.000 & 1.15 \\
+\bottomrule
+\end{tabular}

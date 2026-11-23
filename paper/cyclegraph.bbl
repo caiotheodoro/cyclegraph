@@ -1,15 +1,9 @@
-\begin{thebibliography}{24}
+\begin{thebibliography}{27}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
   \providecommand{\doi}[1]{doi: #1}\else
   \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
-
-\bibitem[Theodoro(2026{\natexlab{a}})]{theodoro2026essay}
-Caio Theodoro.
-\newblock The hand box was measuring the wall.
-\newblock Essay, published 2026-09-08; source in the repository at
-  writing/flow-is-not-hand-speed.md, 2026{\natexlab{a}}.
 
 \bibitem[Latko et~al.(1997)Latko, Armstrong, Foulke, Herrin, Rabourn, and
   Ulin]{latko1997}
@@ -19,6 +13,16 @@ W.~A. Latko, T.~J. Armstrong, J.~A. Foulke, G.~D. Herrin, R.~A. Rabourn, and
   repetition in hand tasks.
 \newblock \emph{American Industrial Hygiene Association Journal}, 58\penalty0
   (4):\penalty0 278--285, 1997.
+
+\bibitem[Kapellusch et~al.(2014)Kapellusch, Gerr, Malloy, Garg, Harris-Adamson,
+  Bao, Burt, Dale, et~al.]{kapellusch2014}
+J.~M. Kapellusch, F.~E. Gerr, E.~J. Malloy, A.~Garg, C.~Harris-Adamson, S.~S.
+  Bao, S.~E. Burt, A.~M. Dale, et~al.
+\newblock Exposure-response relationships for the {ACGIH} threshold limit value
+  for hand-activity level: Results from a pooled data study of carpal tunnel
+  syndrome.
+\newblock \emph{Scandinavian Journal of Work, Environment \& Health},
+  40\penalty0 (6):\penalty0 610--620, 2014.
 
 \bibitem[Radwin et~al.(2015)Radwin, Azari, Lindstrom, Ulin, Armstrong, and
   Rempel]{radwin2015}
@@ -35,23 +39,19 @@ O.~Akkas, D.~P. Azari, C.-H.~E. Chen, Y.~H. Hu, S.~S. Ulin, T.~J. Armstrong,
   activity level rating.
 \newblock \emph{Ergonomics}, 58\penalty0 (2):\penalty0 184--194, 2015.
 
-\bibitem[Kapellusch et~al.(2014)Kapellusch, Gerr, Malloy, Garg, Harris-Adamson,
-  Bao, Burt, Dale, et~al.]{kapellusch2014}
-J.~M. Kapellusch, F.~E. Gerr, E.~J. Malloy, A.~Garg, C.~Harris-Adamson, S.~S.
-  Bao, S.~E. Burt, A.~M. Dale, et~al.
-\newblock Exposure-response relationships for the {ACGIH} threshold limit value
-  for hand-activity level: Results from a pooled data study of carpal tunnel
-  syndrome.
-\newblock \emph{Scandinavian Journal of Work, Environment \& Health},
-  40\penalty0 (6):\penalty0 610--620, 2014.
+\bibitem[Chen et~al.(2013)Chen, Hu, Yen, and Radwin]{chen2013}
+C.~H. Chen, Y.~H. Hu, T.~Y. Yen, and R.~G. Radwin.
+\newblock Automated video exposure assessment of repetitive hand activity level
+  for a load transfer task.
+\newblock \emph{Human Factors}, 55\penalty0 (2):\penalty0 298--308, 2013.
+\newblock Read as an abstract only.
 
-\bibitem[{Build AI}(2025{\natexlab{a}})]{buildai2025eval}
-{Build AI}.
-\newblock {Egocentric-10K-Evaluation}: dataset card.
-\newblock Hugging Face dataset card, builddotai/Egocentric-10K-Evaluation,
-  2025{\natexlab{a}}.
-\newblock Accessed 2026-11-23. The card's metadata states the Apache-2.0
-  licence.
+\bibitem[Agostinelli et~al.(2024)Agostinelli, Generosi, Ceccacci, and
+  Mengoni]{agostinelli2024}
+T.~Agostinelli, A.~Generosi, S.~Ceccacci, and M.~Mengoni.
+\newblock Validation of computer vision-based ergonomic risk assessment tools
+  for real manufacturing environments.
+\newblock \emph{Scientific Reports}, 14:\penalty0 27785, 2024.
 
 \bibitem[Grauman et~al.(2022)Grauman, Westbury, Byrne, Chavis, Furnari,
   Girdhar, Hamburger, Jiang, Liu, Liu, et~al.]{grauman2022ego4d}
@@ -74,25 +74,53 @@ Dima Damen, Hazel Doughty, Giovanni~Maria Farinella, Antonino Furnari,
   33--55, 2022.
 \newblock arXiv:2006.13256.
 
-\bibitem[{Build AI}(2025{\natexlab{b}})]{buildai2025corpus}
+\bibitem[{Build AI}(2025{\natexlab{a}})]{buildai2025corpus}
 {Build AI}.
 \newblock {Egocentric-10K}.
 \newblock Hugging Face dataset, builddotai/Egocentric-10K (gated),
-  2025{\natexlab{b}}.
+  2025{\natexlab{a}}.
 \newblock Accessed 2026-11-23.
 
-\bibitem[Theodoro(2026{\natexlab{b}})]{theodoro2026vernier}
-Caio Theodoro.
-\newblock Asymmetric judge error and clustered frames: A pre-registered audit
-  of a commercial dataset quality claim.
-\newblock Zenodo preprint, doi:10.5281/zenodo.24453957, 2026{\natexlab{b}}.
+\bibitem[Kannala and Brandt(2006)]{kannala2006}
+Juho Kannala and Sami~S. Brandt.
+\newblock A generic camera model and calibration method for conventional,
+  wide-angle, and fish-eye lenses.
+\newblock \emph{IEEE Transactions on Pattern Analysis and Machine
+  Intelligence}, 28\penalty0 (8):\penalty0 1335--1340, 2006.
 
-\bibitem[Chen et~al.(2013)Chen, Hu, Yen, and Radwin]{chen2013}
-C.~H. Chen, Y.~H. Hu, T.~Y. Yen, and R.~G. Radwin.
-\newblock Automated video exposure assessment of repetitive hand activity level
-  for a load transfer task.
-\newblock \emph{Human Factors}, 55\penalty0 (2):\penalty0 298--308, 2013.
-\newblock Read as an abstract only.
+\bibitem[Farneb{\"a}ck(2003)]{farneback2003}
+Gunnar Farneb{\"a}ck.
+\newblock Two-frame motion estimation based on polynomial expansion.
+\newblock In \emph{Image Analysis (SCIA 2003), Lecture Notes in Computer
+  Science 2749}, pages 363--370, 2003.
+
+\bibitem[Kroeger et~al.(2016)Kroeger, Timofte, Dai, and
+  Van~Gool]{kroeger2016dis}
+Till Kroeger, Radu Timofte, Dengxin Dai, and Luc Van~Gool.
+\newblock Fast optical flow using dense inverse search.
+\newblock In \emph{European Conference on Computer Vision (ECCV), Lecture Notes
+  in Computer Science 9908}, pages 471--488, 2016.
+\newblock arXiv:1603.03590.
+
+\bibitem[Teed and Deng(2020)]{teed2020raft}
+Zachary Teed and Jia Deng.
+\newblock {RAFT}: Recurrent all-pairs field transforms for optical flow.
+\newblock In \emph{European Conference on Computer Vision (ECCV)}, 2020.
+\newblock arXiv:2003.12039.
+
+\bibitem[Brox and Malik(2011)]{brox2011ldof}
+Thomas Brox and Jitendra Malik.
+\newblock Large displacement optical flow: Descriptor matching in variational
+  motion estimation.
+\newblock \emph{IEEE Transactions on Pattern Analysis and Machine
+  Intelligence}, 33\penalty0 (3):\penalty0 500--513, 2011.
+
+\bibitem[Xu et~al.(2022)Xu, Zhang, Cai, Rezatofighi, and Tao]{xu2022gmflow}
+Haofei Xu, Jing Zhang, Jianfei Cai, Hamid Rezatofighi, and Dacheng Tao.
+\newblock {GMFlow}: Learning optical flow via global matching.
+\newblock In \emph{IEEE/CVF Conference on Computer Vision and Pattern
+  Recognition (CVPR)}, pages 8111--8120, 2022.
+\newblock arXiv:2111.13680.
 
 \bibitem[Akkas et~al.(2016)Akkas, Lee, Hu, Yen, and Radwin]{akkas2016}
 O.~Akkas, C.~H. Lee, Y.~H. Hu, T.~Y. Yen, and R.~G. Radwin.
@@ -116,13 +144,6 @@ T.~H. Lin, Y.~H. Hu, and R.~Radwin.
   trajectories: A probabilistic regression framework.
 \newblock \emph{Ergonomics}, 69\penalty0 (9):\penalty0 1809--1819, 2026.
 \newblock Read as an abstract only.
-
-\bibitem[Agostinelli et~al.(2024)Agostinelli, Generosi, Ceccacci, and
-  Mengoni]{agostinelli2024}
-T.~Agostinelli, A.~Generosi, S.~Ceccacci, and M.~Mengoni.
-\newblock Validation of computer vision-based ergonomic risk assessment tools
-  for real manufacturing environments.
-\newblock \emph{Scientific Reports}, 14:\penalty0 27785, 2024.
 
 \bibitem[Massiris~Fern{\'a}ndez et~al.(2022)Massiris~Fern{\'a}ndez, Rado{\v s},
   Matkovi{\'c}, Gr{\"o}ller, and Delrieux]{massiris2022ergoexplorer}
@@ -148,31 +169,6 @@ J.~Likitlersuang, E.~R. Sumitro, T.~Cao, R.~J. Vis{\'e}e, S.~Kalsi-Ryan, and
 \newblock \emph{Journal of NeuroEngineering and Rehabilitation}, 16:\penalty0
   83, 2019.
 
-\bibitem[Nosek et~al.(2018)Nosek, Ebersole, DeHaven, and Mellor]{nosek2018}
-Brian~A. Nosek, Charles~R. Ebersole, Alexander~C. DeHaven, and David~T. Mellor.
-\newblock The preregistration revolution.
-\newblock \emph{Proceedings of the National Academy of Sciences}, 115\penalty0
-  (11):\penalty0 2600--2606, 2018.
-
-\bibitem[Kannala and Brandt(2006)]{kannala2006}
-Juho Kannala and Sami~S. Brandt.
-\newblock A generic camera model and calibration method for conventional,
-  wide-angle, and fish-eye lenses.
-\newblock \emph{IEEE Transactions on Pattern Analysis and Machine
-  Intelligence}, 28\penalty0 (8):\penalty0 1335--1340, 2006.
-
-\bibitem[Farneb{\"a}ck(2003)]{farneback2003}
-Gunnar Farneb{\"a}ck.
-\newblock Two-frame motion estimation based on polynomial expansion.
-\newblock In \emph{Image Analysis (SCIA 2003), Lecture Notes in Computer
-  Science 2749}, pages 363--370, 2003.
-
-\bibitem[Teed and Deng(2020)]{teed2020raft}
-Zachary Teed and Jia Deng.
-\newblock {RAFT}: Recurrent all-pairs field transforms for optical flow.
-\newblock In \emph{European Conference on Computer Vision (ECCV)}, 2020.
-\newblock arXiv:2003.12039.
-
 \bibitem[Shan et~al.(2020)Shan, Geng, Shu, and Fouhey]{shan2020hands}
 Dandan Shan, Jiaqi Geng, Michelle Shu, and David~F. Fouhey.
 \newblock Understanding human hands in contact at internet scale.
@@ -185,5 +181,32 @@ Lingzhi Zhang, Shenghao Zhou, Simon Stent, and Jianbo Shi.
 \newblock Fine-grained egocentric hand-object segmentation: Dataset, model, and
   applications.
 \newblock \emph{arXiv preprint arXiv:2208.03826}, 2022.
+
+\bibitem[{Build AI}(2025{\natexlab{b}})]{buildai2025eval}
+{Build AI}.
+\newblock {Egocentric-10K-Evaluation}: dataset card.
+\newblock Hugging Face dataset card, builddotai/Egocentric-10K-Evaluation,
+  2025{\natexlab{b}}.
+\newblock Accessed 2026-11-23. The card's metadata states the Apache-2.0
+  licence.
+
+\bibitem[Theodoro(2026{\natexlab{a}})]{theodoro2026vernier}
+Caio Theodoro.
+\newblock Asymmetric judge error and clustered frames: A pre-registered audit
+  of a commercial dataset quality claim.
+\newblock Zenodo preprint, doi:10.5281/zenodo.24453957, 2026{\natexlab{a}}.
+
+\bibitem[Theodoro(2026{\natexlab{b}})]{theodoro2026essay}
+Caio Theodoro.
+\newblock The hand box was measuring the wall.
+\newblock Essay, published 2026-09-08 at
+  https://caio.theodoro.dev/blog/cyclegraph-flow-is-not-hand-speed; source in
+  the repository at writing/flow-is-not-hand-speed.md, 2026{\natexlab{b}}.
+
+\bibitem[Nosek et~al.(2018)Nosek, Ebersole, DeHaven, and Mellor]{nosek2018}
+Brian~A. Nosek, Charles~R. Ebersole, Alexander~C. DeHaven, and David~T. Mellor.
+\newblock The preregistration revolution.
+\newblock \emph{Proceedings of the National Academy of Sciences}, 115\penalty0
+  (11):\penalty0 2600--2606, 2018.
 
 \end{thebibliography}

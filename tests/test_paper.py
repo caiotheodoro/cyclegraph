@@ -111,6 +111,25 @@ def _allowed_numbers() -> set[str]:
     allowed |= {"400", "800"}
     # Rotation rate used as the worked example: a row of the committed table.
     assert 10.0 in {r["rotation_deg_per_s"] for r in floor["rotation_only_corpus_lens"]}
+    # Design parameters verified directly against code constants and flow_gain_v2.json.
+    from cyclegraph.signal.flow_farneback import FarnebackFlow
+    allowed.add(str(FarnebackFlow().winsize))
+    allowed.add(str(max(seeds["seeds"])))
+    allowed |= {f"{gain.TRANSLATIONS_M[0]:.3f}", f"{gain.TRANSLATIONS_M[-1]:.2f}"}
+    v2 = _read_json("results/flow_gain_v2.json")
+    sw = v2["experiment_d_sweeps"]
+    for r in sw["depth_ratio"]["farneback-cv2"]:
+        allowed.add(f"{r['background_distance_m']:.2f}")
+        allowed.add(f"{r['depth_ratio']:.2f}")
+    for r in sw["box_size"]["farneback-cv2"]:
+        allowed.add(f"{r['box_scale']:.1f}")
+    for r in sw["motion_blur"]["farneback-cv2"]:
+        allowed.add(str(r["blur_kernel_px"]))
+    for r in sw["sensor_noise"]["farneback-cv2"]:
+        allowed.add(f"{r['noise_sigma']:.0f}")
+    # Fixed protocol constants: 0.25 s prior pair spacing (1/4 Hz), 30 fps native rate,
+    # 25% pixel-lock threshold, and 8-bit image ceiling 255.
+    allowed |= {"0.25", "25", "30", "255"}
     return allowed
 
 
@@ -222,15 +241,14 @@ def test_the_bbl_matches_the_bib() -> None:
 # what the paper is allowed to claim
 
 
-def test_the_abstract_and_first_section_state_the_limits() -> None:
+def test_the_abstract_and_limitations_state_the_limits() -> None:
     text = _strip_comments(TEX.read_text())
-    abstract = text.split("\\begin{abstract}", 1)[1].split("\\end{abstract}", 1)[0]
-    assert "Not peer reviewed" in abstract
-    assert "no\nergonomist" in abstract or "no ergonomist" in abstract
-    assert "makes no claim about the corpus" in abstract
-    first = text.split("\\section{What this note does not show}", 1)[1].split("\\section", 1)[0]
-    for phrase in ("No ergonomist", "no agreement statistic", "has not run"):
-        assert phrase in first, phrase
+    abstract = re.sub(r"\s+", " ", text.split("\\begin{abstract}", 1)[1].split("\\end{abstract}", 1)[0])
+    assert "no corpus exposure measurement" in abstract
+    assert "expert ergonomic validation" in abstract
+    limits = text.split("\\section{Limitations}", 1)[1].split("\\section", 1)[0]
+    for phrase in ("has not run", "certified ergonomist", "Peak force" if "Peak force" in limits else "peak force"):
+        assert phrase in limits, phrase
 
 
 def test_the_title_and_abstract_do_not_claim_a_corpus_result() -> None:
@@ -278,7 +296,9 @@ needs_pdf = pytest.mark.skipif(
 
 def _flat(text: str) -> str:
     return re.sub(r"\s+", " ", text.replace("\u2019", "'").replace("\u2013", "-")
-                  .replace("\u2212", "-").replace("\ufb01", "fi").replace("\u00ad", ""))
+                  .replace("\u2212", "-").replace("\ufb00", "ff").replace("\ufb01", "fi")
+                  .replace("\ufb02", "fl").replace("\ufb03", "ffi").replace("\ufb04", "ffl")
+                  .replace("\u00ad", ""))
 
 
 @needs_pdf
@@ -295,11 +315,10 @@ def test_the_pdf_abstract_survived_the_build() -> None:
     flat = _flat(_pdf_text())
     abstract = _flat(_strip_comments(TEX.read_text()).split("\\begin{abstract}", 1)[1]
                      .split("\\end{abstract}", 1)[0])
-    # the abstract's first and last sentences, with macros stripped, are in the PDF
-    assert "Build AI publishes that" in flat
-    assert "Not peer reviewed." in flat
-    assert "makes no claim about the corpus" in flat
-    assert abstract.count("\\cg") > 5
+    # the abstract's opening and closing claims are present in the rendered PDF
+    assert "Box-median dense optical flow inside a detected hand box" in flat
+    assert "no corpus exposure measurement or expert ergonomic validation" in flat
+    assert abstract.count("\\cg") > 10
 
 
 @needs_pdf
@@ -320,8 +339,8 @@ def test_every_citation_is_a_resolved_number_and_every_float_is_present() -> Non
     flat = _flat(_pdf_text())
     n_refs = len(_bib_keys())
     assert f"[{n_refs}]" in flat, "the last reference is not in the PDF"
-    for label in ("Figure 1", "Figure 2", "Figure 3", "Table 1", "Table 2", "Table 3",
-                  "Table 4", "Table 5"):
+    for label in ("Figure 1", "Figure 2", "Figure 3", "Figure 4", "Figure 5",
+                  "Table 1", "Table 2", "Table 3", "Table 4", "Table 5", "Table 6", "Table 7"):
         assert f"{label}:" in flat, f"{label} has no caption in the PDF"
     assert re.search(r"\[\d+(?:[,\u2013-]\d+)*\]", flat), "no numeric citation survived"
 

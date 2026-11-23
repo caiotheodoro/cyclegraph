@@ -19,11 +19,17 @@ def test_zenodo_json_is_what_the_paper_generates() -> None:
 
 def test_the_deposit_carries_the_owner_the_licence_and_the_limits() -> None:
     z = json.loads((ROOT / ".zenodo.json").read_text())
-    assert z["creators"] == [{"name": "Theodoro, Caio", "orcid": "0009-0005-7343-981X"}]
-    assert "affiliation" not in z["creators"][0]
+    assert z["creators"] == [
+        {"name": "Theodoro, Caio", "affiliation": "Avenza Labs", "orcid": "0009-0005-7343-981X"},
+        {"name": "Theodoro, Matheus", "affiliation": "Avenza Labs", "orcid": "0009-0001-4061-4117"},
+    ]
     assert z["license"] == "cc-by-4.0"
+    assert z["publication_date"] == "2026-09-08"
+    assert z["version"] == "paper-v2.0"
+    assert "8 September 2026" in z["notes"]
+    assert "23 November 2026" in z["notes"]
     assert "Not peer reviewed" in z["description"]
-    assert "makes no claim about the corpus" in z["description"]
+    assert "no corpus exposure measurement" in z["description"]
     assert "\\" not in z["description"] and "cg" not in re.findall(r"\\cg\w+", z["description"])
 
 
