@@ -2692,3 +2692,32 @@ check, which needs decoded corpus frames. Nothing here is a claim about the corp
 **Reverses if:** the seed arm is shown to differ from the published sweep other than by texture (the
 two would then be re-measured under one definition), or the paper is withdrawn from Zenodo, in which
 case the repository's copy stays and says it was withdrawn.
+
+## D077 — The short paper is deposited on Zenodo; the deposit is not the registration clock
+
+2026-11-23. This supersedes D076's wording that the draft was "prepared" and awaiting the owner; it
+does not edit D076.
+
+**The deposit.** `paper/cyclegraph.pdf` (12 pages, the file built from commit 7849d02) is Zenodo record
+24455090, DOI 10.5281/zenodo.24455090; the DOI for all versions is 10.5281/zenodo.24455089. The record was
+created at 05:20 UTC on 2026-11-23 (Zenodo's own timestamp) and published the same day after the owner
+said to publish. The publication date on the record reads 2026-11-23, which is also the day the paper
+first appeared on `main`, so the field and the first public release agree and nothing is back-dated.
+The file's md5 is 1373d15bfb7dcaf2c22c9f0847112646, the same as the PDF in the repository.
+
+**What is on the record.** The PDF; type preprint; version string `paper-v1`; CC BY 4.0, set in Zenodo's
+metadata only; the author with the owner's ORCID and no affiliation; the abstract with "Not peer
+reviewed"; the 24 entries of `paper/refs.bib` as reference strings, as the bibliography has them; the
+repository and the Hugging Face dataset as supplements; and the sibling audit and seven arXiv papers as
+cited works. `.zenodo.json` and `CITATION.cff` hold the same metadata, and the README names the DOI. The
+repository tag is `paper-v1.0` while the Zenodo version string is `paper-v1`; the two name the same file.
+
+**Not the registration.** This is a deposit of a paper written after the instrument check ran. It dates
+nothing about `docs/PRE-REGISTRATION.md`, whose only timestamp is the weak one D076 states: commit
+ancestry in a repository that became public on 2026-09-08, after the pilot. The deposit of the
+registration outside GitHub is still owed.
+
+**Reversal.** The file cannot change; the metadata can. A later entry corrects any statement on the record
+found wrong, and a corrected paper goes up as a new version under the concept DOI, with the earlier
+version left in place and the reason recorded here. If a published figure is found to be wrong, the
+correction goes in `docs/RETRACTIONS.md` first.
