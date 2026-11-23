@@ -1,5 +1,14 @@
 # The hand box was measuring the wall
 
+> **Correction, 2026-11-23.** Every number below was measured on one texture seed, seed 11. I
+> repeated the sweep over 20 seeds (11 for RAFT-small). The shelf at 0.18 survives. Three things I
+> said do not: the drop is a transition whose location moves with the texture, not a cliff between
+> two grid points; 960x540 is not shown to be an optimum, because its seed range overlaps
+> 480x270's; and RAFT-small does not hold full gain at 34.2 px, its mean there is 0.80. Also, Build AI
+> publishes one aggregate over 10,000 sampled frames labelled by a language model, not a per-frame
+> flag over the corpus. The numbers, the retraction entries and the short paper are in the repository:
+> `results/flow_gain_seeds.json`, `docs/RETRACTIONS.md` (R1 to R3), `paper/cyclegraph.tex`.
+
 I built a synthetic test to size a small correction, and found the correction was the whole
 signal.
 

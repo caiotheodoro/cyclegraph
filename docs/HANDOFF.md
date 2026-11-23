@@ -1,5 +1,12 @@
 # Handoff
 
+> **2026-11-23 correction.** The paragraph below says the detector and the labeller have not run. It
+> describes the state before D061 and was stale when this file was last dated (D061 is 2026-09-06): the pilot ran with EgoHOS (D047) and
+> the probe labels, H2c passed (D061), and `MEASUREMENT_CARD.json` carries the verdicts. Still true:
+> no exposure value exists and the corpus measurement is blocked on cost. See D076 and
+> `docs/RETRACTIONS.md`.
+
+
 The resume point. A fresh session should be able to continue from this file without
 re-deriving anything.
 

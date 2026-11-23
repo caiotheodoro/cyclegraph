@@ -7,16 +7,19 @@ primitive, and measures the corpus that way. The corpus is `builddotai/Egocentri
 10,000 hours, 2,153 workers published and 2,144 shipped (`../vernier/docs/UPSTREAM-FINDINGS.md`
 F12), 85 factories, 192,903 clips.
 
-**Current state (2026-09-05):** W1 cleared, pre-registration v1.3.0, contracts v1.2, W2
-landed (models, the two HAL equations, the bootstrap), fresh-context review recorded as
-D020. W3's code is landed and its corpus gates pass (D026-D028); its two external
-dependencies, the detector and the labeller, have not run. `docs/SURVEY.md`'s two unopened reviews stay `[S]` and load-bearing on nothing.
+**Current state (2026-11-23):** pre-registration v1.5.0, contracts v1.5. W1 cleared; W2 landed and
+reviewed (D020); W3 closed on a one-factory pilot (D061, D069), whose values are never published
+(D018) and whose verdicts are in `MEASUREMENT_CARD.json`; W9 published the synthetic instrument
+work (D071). The corpus measurement is blocked on cost (`docs/BLOCKED.md`) and no exposure value
+exists. `paper/cyclegraph.tex` is the short paper on the instrument check; D076 records it and the
+three single-seed claims retracted in `docs/RETRACTIONS.md`. `docs/SURVEY.md`'s two unopened
+reviews stay `[S]` and load-bearing on nothing.
 
 ## The claim
 
 Build AI's *active manipulation* figure is duty cycle. Duty cycle is a primary input to the
-ACGIH TLV for Hand Activity Level. Read that way, the corpus is the largest automated
-hand-activity dataset assembled — and no ergonomics work has read it, because every
+ACGIH TLV for Hand Activity Level. Read that way, the corpus *would be* the largest
+hand-activity dataset assembled if anyone measured it — and no ergonomics work has read it, because every
 published video-ergonomics system is third-person and RULA/REBA are ill-posed from a
 head-mounted camera.
 
@@ -62,7 +65,7 @@ recorded a claim that dissolved on contact with the paper; the tag is what caugh
 ## Order of work
 
 `docs/SURVEY.md` gated everything and cleared on 2026-09-05. `docs/PRE-REGISTRATION.md` is
-at v1.3.0. W2 landed. Next: W3 (`corpus` + `signal`) → `make manifest` →
+at v1.5.0. W2 and W3 landed. Next, when money allows (`docs/BLOCKED.md`): `make manifest` →
 `make signal` → `make cycles` → `make hal` → `make estimate` → `make card`.
 
 `docs/WAVES.md` carries the ordering constraints that are not negotiable.

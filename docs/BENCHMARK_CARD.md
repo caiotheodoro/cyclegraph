@@ -24,6 +24,11 @@ about workstation geometry, not measurements, and they are part of the result's 
 
 **Gain does not decay. It falls off a knee and lands on a floor.**
 
+**Read the tables below as seed 11.** Every table in this card was measured on one texture seed, and the
+same sweep over 20 seeds (11 for RAFT-small) shows the drop is a transition whose location moves with
+the texture (`results/flow_gain_seeds.json`; `docs/RETRACTIONS.md` R1 to R3). The floor survives the
+seeds: 0.19 (sd 0.01) for Farneback and 0.18 (sd 0.00) for RAFT-small, against a depth ratio of 0.18.
+
 The floor is `0.45 / 2.5 = 0.18`, the ratio of the two depths. Past the knee the estimator has
 stopped reporting the hand and started reporting the background, scaled by how much further away
 the background is.
@@ -33,9 +38,7 @@ the background is.
 | farneback-cv2 | 960x540 | 22.794 px | 34.181 px |
 | raft-small | 960x540 | 34.181 px | 45.539 px |
 
-**The knee belongs to the estimator. The floor belongs to the geometry.** RAFT-small holds gain
-0.9738 at a displacement where Farneback has already collapsed to 0.2024 — one sweep step
-further out, which on this nine-point grid bounds the true ratio only between 1.0 and 2.0. It
+**The knee belongs to the estimator. The floor belongs to the geometry.** At seed 11, RAFT-small holds gain 0.9738 at a displacement where Farneback has already collapsed to 0.2024. That is one texture. Over 11 seeds RAFT-small's mean there is 0.80 (range 0.58 to 0.97), so "holds full gain" does not survive (`docs/RETRACTIONS.md` R3); it crosses one half later than Farneback, 40.4 px against 29.4 px on the same grid, with non-overlapping ranges. It
 buys a later knee and it does not move the floor. Taking the same four displacements for both
 arms at 960x540 — 68.025, 90.136, 132.883 and 163.312 px — RAFT gives 0.172, 0.177, 0.180,
 0.184 and Farneback gives 0.177, 0.187, 0.196, 0.055. Farneback's last value is regime two, not
@@ -50,7 +53,7 @@ box-relative displacement — 0.236 of the hand box width — gain runs:
 |---|---|---|---|---|
 | gain | 0.7656 | 0.9925 | 0.2036 | 0.1978 |
 
-960x540 is a measured optimum, not a compromise. 1920x1080 does worse than 480x270.
+**Correction, 2026-11-23.** The row above is one texture seed (11). Over 20 seeds the mean gain at this speed is 0.81 (range 0.50 to 0.97) at 480x270 and 0.88 (range 0.58 to 0.99) at 960x540, so no optimum is shown (`docs/RETRACTIONS.md` R2). What the seeds support is that 1440 and 1920 wide fall at a lower physical speed. The numbers are in `results/flow_gain_seeds.json` and the paper's Table 4.
 
 **Far past the knee there is a second regime.** Gain falls below the depth ratio toward zero,
 once displacement exceeds the estimator's search range outright and it tracks nothing. The

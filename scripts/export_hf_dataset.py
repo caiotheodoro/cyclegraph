@@ -276,10 +276,9 @@ Both files below share the {fb960['pair_interval_s']} s pair baseline, so they c
 | {_at(fb960, 45.539)['hand_displacement_px']} px | {_at(fb960, 45.539)['gain']} | {_at(raft960, 45.539)['gain']} |
 | {_at(fb960, 68.025)['hand_displacement_px']} px | {_at(fb960, 68.025)['gain']} | {_at(raft960, 68.025)['gain']} |
 
-RAFT-small buys roughly one more doubling of usable displacement and lands on the same floor.
-A better estimator moves where the cliff is and does not touch what is underneath it.
+RAFT-small crosses later and lands on the same floor. A better estimator moves the crossing and does not touch what is underneath it. These columns are one texture seed (11). Across seeds the location of the drop moves with the texture, and the cliff is a transition several pixels wide; `docs/RETRACTIONS.md` R1 and the paper's seed table (`results/flow_gain_seeds.json` in the repository) carry the spread.
 
-## Higher decode resolution is not better
+## Decode resolution (one seed)
 
 At {over_box} of the hand box width, the same physical displacement at four decode sizes:
 
@@ -287,9 +286,7 @@ At {over_box} of the hand box width, the same physical displacement at four deco
 |---|{'---|' * len(res_cols)}
 | gain | {' | '.join(str(c['rows'][res_idx]['gain']) for c in res_cols)} |
 
-{res_cols[1]['frame_size'][0]}x{res_cols[1]['frame_size'][1]} is a measured optimum.
-{res_cols[3]['frame_size'][0]}x{res_cols[3]['frame_size'][1]} does worse than
-{res_cols[0]['frame_size'][0]}x{res_cols[0]['frame_size'][1]}.
+This is one texture seed. Over 20 seeds the 480x270 and 960x540 ranges overlap at this speed, so no optimum is claimed (`docs/RETRACTIONS.md` R2); the larger decodes do fall at a lower physical speed.
 
 ## The lens does most of the work
 
